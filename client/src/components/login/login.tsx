@@ -145,73 +145,99 @@ export function Login() {
     }
 
     return (
-      <Card className="w-full max-w-sm border-2 shadow-lg">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl font-bold tracking-tight">
-            {InfoMessages.welcomeMessage}
-          </CardTitle>
-          <CardDescription>
-            {loginResult ? InputMessages.otp : InputMessages.phoneNumber}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={loginResult ? verifyOTP : requestOTP} className="space-y-4">
-            {
-              !loginResult ? 
-              <><div className="space-y-2">
-              <Label htmlFor="phone">{Labels.phoneNumber}</Label>
-              <div className="relative">
-                <div className="absolute left-3 top-2.5 flex items-center gap-2 border-r pr-2 h-5">
-                   <Phone className="h-4 w-4 text-muted-foreground" />
-                   <span className="text-sm font-medium text-muted-foreground">+91</span>
-                </div>
-                <Input
-                  id="phone"
-                  placeholder="9876543210"
-                  type="tel"
-                  className="pl-20 transition-all focus-visible:ring-2 focus-visible:ring-primary/50"
-                  value={phoneNumber}
-                  onChange={handlePhonenumberChange}
-                  required
-                />
-              </div>
+      <div className="flex items-center justify-center min-h-[50vh] p-4">
+        <Card className="w-full max-w-md border-none shadow-2xl rounded-3xl bg-white/95 backdrop-blur-xl dark:bg-zinc-900/95 overflow-hidden ring-1 ring-black/5">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-amber-500" />
+          
+          <CardHeader className="space-y-3 text-center pt-8 pb-6">
+            <div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-2 text-primary">
+              <Phone className="w-6 h-6" />
             </div>
-            <div id="recaptcha-container" className="flex justify-center my-4"></div></>
-            :
-            <div className="space-y-2 flex flex-col items-center">
-                <InputOTP
+            <CardTitle className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-zinc-900 to-zinc-600 dark:from-white dark:to-zinc-400">
+              {InfoMessages.welcomeMessage}
+            </CardTitle>
+            <CardDescription className="text-base text-muted-foreground/80">
+              {loginResult ? InputMessages.otp : InputMessages.phoneNumber}
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="px-8 pb-8">
+            <form onSubmit={loginResult ? verifyOTP : requestOTP} className="space-y-6">
+              {!loginResult ? (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="sr-only">{Labels.phoneNumber}</Label>
+                    <div className="relative group transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/20 rounded-xl">
+                      <div className="absolute left-0 top-0 bottom-0 w-20 flex items-center justify-center bg-muted/30 border-r border-border/50 rounded-l-xl transition-colors group-focus-within:bg-primary/5 group-focus-within:border-primary/20">
+                        <span className="text-base font-semibold text-muted-foreground group-focus-within:text-foreground">+91</span>
+                      </div>
+                      <Input
+                        id="phone"
+                        placeholder="9876543210"
+                        type="tel"
+                        className="pl-24 h-12 text-lg tracking-wide border-2 border-border/50 bg-background/50 hover:border-primary/30 focus-visible:ring-0 focus-visible:border-primary rounded-xl transition-all duration-300"
+                        value={phoneNumber}
+                        onChange={handlePhonenumberChange}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div id="recaptcha-container" className="flex justify-center my-2"></div>
+                </>
+              ) : (
+                <div className="space-y-4 flex flex-col items-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+                  <InputOTP
                     maxLength={OTPLength}
                     value={otp}
                     onChange={(value) => handleOtpChange(value)}
-                >
-                    <InputOTPGroup>
-                        <InputOTPSlot index={0} />
-                        <InputOTPSlot index={1} />
-                        <InputOTPSlot index={2} />
-                        <InputOTPSlot index={3} />
-                        <InputOTPSlot index={4} />
-                        <InputOTPSlot index={5} />
+                  >
+                    <InputOTPGroup className="gap-2">
+                      {[...Array(6)].map((_, i) => (
+                        <InputOTPSlot 
+                          key={i} 
+                          index={i} 
+                          className="w-10 h-12 text-lg border-2 rounded-lg data-[active=true]:border-primary data-[active=true]:ring-2 data-[active=true]:ring-primary/20 transition-all duration-200"
+                        />
+                      ))}
                     </InputOTPGroup>
-                </InputOTP>
-            </div>
-            }
-            {error && <p className="text-sm text-red-500 font-medium">{error}</p>}
-            <Button 
-              type="submit" 
-              className="w-full bg-primary font-semibold hover:bg-primary/90 cursor-pointer"
-              disabled={!enableButton()}
-            >
-              {getButtonText()}
-            </Button>
-          </form>
-        </CardContent>
-        <CardFooter className="justify-center">
-          {loginResult ? <Button variant="link" size="sm" className="text-muted-foreground cursor-pointer" onClick={changePhoneNumber}>
-            {ButtonText.wrongNumber}
-        </Button> : <p className="text-xs text-muted-foreground text-center">
-            {InfoMessages.termsAndConditionsInfo}
-          </p>}
-        </CardFooter>
-      </Card>
+                  </InputOTP>
+                </div>
+              )}
+
+              {error && (
+                <div className="p-3 rounded-lg bg-red-50 text-red-500 text-sm font-medium text-center animate-in fade-in zoom-in-95 duration-200 flex items-center justify-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                  {error}
+                </div>
+              )}
+
+              <Button 
+                type="submit" 
+                className="w-full h-12 text-base font-bold text-white shadow-lg shadow-primary/25 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 active:scale-[0.98] transition-all duration-200 rounded-xl"
+                disabled={!enableButton()}
+              >
+                {getButtonText()}
+              </Button>
+            </form>
+          </CardContent>
+          
+          <CardFooter className="justify-center pb-8 bg-muted/20 pt-6 border-t border-border/40">
+            {loginResult ? (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-muted-foreground hover:text-primary transition-colors" 
+                onClick={changePhoneNumber}
+              >
+                {ButtonText.wrongNumber}
+              </Button>
+            ) : (
+              <p className="text-xs text-muted-foreground/60 text-center max-w-[280px]">
+                {InfoMessages.termsAndConditionsInfo}
+              </p>
+            )}
+          </CardFooter>
+        </Card>
+      </div>
     )
 }
