@@ -19,12 +19,34 @@ import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth"
 import { auth } from "../../firebase/setup"
-import { InfoMessages, Labels, ButtonText, ErrorMessages, InputMessages } from "./helper"
+import { InfoMessages } from "./helper"
 
-const errorDuration = 2000
 const isNumber = (value: string) => /^\d*$/.test(value)
 const OTPLength = 6
 const PhoneNumberLength = 10
+const errorDuration = 2000
+
+// Error messages
+const LengthError = `Phone number must be ${PhoneNumberLength} digits`
+const NotNumberError = "Only numbers are supported"
+const SendingOTPError = "Failed to send OTP"
+const RecaptchaError = "Failed to load reCAPTCHA"
+const OTPVerificationError = "Please enter the correct OTP"
+
+// Input messages
+const PhoneNumberInputMessage = "Please enter your phone number"
+const OTPInputMessage = "Please enter your OTP"
+
+// Button text
+const SendOTPButtonText = "Send OTP"
+const VerifyOTPButtonText = "Verify OTP"
+const VerifyingOTPButtonText = "Verifying OTP..."
+const SendingOTPButtonText = "Sending OTP..."
+const WrongNumberButtonText = "Wrong number ?"
+const ResendOTPButtonText = "Resend OTP"
+
+// Label
+const PhoneNumberLabel = "Phone Number"
 
 export function Login() {
     const [loginResult, setLoginResult] = useState<any>(null)
@@ -42,12 +64,12 @@ export function Login() {
     const value = e.target.value
     
     if (!isNumber(value)) { 
-        setError(ErrorMessages.DataTypeError)
+        setError(NotNumberError)
         setTimeout(() => setError(""), errorDuration)
         return
     }
     if (value.length > PhoneNumberLength){
-        setError(ErrorMessages.LengthError)
+        setError(LengthError)
         setTimeout(() => setError(""), errorDuration)
         return
     }
@@ -58,9 +80,9 @@ export function Login() {
 
     const getButtonText = () => {
       if (loginResult) {
-        return isPending ? ButtonText.verifyingOTP : ButtonText.verifyOTP
+        return isPending ? VerifyingOTPButtonText : VerifyOTPButtonText
       }
-      return isPending ? ButtonText.sendingOTP : ButtonText.sendOTP
+      return isPending ? SendingOTPButtonText : SendOTPButtonText
     }
 
     const enableVerifyOTPButton = () => {
@@ -80,7 +102,7 @@ export function Login() {
         setOtp("")
         if (recaptcha) {
             recaptcha.clear();
-            setRecaptcha(null); // Clear the state so useEffect can trigger again
+            setRecaptcha(null);
         }
     }
 
@@ -99,28 +121,30 @@ export function Login() {
           }).catch(console.error);
         }
       }
-    }, [recaptcha, loginResult]); // Re-runs whenever recaptcha is cleared
+    }, [recaptcha, loginResult]);
 
     const requestOTP = async (e: React.FormEvent) => {
       e?.preventDefault()
 
+      if (!recaptcha) {
+        setError(RecaptchaError)
+        return
+      }
+
+      const verifier = recaptcha
+
       startTransition(async () => {
         setError("")
-        if (!recaptcha) {
-          setError(ErrorMessages.RecaptchaError)
-          setTimeout(() => setError(""), errorDuration)
-          return
-        }
         try {
           const phoneWithCode = "+91" + phoneNumber
-          const confirmationResult = await signInWithPhoneNumber(auth, phoneWithCode, recaptcha)
+          const confirmationResult = await signInWithPhoneNumber(auth, phoneWithCode, verifier)
           setLoginResult(confirmationResult)
         } 
         catch (err: any) {
           console.error(err)
-          setError(ErrorMessages.SendingOTPError)
-          if (recaptcha) {
-            recaptcha.clear()
+          setError(SendingOTPError)
+          if (verifier) {
+            verifier.clear()
             setRecaptcha(null)
           }
           setTimeout(() => setError(""), errorDuration)
@@ -138,7 +162,7 @@ export function Login() {
           await loginResult.confirm(otp)
         } catch (err) {
           console.error(err)
-          setError(ErrorMessages.OTPVerificationError)
+          setError(OTPVerificationError)
           setTimeout(() => setError(""), errorDuration)
         }
       })
@@ -157,7 +181,7 @@ export function Login() {
               {InfoMessages.welcomeMessage}
             </CardTitle>
             <CardDescription className="text-base text-muted-foreground/80">
-              {loginResult ? InputMessages.otp : InputMessages.phoneNumber}
+              {loginResult ? OTPInputMessage : PhoneNumberInputMessage}
             </CardDescription>
           </CardHeader>
 
@@ -166,7 +190,7 @@ export function Login() {
               {!loginResult ? (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="phone" className="sr-only">{Labels.phoneNumber}</Label>
+                    <Label htmlFor="phone" className="sr-only">{PhoneNumberLabel}</Label>
                     <div className="relative group transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/20 rounded-xl">
                       <div className="absolute left-0 top-0 bottom-0 w-20 flex items-center justify-center bg-muted/30 border-r border-border/50 rounded-l-xl transition-colors group-focus-within:bg-primary/5 group-focus-within:border-primary/20">
                         <span className="text-base font-semibold text-muted-foreground group-focus-within:text-foreground">+91</span>
@@ -205,7 +229,7 @@ export function Login() {
               )}
 
               {error && (
-                <div className="p-3 rounded-lg bg-red-50 text-red-500 text-sm font-medium text-center animate-in fade-in zoom-in-95 duration-200 flex items-center justify-center gap-2">
+                <div className="px-3 py-1 rounded-lg bg-red-50 text-red-500 text-sm font-medium text-center animate-in fade-in zoom-in-95 duration-200 flex items-center justify-center gap-2">
                   <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
                   {error}
                 </div>
@@ -221,16 +245,26 @@ export function Login() {
             </form>
           </CardContent>
           
-          <CardFooter className="justify-center pb-8 bg-muted/20 pt-6 border-t border-border/40">
+          <CardFooter className="justify-center pb-8 bg-muted/20 border-t border-border/40">
             {loginResult ? (
+              <>
               <Button 
                 variant="ghost" 
                 size="sm" 
                 className="text-muted-foreground hover:text-primary transition-colors" 
                 onClick={changePhoneNumber}
               >
-                {ButtonText.wrongNumber}
+                {ResendOTPButtonText}
               </Button>
+               <Button 
+                variant="ghost" 
+                size="sm" 
+                className="text-muted-foreground hover:text-primary transition-colors" 
+                onClick={changePhoneNumber}
+              >
+                {WrongNumberButtonText}
+              </Button>
+              </>
             ) : (
               <p className="text-xs text-muted-foreground/60 text-center max-w-[280px]">
                 {InfoMessages.termsAndConditionsInfo}
