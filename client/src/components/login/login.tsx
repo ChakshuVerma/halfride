@@ -1,6 +1,6 @@
-
-import { useState, useEffect, useTransition } from "react"
-import { Phone } from "lucide-react"
+import { useState, useEffect, useTransition, useRef } from "react"
+import { toast } from "sonner"
+import { Phone, Loader2 } from "lucide-react"
 import { Button } from "../ui/button"
 import {
   Card,
@@ -25,6 +25,11 @@ const isNumber = (value: string) => /^\d*$/.test(value)
 const OTPLength = 6
 const PhoneNumberLength = 10
 const errorDuration = 2000
+const ResendOtpTimer = 30
+
+// Toast messages
+const ToastMessageOTPVerificationSuccesss = "OTP verified successfully"
+const ToastMessageOTPSentSuccesss = "OTP sent successfully"
 
 // Error messages
 const LengthError = `Phone number must be ${PhoneNumberLength} digits`
@@ -40,8 +45,6 @@ const OTPInputMessage = "Please enter your OTP"
 // Button text
 const SendOTPButtonText = "Send OTP"
 const VerifyOTPButtonText = "Verify OTP"
-const VerifyingOTPButtonText = "Verifying OTP..."
-const SendingOTPButtonText = "Sending OTP..."
 const WrongNumberButtonText = "Wrong number ?"
 const ResendOTPButtonText = "Resend OTP"
 
@@ -49,229 +52,270 @@ const ResendOTPButtonText = "Resend OTP"
 const PhoneNumberLabel = "Phone Number"
 
 export function Login() {
-    const [loginResult, setLoginResult] = useState<any>(null)
-    const [phoneNumber, setPhoneNumber] = useState<string>("")
-    const [error, setError] = useState<string>("")
-    const [recaptcha, setRecaptcha] = useState<RecaptchaVerifier | null>(null)
-    const [isPending, startTransition] = useTransition()
-    const [otp, setOtp] = useState<string>("")
+  const [loginResult, setLoginResult] = useState<any>(null)
+  const [phoneNumber, setPhoneNumber] = useState<string>("")
+  const [error, setError] = useState<string>("")
+  const [isPending, startTransition] = useTransition()
+  const [resendCountdown, setResendCountdown] = useState<number>(0)
+  const [otp, setOtp] = useState<string>("")
+  const [resetKey, setResetKey] = useState(0);
 
-    const enableSendOTPButton = () => {
-        return phoneNumber.length === PhoneNumberLength && !isPending
-    }
+  // Use a Ref to store the reCAPTCHA instance. 
+  // This prevents the component from re-rendering (and crashing) when the verifier is created.
+  const recaptchaRef = useRef<RecaptchaVerifier | null>(null)
 
-    const handlePhonenumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value
-    
-    if (!isNumber(value)) { 
-        setError(NotNumberError)
-        setTimeout(() => setError(""), errorDuration)
-        return
+  // 1. Timer logic
+  useEffect(() => {
+    if (resendCountdown > 0) {
+      const timer = setTimeout(() => setResendCountdown(resendCountdown - 1), 1000)
+      return () => clearTimeout(timer)
     }
-    if (value.length > PhoneNumberLength){
-        setError(LengthError)
-        setTimeout(() => setError(""), errorDuration)
-        return
-    }
+  }, [resendCountdown])
 
-    setPhoneNumber(value)
-    if (error) setError("")
-    }
+  // 2. Stable reCAPTCHA initialization
+  useEffect(() => {
+      const initRecaptcha = async () => {
+        if (recaptchaRef.current) return;
 
-    const getButtonText = () => {
-      if (loginResult) {
-        return isPending ? VerifyingOTPButtonText : VerifyOTPButtonText
-      }
-      return isPending ? SendingOTPButtonText : SendOTPButtonText
-    }
+        // Use the dynamic ID
+        const container = document.getElementById(`recaptcha-container-${resetKey}`);
+        if (!container) return;
 
-    const enableVerifyOTPButton = () => {
-        return otp.length === OTPLength && !isPending
-    }
-  
-    const handleOtpChange = (value: string) => {
-        setOtp(value)
-    }
-
-    const enableButton = () => {
-      return loginResult ? enableVerifyOTPButton() : enableSendOTPButton()
-    }
-
-    const changePhoneNumber = () => {
-        setLoginResult(null)
-        setOtp("")
-        if (recaptcha) {
-            recaptcha.clear();
-            setRecaptcha(null);
-        }
-    }
-
-    useEffect(() => {
-      // If recaptcha is null and we are NOT in the OTP stage (meaning container is visible)
-      if (!recaptcha && !loginResult) {
-        const container = document.getElementById("recaptcha-container");
-    
-        if (container) {
-          const verifier = new RecaptchaVerifier(auth, "recaptcha-container", {
+        try {
+          const verifier = new RecaptchaVerifier(auth, `recaptcha-container-${resetKey}`, {
             size: "invisible",
           });
 
-          verifier.render().then(() => {
-              setRecaptcha(verifier);
-          }).catch(console.error);
-        }
-      }
-    }, [recaptcha, loginResult]);
-
-    const requestOTP = async (e: React.FormEvent) => {
-      e?.preventDefault()
-
-      if (!recaptcha) {
-        setError(RecaptchaError)
-        return
-      }
-
-      const verifier = recaptcha
-
-      startTransition(async () => {
-        setError("")
-        try {
-          const phoneWithCode = "+91" + phoneNumber
-          const confirmationResult = await signInWithPhoneNumber(auth, phoneWithCode, verifier)
-          setLoginResult(confirmationResult)
-        } 
-        catch (err: any) {
-          console.error(err)
-          setError(SendingOTPError)
-          if (verifier) {
-            verifier.clear()
-            setRecaptcha(null)
-          }
-          setTimeout(() => setError(""), errorDuration)
-        }
-      })
-    }
-
-    const verifyOTP = async (e: React.FormEvent) => {
-      e?.preventDefault()
-      startTransition(async () => {
-        if (!loginResult) {
-          console.log("No login result")
-        }
-        try {
-          await loginResult.confirm(otp)
+          await verifier.render();
+          recaptchaRef.current = verifier;
         } catch (err) {
-          console.error(err)
-          setError(OTPVerificationError)
-          setTimeout(() => setError(""), errorDuration)
+          console.error("reCAPTCHA init error:", err);
+          setError(RecaptchaError);
         }
-      })
+      };
+
+      initRecaptcha();
+
+      return () => {
+        if (recaptchaRef.current) {
+          recaptchaRef.current.clear();
+          recaptchaRef.current = null;
+        }
+      };
+    }, [resetKey]); // Listen to resetKey
+
+  const handlePhonenumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    if (!isNumber(value)) {
+      setError(NotNumberError)
+      setTimeout(() => setError(""), errorDuration)
+      return
+    }
+    if (value.length > PhoneNumberLength) {
+      setError(LengthError)
+      setTimeout(() => setError(""), errorDuration)
+      return
+    }
+    setPhoneNumber(value)
+    if (error) setError("")
+  }
+
+  const handleOtpChange = (value: string) => {
+    setOtp(value)
+  }
+
+  const sendVerificationCode = async () => {
+    if (isPending) return;
+    
+    if (!recaptchaRef.current) {
+      setError(RecaptchaError);
+      setTimeout(() => setError(""), errorDuration);
+      return;
     }
 
-    return (
-      <div className="flex items-center justify-center min-h-[50vh] p-4">
-        <Card className="w-full max-w-md border-none shadow-2xl rounded-3xl bg-white/95 backdrop-blur-xl dark:bg-zinc-900/95 overflow-hidden ring-1 ring-black/5">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-amber-500" />
-          
-          <CardHeader className="space-y-3 text-center pt-8 pb-6">
-            <div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-2 text-primary">
-              <Phone className="w-6 h-6" />
-            </div>
-            <CardTitle className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-zinc-900 to-zinc-600 dark:from-white dark:to-zinc-400">
-              {InfoMessages.welcomeMessage}
-            </CardTitle>
-            <CardDescription className="text-base text-muted-foreground/80">
-              {loginResult ? OTPInputMessage : PhoneNumberInputMessage}
-            </CardDescription>
-          </CardHeader>
+    startTransition(async () => {
+      setError("");
+      try {
+        const phoneWithCode = "+91" + phoneNumber;
+        const confirmationResult = await signInWithPhoneNumber(auth, phoneWithCode, recaptchaRef.current!);
+        
+        setLoginResult(confirmationResult);
 
-          <CardContent className="px-8 pb-8">
-            <form onSubmit={loginResult ? verifyOTP : requestOTP} className="space-y-6">
-              {!loginResult ? (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="phone" className="sr-only">{PhoneNumberLabel}</Label>
-                    <div className="relative group transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/20 rounded-xl">
-                      <div className="absolute left-0 top-0 bottom-0 w-20 flex items-center justify-center bg-muted/30 border-r border-border/50 rounded-l-xl transition-colors group-focus-within:bg-primary/5 group-focus-within:border-primary/20">
-                        <span className="text-base font-semibold text-muted-foreground group-focus-within:text-foreground">+91</span>
-                      </div>
-                      <Input
-                        id="phone"
-                        placeholder="9876543210"
-                        type="tel"
-                        className="pl-24 h-12 text-lg tracking-wide border-2 border-border/50 bg-background/50 hover:border-primary/30 focus-visible:ring-0 focus-visible:border-primary rounded-xl transition-all duration-300"
-                        value={phoneNumber}
-                        onChange={handlePhonenumberChange}
-                        required
-                      />
-                    </div>
+        if (recaptchaRef.current) {
+          recaptchaRef.current.clear();
+          recaptchaRef.current = null;
+          setResetKey(prev => prev + 1); // Triggers useEffect to make a fresh one
+        }
+
+        setResendCountdown(ResendOtpTimer);
+        toast.success(ToastMessageOTPSentSuccesss);
+      } catch (err: any) {
+        console.error("Firebase Error:", err);
+        setError(SendingOTPError);
+        setLoginResult(null); 
+        setTimeout(() => setError(""), errorDuration);
+      }
+    });
+  };
+
+  const verifyOTP = async (e: React.FormEvent) => {
+    e.preventDefault()
+    startTransition(async () => {
+      try {
+        await loginResult.confirm(otp)
+        toast.success(ToastMessageOTPVerificationSuccesss)
+      } catch (err) {
+        console.error(err)
+        setError(OTPVerificationError)
+        setTimeout(() => setError(""), errorDuration)
+      } finally {
+        setOtp("")
+        if (recaptchaRef.current) {
+          recaptchaRef.current.clear();
+          recaptchaRef.current = null;
+        }
+        setResetKey(prev => prev + 1);
+      }
+    })
+  }
+
+  const requestOTP = (e: React.FormEvent) => {
+    e.preventDefault();
+    sendVerificationCode();
+  };
+
+  const resendOTP = () => {
+    if (resendCountdown > 0) return;
+    sendVerificationCode();
+  };
+
+  const changePhoneNumber = () => {
+    setLoginResult(null)
+    setOtp("")
+    if (recaptchaRef.current) {
+      recaptchaRef.current.clear();
+      recaptchaRef.current = null;
+    }
+  }
+
+  const enableButton = () => {
+    if (loginResult) {
+      return otp.length === OTPLength && !isPending
+    }
+    return phoneNumber.length === PhoneNumberLength && !isPending && resendCountdown === 0
+  }
+
+  const getButtonText = () => {
+    if (loginResult) {
+      return VerifyOTPButtonText
+    }
+    return resendCountdown > 0 ? `Resend OTP in ${resendCountdown}s` : SendOTPButtonText
+  }
+
+  return (
+    <div className="flex items-center justify-center min-h-[50vh] p-4">
+      <Card className="w-full max-w-md border-none shadow-2xl rounded-3xl bg-white/95 backdrop-blur-xl dark:bg-zinc-900/95 overflow-hidden ring-1 ring-black/5">
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-amber-500" />
+        
+        <CardHeader className="space-y-3 text-center pt-8 pb-6">
+          <div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-2 text-primary">
+            <Phone className="w-6 h-6" />
+          </div>
+          <CardTitle className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-zinc-900 to-zinc-600 dark:from-white dark:to-zinc-400">
+            {InfoMessages.welcomeMessage}
+          </CardTitle>
+          <CardDescription className="text-base text-muted-foreground/80">
+            {loginResult ? OTPInputMessage : PhoneNumberInputMessage}
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent className="px-8 pb-8">
+          <form onSubmit={loginResult ? verifyOTP : requestOTP} className="space-y-6">
+            {!loginResult ? (
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="sr-only">{PhoneNumberLabel}</Label>
+                <div className="relative group transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/20 rounded-xl">
+                  <div className="absolute left-0 top-0 bottom-0 w-20 flex items-center justify-center bg-muted/30 border-r border-border/50 rounded-l-xl">
+                    <span className="text-base font-semibold text-muted-foreground">+91</span>
                   </div>
-                  <div id="recaptcha-container" className="flex justify-center my-2"></div>
-                </>
-              ) : (
-                <div className="space-y-4 flex flex-col items-center animate-in fade-in slide-in-from-bottom-4 duration-500">
-                  <InputOTP
-                    maxLength={OTPLength}
-                    value={otp}
-                    onChange={(value) => handleOtpChange(value)}
-                  >
-                    <InputOTPGroup className="gap-2">
-                      {[...Array(6)].map((_, i) => (
-                        <InputOTPSlot 
-                          key={i} 
-                          index={i} 
-                          className="w-10 h-12 text-lg border-2 rounded-lg data-[active=true]:border-primary data-[active=true]:ring-2 data-[active=true]:ring-primary/20 transition-all duration-200"
-                        />
-                      ))}
-                    </InputOTPGroup>
-                  </InputOTP>
+                  <Input
+                    id="phone"
+                    placeholder="9876543210"
+                    type="tel"
+                    className="pl-24 h-12 text-lg tracking-wide border-2 border-border/50 bg-background/50 focus-visible:ring-0 focus-visible:border-primary rounded-xl"
+                    value={phoneNumber}
+                    onChange={handlePhonenumberChange}
+                    required
+                  />
                 </div>
-              )}
-
-              {error && (
-                <div className="px-3 py-1 rounded-lg bg-red-50 text-red-500 text-sm font-medium text-center animate-in fade-in zoom-in-95 duration-200 flex items-center justify-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
-                  {error}
-                </div>
-              )}
-
-              <Button 
-                type="submit" 
-                className="w-full h-12 text-base font-bold text-white shadow-lg shadow-primary/25 bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 active:scale-[0.98] transition-all duration-200 rounded-xl"
-                disabled={!enableButton()}
-              >
-                {getButtonText()}
-              </Button>
-            </form>
-          </CardContent>
-          
-          <CardFooter className="justify-center pb-8 bg-muted/20 border-t border-border/40">
-            {loginResult ? (
-              <>
+              </div>
+            ) : (
+              <div className="space-y-4 flex flex-col items-center animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <InputOTP
+                  maxLength={OTPLength}
+                  value={otp}
+                  onChange={handleOtpChange}
+                >
+                  <InputOTPGroup className="gap-2">
+                    {[...Array(OTPLength)].map((_, i) => (
+                      <InputOTPSlot 
+                        key={i} 
+                        index={i} 
+                        className="w-10 h-12 text-lg border-2 rounded-lg data-[active=true]:border-primary"
+                      />
+                    ))}
+                  </InputOTPGroup>
+                </InputOTP>
+              </div>
+            )}
+            <div 
+                key={resetKey} 
+                id={`recaptcha-container-${resetKey}`} 
+                className="flex justify-center my-4"
+            ></div>
+            {error && (
+              <div className="px-3 py-1 rounded-lg bg-red-50 text-red-500 text-sm font-medium text-center animate-in fade-in zoom-in-95 duration-200">
+                {error}
+              </div>
+            )}
+            <Button 
+              type="submit" 
+              className="w-full h-12 text-base font-bold text-white shadow-lg bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl"
+              disabled={!enableButton()}
+            >
+              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : getButtonText()}
+            </Button>
+          </form>
+        </CardContent>
+        
+        <CardFooter className="justify-center flex-col gap-2 pb-8 bg-muted/20 border-t border-border/40">
+          {loginResult ? (
+            <div className="flex flex-col items-center gap-1 w-full">
               <Button 
                 variant="ghost" 
                 size="sm" 
-                className="text-muted-foreground hover:text-primary transition-colors" 
-                onClick={changePhoneNumber}
+                className="text-muted-foreground hover:text-primary" 
+                onClick={resendOTP}
+                disabled={resendCountdown > 0 || isPending}
               >
-                {ResendOTPButtonText}
+                {resendCountdown > 0 ? `Resend OTP in ${resendCountdown}s` : ResendOTPButtonText}
               </Button>
-               <Button 
+              <Button 
                 variant="ghost" 
                 size="sm" 
-                className="text-muted-foreground hover:text-primary transition-colors" 
+                className="text-muted-foreground hover:text-primary" 
                 onClick={changePhoneNumber}
               >
                 {WrongNumberButtonText}
               </Button>
-              </>
-            ) : (
-              <p className="text-xs text-muted-foreground/60 text-center max-w-[280px]">
-                {InfoMessages.termsAndConditionsInfo}
-              </p>
-            )}
-          </CardFooter>
-        </Card>
-      </div>
-    )
+            </div>
+          ) : (
+            <p className="text-xs text-muted-foreground/60 text-center max-w-[280px]">
+              {InfoMessages.termsAndConditionsInfo}
+            </p>
+          )}
+        </CardFooter>
+      </Card>
+    </div>
+  )
 }
