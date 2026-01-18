@@ -3,16 +3,11 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { admin } from '../firebase/admin';
 
 export async function profile(req: Request, res: Response) {
-  const response = {
-    uid: req.user?.uid,
-    email: req.user?.email,
-    phone: req.user?.phone_number,
-    authTime: req.user?.auth_time,
-    issuedAt: req.user?.iat,
-    expiresAt: req.user?.exp,
-  };
+  const uid = req.auth?.uid;
+  if (!uid) return res.status(401).json({ ok: false, error: 'Unauthorized' });
 
-  return res.json(response);
+  const snap = await admin.firestore().collection('users').doc(uid).get();
+  return res.json({ ok: true, user: snap.exists ? snap.data() : null });
 }
 
 type CreateUserBody = {
@@ -24,8 +19,8 @@ type CreateUserBody = {
 };
 
 export async function createMe(req: Request, res: Response) {
-  const uid = req.user?.uid;
-  const phoneFromToken = req.user?.phone_number;
+  const uid = req.auth?.uid;
+  const phoneFromToken = null;
 
   if (!uid) return res.status(401).json({ ok: false, error: 'Missing user context' });
 
@@ -70,7 +65,7 @@ export async function createMe(req: Request, res: Response) {
 }
 
 export async function meExists(req: Request, res: Response) {
-  const uid = req.user?.uid;
+  const uid = req.auth?.uid;
   if (!uid) return res.status(401).json({ ok: false, error: 'Missing user context' });
 
   try {

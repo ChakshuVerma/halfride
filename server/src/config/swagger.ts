@@ -5,21 +5,145 @@ export const openApiSpec: OpenAPIV3.Document = {
   info: {
     title: 'HalfRide Server API',
     version: '1.0.0',
-    description: 'Express API with Firebase Auth (ID token) verification',
+    description:
+      'Express API. Username/password auth is handled by the backend (access + refresh tokens in HttpOnly cookies). Firebase is used only for phone OTP verification during signup.',
   },
   servers: [{ url: 'http://localhost:3000' }],
   components: {
     securitySchemes: {
-      bearerAuth: {
-        type: 'http',
-        scheme: 'bearer',
-        bearerFormat: 'JWT',
-        description: 'Firebase Auth ID token (Authorization: Bearer <idToken>)',
+      cookieAuth: {
+        type: 'apiKey',
+        in: 'cookie',
+        name: 'access_token',
+        description: 'Backend-issued access token stored in HttpOnly cookie',
       },
     },
   },
   tags: [{ name: 'Health' }, { name: 'User' }, { name: 'Public' }],
   paths: {
+    '/api/auth/signup/complete': {
+      post: {
+        tags: ['User'],
+        summary: 'Signup: verify Firebase phone OTP token + create username/password account + set auth cookies',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['firebaseIdToken', 'username', 'password', 'DOB', 'FirstName', 'LastName', 'isFemale'],
+                properties: {
+                  firebaseIdToken: { type: 'string' },
+                  username: { type: 'string' },
+                  password: { type: 'string' },
+                  DOB: { type: 'string' },
+                  FirstName: { type: 'string' },
+                  LastName: { type: 'string' },
+                  isFemale: { type: 'boolean' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '201': { description: 'Created + cookies set' },
+          '400': { description: 'Invalid body' },
+          '401': { description: 'Invalid Firebase token' },
+          '409': { description: 'Username already taken / user exists' },
+          '500': { description: 'Server config error' },
+        },
+      },
+    },
+    '/api/auth/login': {
+      post: {
+        tags: ['User'],
+        summary: 'Login with username/password (sets cookies)',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['username', 'password'],
+                properties: {
+                  username: { type: 'string' },
+                  password: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Logged in + cookies set' },
+          '400': { description: 'Invalid body' },
+          '401': { description: 'Invalid credentials' },
+          '500': { description: 'Server config error' },
+        },
+      },
+    },
+    '/api/auth/refresh': {
+      post: {
+        tags: ['User'],
+        summary: 'Refresh tokens (rotates refresh cookie, sets new access cookie)',
+        responses: {
+          '200': { description: 'Refreshed' },
+          '401': { description: 'Invalid/expired refresh token' },
+          '500': { description: 'Server config error' },
+        },
+      },
+    },
+    '/api/auth/forgot-password/complete': {
+      post: {
+        tags: ['User'],
+        summary: 'Forgot password: verify phone OTP (Firebase token) and set new password',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: {
+                type: 'object',
+                additionalProperties: false,
+                required: ['firebaseIdToken', 'username', 'newPassword'],
+                properties: {
+                  firebaseIdToken: { type: 'string' },
+                  username: { type: 'string' },
+                  newPassword: { type: 'string' },
+                },
+              },
+            },
+          },
+        },
+        responses: {
+          '200': { description: 'Password updated (cookies cleared)' },
+          '400': { description: 'Invalid body' },
+          '401': { description: 'Invalid verification' },
+          '500': { description: 'Server config error' },
+        },
+      },
+    },
+    '/api/auth/logout': {
+      post: {
+        tags: ['User'],
+        summary: 'Logout (clears cookies)',
+        responses: {
+          '200': { description: 'Logged out' },
+        },
+      },
+    },
+    '/api/auth/me': {
+      get: {
+        tags: ['User'],
+        summary: 'Get current session user (from access cookie)',
+        security: [{ cookieAuth: [] }],
+        responses: {
+          '200': { description: 'Session user' },
+          '401': { description: 'Unauthorized' },
+          '500': { description: 'Server config error' },
+        },
+      },
+    },
     '/api/health': {
       get: {
         tags: ['Health'],
@@ -43,8 +167,8 @@ export const openApiSpec: OpenAPIV3.Document = {
     '/api/user/profile': {
       get: {
         tags: ['User'],
-        summary: 'Get authenticated user profile (from token)',
-        security: [{ bearerAuth: [] }],
+        summary: 'Get authenticated user profile (from Firestore)',
+        security: [{ cookieAuth: [] }],
         responses: {
           '200': {
             description: 'Profile payload',
@@ -58,7 +182,7 @@ export const openApiSpec: OpenAPIV3.Document = {
       post: {
         tags: ['User'],
         summary: 'Create user profile for the authenticated uid (Firestore)',
-        security: [{ bearerAuth: [] }],
+        security: [{ cookieAuth: [] }],
         requestBody: {
           required: true,
           content: {
@@ -91,7 +215,7 @@ export const openApiSpec: OpenAPIV3.Document = {
       get: {
         tags: ['User'],
         summary: 'Check if user profile exists for the authenticated uid (Firestore)',
-        security: [{ bearerAuth: [] }],
+        security: [{ cookieAuth: [] }],
         responses: {
           '200': { description: 'Exists result' },
           '401': { description: 'Unauthorized' },

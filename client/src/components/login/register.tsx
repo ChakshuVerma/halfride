@@ -14,7 +14,7 @@ import { InfoMessages } from "./helper"
 import { Phone, Check, Lock, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "../../contexts/AuthContext"
-import { authenticatedRequest } from "../../lib/api"
+import { authenticatedRequest, sessionRequest } from "../../lib/api"
 import { useNavigate } from "react-router-dom"
 
 const nameRegex = (value: string) => /^[a-zA-Z]{3,}$/.test(value)
@@ -130,10 +130,10 @@ export function Register({ phoneNumber }: RegisterProps) {
             const dobYyyyMmDd = birthDate.toISOString().slice(0, 10)
             const phone = phoneNumber.replace(/\s/g, "")
 
-            await authenticatedRequest(
-                "/user/me",
-                getIdToken,
-                {
+            // Prefer the backend session cookie (created at OTP verification time).
+            // Fall back to Bearer token if session cookie isn't present yet.
+            try {
+                await sessionRequest("/user/me", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
@@ -143,8 +143,24 @@ export function Register({ phoneNumber }: RegisterProps) {
                         isFemale: gender === "female",
                         Phone: phone || undefined,
                     }),
-                }
-            )
+                })
+            } catch {
+                await authenticatedRequest(
+                    "/user/me",
+                    getIdToken,
+                    {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            DOB: dobYyyyMmDd,
+                            FirstName: firstName,
+                            LastName: lastName,
+                            isFemale: gender === "female",
+                            Phone: phone || undefined,
+                        }),
+                    }
+                )
+            }
             
             // Save user profile to context
             setUserProfile({

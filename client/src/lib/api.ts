@@ -6,69 +6,10 @@ const ERROR_REQUEST_FAILED = (status: number) => `Request failed with status ${s
 const ERROR_HTTP_ERROR = (status: number) => `HTTP error! status: ${status}`
 const ERROR_UNKNOWN = "Unknown error"
 
-export async function authenticatedRequest<T>(
-  endpoint: string,
-  getIdToken: () => Promise<string | null>,
-  options: RequestInit = {},
-  retryOnExpired: boolean = true
-): Promise<T> {
-  const token = await getIdToken()
-  
-  if (!token) {
-    throw new Error(ERROR_NOT_AUTHENTICATED)
-  }
-
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${token}`,
-    ...options.headers,
-  }
-
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
-    ...options,
-    headers,
-  })
-
-  if (!response.ok) {
-    const errorData = await response.json().catch(() => ({ 
-      message: ERROR_HTTP_ERROR(response.status),
-      error: ERROR_UNKNOWN
-    }))
-    
-    if (response.status === 401) {
-      if (retryOnExpired && errorData.message?.toLowerCase().includes('expired')) {
-        const freshToken = await getIdToken()
-        
-        if (freshToken) {
-          const retryHeaders: HeadersInit = {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${freshToken}`,
-            ...options.headers,
-          }
-          
-          const retryResponse = await fetch(`${API_BASE_URL}${endpoint}`, {
-            ...options,
-            headers: retryHeaders,
-          })
-          
-          if (!retryResponse.ok) {
-            const retryError = await retryResponse.json().catch(() => ({ 
-              message: ERROR_HTTP_ERROR(retryResponse.status)
-            }))
-            throw new Error(retryError.message || ERROR_REQUEST_FAILED(retryResponse.status))
-          }
-          
-          return retryResponse.json()
-        }
-      }
-      
-      throw new Error(errorData.message || ERROR_AUTH_FAILED)
-    }
-    
-    throw new Error(errorData.message || ERROR_REQUEST_FAILED(response.status))
-  }
-
-  return response.json()
+async function refreshSessionOnce() {
+  // backend rotates refresh token + returns new access cookie
+  const res = await fetch(`${API_BASE_URL}/auth/refresh`, { method: "POST", credentials: "include" })
+  return res.ok
 }
 
 export async function publicRequest<T>(
@@ -83,11 +24,49 @@ export async function publicRequest<T>(
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
     headers,
+    credentials: "include",
   })
 
   if (!response.ok) {
     const error = await response.json().catch(() => ({ 
       message: ERROR_HTTP_ERROR(response.status)
+    }))
+    throw new Error(error.message || ERROR_REQUEST_FAILED(response.status))
+  }
+
+  return response.json()
+}
+
+/**
+ * Authenticated request using ONLY the backend session cookie (no Bearer token).
+ * Uses access/refresh cookies and auto-refreshes once on 401.
+ */
+export async function sessionRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const headers: HeadersInit = {
+    "Content-Type": "application/json",
+    ...options.headers,
+  }
+
+  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+    ...options,
+    headers,
+    credentials: "include",
+  })
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      const refreshed = await refreshSessionOnce()
+      if (refreshed) {
+        const retry = await fetch(`${API_BASE_URL}${endpoint}`, {
+          ...options,
+          headers,
+          credentials: "include",
+        })
+        if (retry.ok) return retry.json()
+      }
+    }
+    const error = await response.json().catch(() => ({
+      message: ERROR_HTTP_ERROR(response.status),
     }))
     throw new Error(error.message || ERROR_REQUEST_FAILED(response.status))
   }

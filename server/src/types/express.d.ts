@@ -1,9 +1,11 @@
 import type { DecodedIdToken } from '../firebase/admin';
+import type { SessionAuth } from '../middleware/sessionAuth';
 
 declare global {
   namespace Express {
     interface Request {
       user?: DecodedIdToken;
+      auth?: SessionAuth;
     }
   }
 }
