@@ -164,7 +164,9 @@ export function Login() {
     startTransition(async () => {
       try {
         const result = await loginResult.confirm(otp)
+        console.log(result,"-----result-----")
         const details = getAdditionalUserInfo(result)
+        console.log(details,"-----details-----")
         if (details) {
           // If new user, show registration form
           // If existing user, Firebase auth state will update automatically via onAuthStateChanged

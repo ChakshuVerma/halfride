@@ -22,7 +22,7 @@ export const verifyToken = async (
   res: Response,
   next: NextFunction
 ) => {
-  // Check if Firebase Admin is initialized
+  // Check if Firebase Admin is initialize
   if (!adminInitialized) {
     console.error(LOG_AUTH_ADMIN_NOT_INITIALIZED);
     return res.status(500).json({ 
