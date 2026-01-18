@@ -1,16 +1,9 @@
-import express from 'express';
-import cors from 'cors';
-import dotenv from 'dotenv';
+import { createApp } from "./app";
+import { env } from "./config/env";
 
-dotenv.config();
+const app = createApp();
 
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.use(cors());
-app.use(express.json());
-
-
-app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+app.listen(env.port, () => {
+  console.log(`Server is running on http://localhost:${env.port}`);
+  console.log(`Swagger UI available at http://localhost:${env.port}/docs`);
 });
