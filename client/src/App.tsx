@@ -1,5 +1,5 @@
 // import { DemoCard } from "@/components/DemoCard"
-import { Login } from "./components/login/login"
+import { Login } from "./components/auth/login"
 import { Toaster } from "@/components/ui/sonner"
 
 function App() {
