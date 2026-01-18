@@ -55,3 +55,21 @@ export const createMe: RequestHandler = async (req, res) => {
   }
 };
 
+export const meExists: RequestHandler = async (req, res) => {
+  const uid = req.user?.uid;
+  if (!uid) return res.status(401).json({ ok: false, error: "Missing user context" });
+
+  try {
+    const docRef = firebaseAdmin.firestore().collection("users").doc(uid);
+    const snap = await docRef.get();
+
+    return res.json({
+      ok: true,
+      exists: snap.exists,
+      user: snap.exists ? snap.data() : null,
+    });
+  } catch (e: any) {
+    return res.status(500).json({ ok: false, error: "Failed to check user", detail: e?.message });
+  }
+};
+

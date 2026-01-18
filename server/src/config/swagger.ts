@@ -100,6 +100,24 @@ export const swaggerSpec = swaggerJSDoc({
           },
         },
       },
+      "/users/me/exists": {
+        get: {
+          tags: ["Users"],
+          summary: "Check if user profile exists for the authenticated uid",
+          security: [{ bearerAuth: [] }],
+          responses: {
+            "200": {
+              description: "Exists result",
+              content: {
+                "application/json": {
+                  example: { ok: true, exists: true, user: { FirstName: "Chakshu" } },
+                },
+              },
+            },
+            "401": { description: "Unauthorized" },
+          },
+        },
+      },
     },
   },
   apis: [],
