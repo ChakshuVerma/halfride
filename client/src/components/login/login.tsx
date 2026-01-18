@@ -1,5 +1,6 @@
 import { useState, useEffect, useTransition, useRef } from "react"
 import { toast } from "sonner"
+import { getCountryCallingCode, type Country } from "react-phone-number-input"
 import { Phone, Loader2 } from "lucide-react"
 import { Button } from "../ui/button"
 import {
@@ -17,13 +18,14 @@ import {
 } from "../ui/input-otp"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
+import { CountrySelect } from "./country-select"
 import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth"
 import { auth } from "../../firebase/setup"
 import { InfoMessages } from "./helper"
 
 const isNumber = (value: string) => /^\d*$/.test(value)
 const OTPLength = 6
-const PhoneNumberLength = 10
+// const PhoneNumberLength = 10
 const errorDuration = 2000
 const ResendOtpTimer = 30
 
@@ -32,7 +34,7 @@ const ToastMessageOTPVerificationSuccesss = "OTP verified successfully"
 const ToastMessageOTPSentSuccesss = "OTP sent successfully"
 
 // Error messages
-const LengthError = `Phone number must be ${PhoneNumberLength} digits`
+// const LengthError = `Phone number must be ${PhoneNumberLength} digits`
 const NotNumberError = "Only numbers are supported"
 const SendingOTPError = "Failed to send OTP"
 const RecaptchaError = "Failed to load reCAPTCHA"
@@ -54,6 +56,7 @@ const PhoneNumberLabel = "Phone Number"
 export function Login() {
   const [loginResult, setLoginResult] = useState<any>(null)
   const [phoneNumber, setPhoneNumber] = useState<string>("")
+  const [country, setCountry] = useState<Country>("IN")
   const [error, setError] = useState<string>("")
   const [isPending, startTransition] = useTransition()
   const [resendCountdown, setResendCountdown] = useState<number>(0)
@@ -91,6 +94,7 @@ export function Login() {
         } catch (err) {
           console.error("reCAPTCHA init error:", err);
           setError(RecaptchaError);
+          setTimeout(() => setError(""), errorDuration)
         }
       };
 
@@ -111,11 +115,6 @@ export function Login() {
       setTimeout(() => setError(""), errorDuration)
       return
     }
-    if (value.length > PhoneNumberLength) {
-      setError(LengthError)
-      setTimeout(() => setError(""), errorDuration)
-      return
-    }
     setPhoneNumber(value)
     if (error) setError("")
   }
@@ -124,7 +123,7 @@ export function Login() {
     setOtp(value)
   }
 
-  const sendVerificationCode = async () => {
+  const sendOTP = async () => {
     if (isPending) return;
     
     if (!recaptchaRef.current) {
@@ -136,7 +135,8 @@ export function Login() {
     startTransition(async () => {
       setError("");
       try {
-        const phoneWithCode = "+91" + phoneNumber;
+        const callingCode = getCountryCallingCode(country)
+        const phoneWithCode = "+" + callingCode + phoneNumber;
         const confirmationResult = await signInWithPhoneNumber(auth, phoneWithCode, recaptchaRef.current!);
         
         setLoginResult(confirmationResult);
@@ -164,6 +164,7 @@ export function Login() {
       try {
         await loginResult.confirm(otp)
         toast.success(ToastMessageOTPVerificationSuccesss)
+        setError("")
       } catch (err) {
         console.error(err)
         setError(OTPVerificationError)
@@ -181,12 +182,12 @@ export function Login() {
 
   const requestOTP = (e: React.FormEvent) => {
     e.preventDefault();
-    sendVerificationCode();
+    sendOTP();
   };
 
   const resendOTP = () => {
     if (resendCountdown > 0) return;
-    sendVerificationCode();
+    sendOTP();
   };
 
   const changePhoneNumber = () => {
@@ -202,7 +203,7 @@ export function Login() {
     if (loginResult) {
       return otp.length === OTPLength && !isPending
     }
-    return phoneNumber.length === PhoneNumberLength && !isPending && resendCountdown === 0
+    return !isPending && resendCountdown === 0
   }
 
   const getButtonText = () => {
@@ -214,14 +215,14 @@ export function Login() {
 
   return (
     <div className="flex items-center justify-center min-h-[50vh] p-4">
-      <Card className="w-full max-w-md border-none shadow-2xl rounded-3xl bg-white/95 backdrop-blur-xl dark:bg-zinc-900/95 overflow-hidden ring-1 ring-black/5">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-amber-500" />
+      <Card className="w-full max-w-md border-border shadow-none rounded-3xl bg-card overflow-hidden ring-1 ring-border">
+
         
         <CardHeader className="space-y-3 text-center pt-8 pb-6">
           <div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-2 text-primary">
             <Phone className="w-6 h-6" />
           </div>
-          <CardTitle className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-zinc-900 to-zinc-600 dark:from-white dark:to-zinc-400">
+          <CardTitle className="text-3xl font-extrabold tracking-tight text-foreground">
             {InfoMessages.welcomeMessage}
           </CardTitle>
           <CardDescription className="text-base text-muted-foreground/80">
@@ -229,20 +230,18 @@ export function Login() {
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="px-8 pb-8">
+        <CardContent className="px-4 sm:px-8 pb-8 overflow-hidden">
           <form onSubmit={loginResult ? verifyOTP : requestOTP} className="space-y-6">
             {!loginResult ? (
               <div className="space-y-2">
                 <Label htmlFor="phone" className="sr-only">{PhoneNumberLabel}</Label>
-                <div className="relative group transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/20 rounded-xl">
-                  <div className="absolute left-0 top-0 bottom-0 w-20 flex items-center justify-center bg-muted/30 border-r border-border/50 rounded-l-xl">
-                    <span className="text-base font-semibold text-muted-foreground">+91</span>
-                  </div>
+                <div className="flex w-full items-center rounded-xl border-2 border-border/50 bg-background/50 transition-all duration-300 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary">
+                    <CountrySelect country={country} setCountry={setCountry} />
                   <Input
                     id="phone"
                     placeholder="9876543210"
                     type="tel"
-                    className="pl-24 h-12 text-lg tracking-wide border-2 border-border/50 bg-background/50 focus-visible:ring-0 focus-visible:border-primary rounded-xl"
+                    className="flex-1 h-12 border-none bg-transparent shadow-none focus-visible:ring-0 text-lg tracking-wide rounded-l-none rounded-r-xl"
                     value={phoneNumber}
                     onChange={handlePhonenumberChange}
                     required
@@ -280,7 +279,7 @@ export function Login() {
             )}
             <Button 
               type="submit" 
-              className="w-full h-12 text-base font-bold text-white shadow-lg bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl"
+              className="w-full h-12 text-base font-bold text-primary-foreground shadow-none bg-primary rounded-xl"
               disabled={!enableButton()}
             >
               {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : getButtonText()}
