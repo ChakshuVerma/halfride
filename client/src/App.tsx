@@ -1,6 +1,7 @@
 // import { DemoCard } from "@/components/DemoCard"
 import { Login } from "./components/auth/login"
 import { Toaster } from "@/components/ui/sonner"
+import { AadhaarOnboarding } from "./components/auth/aadharonboarding"
 
 function App() {
   return (

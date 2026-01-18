@@ -19,9 +19,8 @@ import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth"
 import { auth } from "../../firebase/setup"
-import { InfoMessages } from "./helper"
+import { AppName, isNumber } from "./helper"
 
-const isNumber = (value: string) => /^\d*$/.test(value)
 const OTPLength = 6
 const PhoneNumberLength = 10
 const errorDuration = 2000
@@ -41,6 +40,10 @@ const OTPVerificationError = "Please enter the correct OTP"
 // Input messages
 const PhoneNumberInputMessage = "Please enter your phone number"
 const OTPInputMessage = "Please enter your OTP"
+
+// Other messages
+const WelcomeMessage = `Welcome to ${AppName}`
+const TermsAndConditionsInfo = `By continuing, you agree to our Terms and Conditions`
 
 // Button text
 const SendOTPButtonText = "Send OTP"
@@ -122,6 +125,7 @@ export function Login() {
 
   const handleOtpChange = (value: string) => {
     setOtp(value)
+    if (error) setError("")
   }
 
   const sendVerificationCode = async () => {
@@ -222,7 +226,7 @@ export function Login() {
             <Phone className="w-6 h-6" />
           </div>
           <CardTitle className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-zinc-900 to-zinc-600 dark:from-white dark:to-zinc-400">
-            {InfoMessages.welcomeMessage}
+            {WelcomeMessage}
           </CardTitle>
           <CardDescription className="text-base text-muted-foreground/80">
             {loginResult ? OTPInputMessage : PhoneNumberInputMessage}
@@ -311,7 +315,7 @@ export function Login() {
             </div>
           ) : (
             <p className="text-xs text-muted-foreground/60 text-center max-w-[280px]">
-              {InfoMessages.termsAndConditionsInfo}
+              {TermsAndConditionsInfo}
             </p>
           )}
         </CardFooter>
