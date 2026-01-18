@@ -91,6 +91,7 @@ export function Login() {
         } catch (err) {
           console.error("reCAPTCHA init error:", err);
           setError(RecaptchaError);
+          setTimeout(() => setError(""), errorDuration)
         }
       };
 
@@ -164,6 +165,7 @@ export function Login() {
       try {
         await loginResult.confirm(otp)
         toast.success(ToastMessageOTPVerificationSuccesss)
+        setError("")
       } catch (err) {
         console.error(err)
         setError(OTPVerificationError)
@@ -214,14 +216,14 @@ export function Login() {
 
   return (
     <div className="flex items-center justify-center min-h-[50vh] p-4">
-      <Card className="w-full max-w-md border-none shadow-2xl rounded-3xl bg-white/95 backdrop-blur-xl dark:bg-zinc-900/95 overflow-hidden ring-1 ring-black/5">
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-violet-500 via-fuchsia-500 to-amber-500" />
+      <Card className="w-full max-w-md border-border shadow-none rounded-3xl bg-card overflow-hidden ring-1 ring-border">
+
         
         <CardHeader className="space-y-3 text-center pt-8 pb-6">
           <div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-2 text-primary">
             <Phone className="w-6 h-6" />
           </div>
-          <CardTitle className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-br from-zinc-900 to-zinc-600 dark:from-white dark:to-zinc-400">
+          <CardTitle className="text-3xl font-extrabold tracking-tight text-foreground">
             {InfoMessages.welcomeMessage}
           </CardTitle>
           <CardDescription className="text-base text-muted-foreground/80">
@@ -280,7 +282,7 @@ export function Login() {
             )}
             <Button 
               type="submit" 
-              className="w-full h-12 text-base font-bold text-white shadow-lg bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl"
+              className="w-full h-12 text-base font-bold text-primary-foreground shadow-none bg-primary rounded-xl"
               disabled={!enableButton()}
             >
               {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : getButtonText()}

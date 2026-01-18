@@ -100,10 +100,10 @@ export function DemoCard() {
              <Button variant="secondary" size="sm" onClick={fetchProjects}>Fetch</Button>
           </div>
           <div className="space-y-2">
-            {projects.length === 0 && <p className="text-sm text-neutral-500">No projects fetched.</p>}
+            {projects.length === 0 && <p className="text-sm text-muted-foreground">No projects fetched.</p>}
             {projects.map((p) => (
-              <div key={p.id} className="text-sm border p-2 rounded bg-neutral-50 dark:bg-neutral-800">
-                <span className="font-bold">{p.name}</span> <span className="text-neutral-500">({p.framework})</span>
+              <div key={p.id} className="text-sm border p-2 rounded bg-secondary">
+                <span className="font-bold">{p.name}</span> <span className="text-muted-foreground">({p.framework})</span>
               </div>
             ))}
           </div>
