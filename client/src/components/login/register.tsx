@@ -14,6 +14,8 @@ import { InfoMessages } from "./helper"
 import { Phone, Check, Lock, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useAuth } from "../../contexts/AuthContext"
+import { authenticatedRequest } from "../../lib/api"
+import { useNavigate } from "react-router-dom"
 
 const nameRegex = (value: string) => /^[a-zA-Z]{3,}$/.test(value)
 
@@ -41,7 +43,8 @@ interface RegisterProps {
 }
 
 export function Register({ phoneNumber }: RegisterProps) {
-    const { setUserProfile } = useAuth()
+    const { setUserProfile, getIdToken } = useAuth()
+    const navigate = useNavigate()
     const [firstName, setFirstName] = useState("")
     const [lastName, setLastName] = useState("")
     const [dobYear, setDobYear] = useState("")
@@ -123,17 +126,25 @@ export function Register({ phoneNumber }: RegisterProps) {
             return showError(GenderRequiredError)
         }
 
-        const registrationData = { 
-            firstName, 
-            lastName, 
-            dob: birthDate.toISOString(), 
-            gender, 
-            phone: phoneNumber 
-        };
-
         try {
-            // TODO: Send registration data to backend
-            console.log("Registration data:", registrationData)
+            const dobYyyyMmDd = birthDate.toISOString().slice(0, 10)
+            const phone = phoneNumber.replace(/\s/g, "")
+
+            await authenticatedRequest(
+                "/user/me",
+                getIdToken,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        DOB: dobYyyyMmDd,
+                        FirstName: firstName,
+                        LastName: lastName,
+                        isFemale: gender === "female",
+                        Phone: phone || undefined,
+                    }),
+                }
+            )
             
             // Save user profile to context
             setUserProfile({
@@ -146,7 +157,7 @@ export function Register({ phoneNumber }: RegisterProps) {
             
             toast.success("Registration completed successfully!")
             
-            // TODO: Navigate to main app or dashboard after successful registration
+            navigate("/dashboard")
         } catch (err) {
             console.error("Registration error:", err)
             showError(RegistrationFailedError)

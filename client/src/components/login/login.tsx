@@ -2,6 +2,7 @@ import { useState, useEffect, useTransition, useRef } from "react"
 import { toast } from "sonner"
 import { getCountryCallingCode, type Country } from "react-phone-number-input"
 import { Phone, Loader2 } from "lucide-react"
+import { useNavigate } from "react-router-dom"
 import { Button } from "../ui/button"
 import {
   Card,
@@ -22,7 +23,6 @@ import { CountrySelect } from "./country-select"
 import { RecaptchaVerifier, signInWithPhoneNumber, getAdditionalUserInfo } from "firebase/auth"
 import { auth } from "../../firebase/setup"
 import { InfoMessages } from "./helper"
-import { Register } from "./register"
 
 const isNumber = (value: string) => /^\d*$/.test(value)
 const OTPLength = 6
@@ -63,7 +63,7 @@ export function Login() {
   const [resendCountdown, setResendCountdown] = useState<number>(0)
   const [otp, setOtp] = useState<string>("")
   const [resetKey, setResetKey] = useState(0);
-  const [showRegister, setShowRegister] = useState(false);
+  const navigate = useNavigate()
 
   const recaptchaRef = useRef<RecaptchaVerifier | null>(null)
 
@@ -168,14 +168,16 @@ export function Login() {
         const details = getAdditionalUserInfo(result)
         console.log(details,"-----details-----")
         if (details) {
-          // If new user, show registration form
-          // If existing user, Firebase auth state will update automatically via onAuthStateChanged
-          setShowRegister(details.isNewUser)
+          // If new user, send to registration route.
+          // If existing user, AuthContext will fetch /api/user/me/exists and route to dashboard/register accordingly.
+          if (details.isNewUser) {
+            navigate("/register")
+          } else {
+            navigate("/dashboard")
+          }
           toast.success(ToastMessageOTPVerificationSuccesss)
           setError("")
           
-          // TODO: For existing users, fetch user profile from backend here if needed
-          // The Firebase user is automatically tracked by AuthContext
         }
         else {
           showError(OTPVerificationError)
@@ -225,10 +227,6 @@ export function Login() {
       return VerifyOTPButtonText
     }
     return resendCountdown > 0 ? `Resend OTP in ${resendCountdown}s` : SendOTPButtonText
-  }
-
-  if (showRegister) {
-      return <Register phoneNumber={`+${getCountryCallingCode(country)} ${phoneNumber}`} />
   }
 
   return (
