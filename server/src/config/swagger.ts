@@ -19,7 +19,7 @@ export const swaggerSpec = swaggerJSDoc({
         },
       },
     },
-    tags: [{ name: "Health" }],
+    tags: [{ name: "Health" }, { name: "Users" }],
     paths: {
       "/health": {
         get: {
@@ -64,6 +64,39 @@ export const swaggerSpec = swaggerJSDoc({
                 },
               },
             },
+          },
+        },
+      },
+      "/users/me": {
+        post: {
+          tags: ["Users"],
+          summary: "Create user profile for the authenticated uid",
+          security: [{ bearerAuth: [] }],
+          requestBody: {
+            required: true,
+            content: {
+              "application/json": {
+                example: {
+                  DOB: "2002-09-23",
+                  FirstName: "Chakshu",
+                  LastName: "Verma",
+                  isFemale: false,
+                },
+              },
+            },
+          },
+          responses: {
+            "201": {
+              description: "Created",
+              content: {
+                "application/json": {
+                  example: { ok: true, uid: "someUid" },
+                },
+              },
+            },
+            "400": { description: "Invalid body" },
+            "401": { description: "Unauthorized" },
+            "409": { description: "User already exists" },
           },
         },
       },
