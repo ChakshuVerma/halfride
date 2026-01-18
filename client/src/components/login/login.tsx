@@ -19,9 +19,10 @@ import {
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { CountrySelect } from "./country-select"
-import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth"
+import { RecaptchaVerifier, signInWithPhoneNumber, getAdditionalUserInfo } from "firebase/auth"
 import { auth } from "../../firebase/setup"
 import { InfoMessages } from "./helper"
+import { Register } from "./register"
 
 const isNumber = (value: string) => /^\d*$/.test(value)
 const OTPLength = 6
@@ -62,10 +63,15 @@ export function Login() {
   const [resendCountdown, setResendCountdown] = useState<number>(0)
   const [otp, setOtp] = useState<string>("")
   const [resetKey, setResetKey] = useState(0);
+  const [showRegister, setShowRegister] = useState(false);
 
-  // Use a Ref to store the reCAPTCHA instance. 
-  // This prevents the component from re-rendering (and crashing) when the verifier is created.
   const recaptchaRef = useRef<RecaptchaVerifier | null>(null)
+
+  const showError = (message: string) => {
+    setError(message)
+    setTimeout(() => setError(""), errorDuration)
+  }
+
 
   // 1. Timer logic
   useEffect(() => {
@@ -93,8 +99,7 @@ export function Login() {
           recaptchaRef.current = verifier;
         } catch (err) {
           console.error("reCAPTCHA init error:", err);
-          setError(RecaptchaError);
-          setTimeout(() => setError(""), errorDuration)
+          showError(RecaptchaError);
         }
       };
 
@@ -111,14 +116,12 @@ export function Login() {
   const handlePhonenumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value
     if (!isNumber(value)) {
-      setError(NotNumberError)
-      setTimeout(() => setError(""), errorDuration)
+      showError(NotNumberError)
       return
     }
     setPhoneNumber(value)
     if (error) setError("")
   }
-
   const handleOtpChange = (value: string) => {
     setOtp(value)
   }
@@ -127,8 +130,7 @@ export function Login() {
     if (isPending) return;
     
     if (!recaptchaRef.current) {
-      setError(RecaptchaError);
-      setTimeout(() => setError(""), errorDuration);
+      showError(RecaptchaError);
       return;
     }
 
@@ -151,9 +153,8 @@ export function Login() {
         toast.success(ToastMessageOTPSentSuccesss);
       } catch (err: any) {
         console.error("Firebase Error:", err);
-        setError(SendingOTPError);
+        showError(SendingOTPError);
         setLoginResult(null); 
-        setTimeout(() => setError(""), errorDuration);
       }
     });
   };
@@ -162,13 +163,19 @@ export function Login() {
     e.preventDefault()
     startTransition(async () => {
       try {
-        await loginResult.confirm(otp)
-        toast.success(ToastMessageOTPVerificationSuccesss)
-        setError("")
+        const result = await loginResult.confirm(otp)
+        const details = getAdditionalUserInfo(result)
+        if (details) {
+          setShowRegister(details.isNewUser)
+          toast.success(ToastMessageOTPVerificationSuccesss)
+          setError("")
+        }
+        else {
+          showError(OTPVerificationError)
+        }
       } catch (err) {
         console.error(err)
-        setError(OTPVerificationError)
-        setTimeout(() => setError(""), errorDuration)
+        showError(OTPVerificationError)
       } finally {
         setOtp("")
         if (recaptchaRef.current) {
@@ -211,6 +218,10 @@ export function Login() {
       return VerifyOTPButtonText
     }
     return resendCountdown > 0 ? `Resend OTP in ${resendCountdown}s` : SendOTPButtonText
+  }
+
+  if (showRegister) {
+      return <Register phoneNumber={`+${getCountryCallingCode(country)} ${phoneNumber}`} />
   }
 
   return (
@@ -273,7 +284,7 @@ export function Login() {
                 className="flex justify-center my-4"
             ></div>
             {error && (
-              <div className="px-3 py-1 rounded-lg bg-red-50 text-red-500 text-sm font-medium text-center animate-in fade-in zoom-in-95 duration-200">
+              <div className="px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium text-center animate-in fade-in duration-200">
                 {error}
               </div>
             )}
