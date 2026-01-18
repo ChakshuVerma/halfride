@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { toast } from "sonner"
 import { Button } from "../ui/button"
 import {
   Card,
@@ -12,6 +13,7 @@ import { Label } from "../ui/label"
 import { InfoMessages } from "./helper"
 import { Phone, Check, Lock, Sparkles } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { useAuth } from "../../contexts/AuthContext"
 
 const nameRegex = (value: string) => /^[a-zA-Z]{3,}$/.test(value)
 
@@ -30,6 +32,7 @@ const GenderRequiredError = "Please select a gender"
 const DOBRequiredError = "Date of Birth is required"
 const DOBInvalidError = "Please enter a valid date"
 const AgeRestrictionError = "You must be at least 18 years old to register"
+const RegistrationFailedError = "Failed to complete registration. Please try again."
 const MinimumAge = 18
 const ErrorDuration = 4000
 
@@ -38,6 +41,7 @@ interface RegisterProps {
 }
 
 export function Register({ phoneNumber }: RegisterProps) {
+    const { setUserProfile } = useAuth()
     const [firstName, setFirstName] = useState("")
     const [lastName, setLastName] = useState("")
     const [dobYear, setDobYear] = useState("")
@@ -99,7 +103,7 @@ export function Register({ phoneNumber }: RegisterProps) {
         return age
     }
 
-    const registerUser = (e: React.FormEvent) => {
+    const registerUser = async (e: React.FormEvent) => {
         e.preventDefault()
         
         if (!nameRegex(firstName) || !nameRegex(lastName)) {
@@ -127,8 +131,26 @@ export function Register({ phoneNumber }: RegisterProps) {
             phone: phoneNumber 
         };
 
-        // TODO: Send registration data to backend
-        console.log("Registration data:", registrationData)
+        try {
+            // TODO: Send registration data to backend
+            console.log("Registration data:", registrationData)
+            
+            // Save user profile to context
+            setUserProfile({
+                firstName,
+                lastName,
+                dob: birthDate.toISOString(),
+                gender,
+                phone: phoneNumber
+            })
+            
+            toast.success("Registration completed successfully!")
+            
+            // TODO: Navigate to main app or dashboard after successful registration
+        } catch (err) {
+            console.error("Registration error:", err)
+            showError(RegistrationFailedError)
+        }
     }
 
     return (

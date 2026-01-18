@@ -166,9 +166,14 @@ export function Login() {
         const result = await loginResult.confirm(otp)
         const details = getAdditionalUserInfo(result)
         if (details) {
+          // If new user, show registration form
+          // If existing user, Firebase auth state will update automatically via onAuthStateChanged
           setShowRegister(details.isNewUser)
           toast.success(ToastMessageOTPVerificationSuccesss)
           setError("")
+          
+          // TODO: For existing users, fetch user profile from backend here if needed
+          // The Firebase user is automatically tracked by AuthContext
         }
         else {
           showError(OTPVerificationError)
