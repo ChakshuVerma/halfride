@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, useTransition } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
-import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth"
+import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth"
 import { getCountryCallingCode, type Country } from "react-phone-number-input"
 import { KeyRound, Eye, EyeOff } from "lucide-react"
 import { auth } from "../../firebase/setup"
@@ -26,7 +26,8 @@ const OTPLength = 6
 
 export function ForgotPassword() {
   const navigate = useNavigate()
-  const [isPending, startTransition] = useTransition()
+  const [isSendingOtp, setIsSendingOtp] = useState(false)
+  const [isResettingPassword, setIsResettingPassword] = useState(false)
 
   const [username, setUsername] = useState("")
   const [newPassword, setNewPassword] = useState("")
@@ -36,7 +37,7 @@ export function ForgotPassword() {
 
   const [country, setCountry] = useState<Country>("IN")
   const [phoneNumber, setPhoneNumber] = useState("")
-  const [confirmation, setConfirmation] = useState<any>(null)
+  const [confirmation, setConfirmation] = useState<ConfirmationResult | null>(null)
   const [otp, setOtp] = useState("")
   const [resetKey, setResetKey] = useState(0)
   const recaptchaRef = useRef<RecaptchaVerifier | null>(null)
@@ -80,32 +81,34 @@ export function ForgotPassword() {
   const sendOtp = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!recaptchaRef.current) return toast.error("reCAPTCHA not ready")
+    if (isSendingOtp) return
 
-    startTransition(async () => {
-      try {
-        const verifier = recaptchaRef.current
-        if (!verifier) {
-          toast.error("reCAPTCHA not ready")
-          return
-        }
-        const callingCode = getCountryCallingCode(country)
-        const phoneWithCode = "+" + callingCode + phoneNumber
-        const result = await signInWithPhoneNumber(auth, phoneWithCode, verifier)
-        setConfirmation(result)
-        verifier.clear()
-        recaptchaRef.current = null
-        setResetKey((x) => x + 1)
-        toast.success("OTP sent")
-      } catch (e) {
-        console.error(e)
-        toast.error("Failed to send OTP")
+    setIsSendingOtp(true)
+    try {
+      const verifier = recaptchaRef.current
+      if (!verifier) {
+        toast.error("reCAPTCHA not ready")
+        return
       }
-    })
+      const callingCode = getCountryCallingCode(country)
+      const phoneWithCode = "+" + callingCode + phoneNumber
+      const result = await signInWithPhoneNumber(auth, phoneWithCode, verifier)
+      setConfirmation(result)
+      verifier.clear()
+      recaptchaRef.current = null
+      setResetKey((x) => x + 1)
+      toast.success("OTP sent")
+    } catch (e) {
+      console.error(e)
+      toast.error("Failed to send OTP")
+    } finally {
+      setIsSendingOtp(false)
+    }
   }
 
   const resetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!confirmation) return
+    if (!confirmation || isResettingPassword) return
     if (!username || !newPassword) return toast.error("Username and new password are required")
 
     const pwdError = validatePassword(newPassword)
@@ -114,24 +117,25 @@ export function ForgotPassword() {
       return
     }
 
-    startTransition(async () => {
-      try {
-        const cred = await confirmation.confirm(otp)
-        const firebaseIdToken = await cred.user.getIdToken()
+    setIsResettingPassword(true)
+    try {
+      const cred = await confirmation.confirm(otp)
+      const firebaseIdToken = await cred.user.getIdToken()
 
-        await completeForgotPassword({
-          firebaseIdToken,
-          username,
-          newPassword,
-        })
+      await completeForgotPassword({
+        firebaseIdToken,
+        username,
+        newPassword,
+      })
 
-        toast.success("Password updated. Please login.")
-        navigate("/login")
-      } catch (e: any) {
-        console.error(e)
-        toast.error(e?.message || "Reset failed")
-      }
-    })
+      toast.success("Password updated. Please login.")
+      navigate("/login")
+      } catch (e) {
+      console.error(e)
+      toast.error(e?.message || "Reset failed")
+    } finally {
+      setIsResettingPassword(false)
+    }
   }
 
   return (
@@ -162,7 +166,7 @@ export function ForgotPassword() {
                 onChange={(e) => setUsername(e.target.value)}
                 className="h-12 bg-background rounded-xl border-border/60 focus:ring-4 focus:ring-primary/10 transition-all"
                 required
-                disabled={credentialsValidated}
+                disabled={credentialsValidated || isSendingOtp || isResettingPassword}
               />
             </div>
 
@@ -185,7 +189,7 @@ export function ForgotPassword() {
                   }}
                   className="h-12 bg-background rounded-xl border-border/60 focus:ring-4 focus:ring-primary/10 transition-all pr-10"
                   required
-                  disabled={credentialsValidated}
+                  disabled={credentialsValidated || isSendingOtp || isResettingPassword}
                 />
                 <button
                   type="button"
@@ -253,6 +257,7 @@ export function ForgotPassword() {
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     required
+                    disabled={isSendingOtp || isResettingPassword}
                   />
                 </div>
               </div>
@@ -263,7 +268,7 @@ export function ForgotPassword() {
                 <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   OTP
                 </Label>
-                <InputOTP maxLength={OTPLength} value={otp} onChange={setOtp}>
+                <InputOTP maxLength={OTPLength} value={otp} onChange={setOtp} disabled={isResettingPassword}>
                   <InputOTPGroup className="gap-2">
                     {[...Array(OTPLength)].map((_, i) => (
                       <InputOTPSlot
@@ -286,13 +291,17 @@ export function ForgotPassword() {
             <Button
               type="submit"
               className="w-full h-12 text-base font-bold shadow-lg shadow-primary/25 bg-linear-to-r from-primary to-primary/90 rounded-xl active:scale-[0.98] transition-transform"
-              disabled={isPending}
+              disabled={isSendingOtp || isResettingPassword}
             >
-              {confirmation
-                ? "Verify OTP & Update password"
-                : credentialsValidated
-                  ? "Send OTP"
-                  : "Continue"}
+              {isResettingPassword
+                ? "Resetting password..."
+                : isSendingOtp
+                  ? "Sending OTP..."
+                  : confirmation
+                    ? "Verify OTP & Update password"
+                    : credentialsValidated
+                      ? "Send OTP"
+                      : "Continue"}
             </Button>
           </form>
         </CardContent>
@@ -302,6 +311,7 @@ export function ForgotPassword() {
             variant="ghost"
             size="sm"
             className="text-muted-foreground hover:text-primary"
+            disabled={isResettingPassword || isSendingOtp}
             onClick={() => navigate("/login")}
           >
             Back to login

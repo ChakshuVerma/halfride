@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useTransition } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { toast } from "sonner"
 import { RecaptchaVerifier, signInWithPhoneNumber, type ConfirmationResult } from "firebase/auth"
@@ -25,7 +25,8 @@ const OTPLength = 6
 
 export function Signup() {
   const navigate = useNavigate()
-  const [isPending, startTransition] = useTransition()
+  const [isSendingOtp, setIsSendingOtp] = useState(false)
+  const [isCompletingSignup, setIsCompletingSignup] = useState(false)
   const [step, setStep] = useState<1 | 2>(1)
   const { completeSignup: completeSignupRequest } = useAuthApi()
 
@@ -129,39 +130,41 @@ export function Signup() {
 
   const sendOtp = async () => {
     if (!phoneNumber.trim()) return toast.error("Phone number is required")
+    if (isSendingOtp) return
 
-    startTransition(async () => {
-      try {
-        let verifier = recaptchaRef.current
+    setIsSendingOtp(true)
+    try {
+      let verifier = recaptchaRef.current
 
-        // Lazy-init reCAPTCHA if it isn't ready yet
-        if (!verifier) {
-          const containerId = `recaptcha-container-${resetKey}`
-          const el = document.getElementById(containerId)
-          if (!el) {
-            throw new Error("reCAPTCHA not ready")
-          }
-          verifier = new RecaptchaVerifier(auth, containerId, { size: "invisible" })
-          await verifier.render()
-          recaptchaRef.current = verifier
+      // Lazy-init reCAPTCHA if it isn't ready yet
+      if (!verifier) {
+        const containerId = `recaptcha-container-${resetKey}`
+        const el = document.getElementById(containerId)
+        if (!el) {
+          throw new Error("reCAPTCHA not ready")
         }
-
-        const callingCode = getCountryCallingCode(country)
-        const phoneWithCode = "+" + callingCode + phoneNumber.trim()
-        const result = await signInWithPhoneNumber(auth, phoneWithCode, verifier)
-        setConfirmation(result)
-
-        // reset verifier for next attempt
-        verifier.clear()
-        recaptchaRef.current = null
-        setResetKey((x) => x + 1)
-        toast.success("OTP sent")
-      } catch (e) {
-        console.error(e)
-        const message = e instanceof Error ? e.message : "Failed to send OTP"
-        toast.error(message)
+        verifier = new RecaptchaVerifier(auth, containerId, { size: "invisible" })
+        await verifier.render()
+        recaptchaRef.current = verifier
       }
-    })
+
+      const callingCode = getCountryCallingCode(country)
+      const phoneWithCode = "+" + callingCode + phoneNumber.trim()
+      const result = await signInWithPhoneNumber(auth, phoneWithCode, verifier)
+      setConfirmation(result)
+
+      // reset verifier for next attempt
+      verifier.clear()
+      recaptchaRef.current = null
+      setResetKey((x) => x + 1)
+      toast.success("OTP sent")
+    } catch (e) {
+      console.error(e)
+      const message = e instanceof Error ? e.message : "Failed to send OTP"
+      toast.error(message)
+    } finally {
+      setIsSendingOtp(false)
+    }
   }
 
   const completeSignup = async (e: React.FormEvent) => {
@@ -170,31 +173,33 @@ export function Signup() {
     if (!dob || !firstName || !lastName || typeof isFemale !== "boolean") {
       return toast.error("Fill all required fields")
     }
+    if (isCompletingSignup) return
 
-    startTransition(async () => {
-      try {
-        const cred = await confirmation.confirm(otp)
-        const firebaseIdToken = await cred.user.getIdToken()
+    setIsCompletingSignup(true)
+    try {
+      const cred = await confirmation.confirm(otp)
+      const firebaseIdToken = await cred.user.getIdToken()
 
-        await completeSignupRequest({
-          firebaseIdToken,
-          username,
-          password,
-          DOB: dob,
-          FirstName: firstName,
-          LastName: lastName,
-          isFemale,
-        })
+      await completeSignupRequest({
+        firebaseIdToken,
+        username,
+        password,
+        DOB: dob,
+        FirstName: firstName,
+        LastName: lastName,
+        isFemale,
+      })
 
-        toast.success("Account created")
-        navigate("/dashboard")
-        window.location.reload()
-      } catch (e) {
-        console.error(e)
-        const message = e instanceof Error ? e.message : "Signup failed"
-        toast.error(message)
-      }
-    })
+      toast.success("Account created")
+      navigate("/dashboard")
+      window.location.reload()
+    } catch (e) {
+      console.error(e)
+      const message = e instanceof Error ? e.message : "Signup failed"
+      toast.error(message)
+    } finally {
+      setIsCompletingSignup(false)
+    }
   }
 
   return (
@@ -458,9 +463,8 @@ export function Signup() {
               <Button
                 type="submit"
                 className="w-full h-12 text-base font-bold shadow-lg shadow-primary/25 bg-linear-to-r from-primary to-primary/90 rounded-xl active:scale-[0.98] transition-transform"
-                disabled={isPending}
               >
-                {isPending ? "Checking details..." : "Continue"}
+                Continue
               </Button>
             </form>
           ) : (
@@ -473,7 +477,11 @@ export function Signup() {
                   Phone Number
                 </Label>
                 <div className="flex w-full items-center rounded-xl border-2 border-border/50 bg-background/50 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary">
-                  <CountrySelect country={country} setCountry={setCountry} />
+                  <CountrySelect
+                    country={country}
+                    setCountry={setCountry}
+                    disabled={!!confirmation || isSendingOtp || isCompletingSignup}
+                  />
                   <Input
                     id="phone"
                     placeholder="9876543210"
@@ -482,6 +490,7 @@ export function Signup() {
                     value={phoneNumber}
                     onChange={(e) => setPhoneNumber(e.target.value)}
                     required
+                    disabled={!!confirmation || isSendingOtp || isCompletingSignup}
                   />
                 </div>
               </div>
@@ -491,7 +500,7 @@ export function Signup() {
                   <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                     OTP
                   </Label>
-                  <InputOTP maxLength={OTPLength} value={otp} onChange={setOtp}>
+                  <InputOTP maxLength={OTPLength} value={otp} onChange={setOtp} disabled={isCompletingSignup}>
                     <InputOTPGroup className="gap-2">
                       {[...Array(OTPLength)].map((_, i) => (
                         <InputOTPSlot
@@ -507,10 +516,10 @@ export function Signup() {
                 <Button
                   type="button"
                   className="w-full h-10 text-sm font-semibold shadow-md shadow-primary/25 bg-linear-to-r from-primary to-primary/90 rounded-xl active:scale-[0.985] transition-transform"
-                  disabled={isPending}
+                  disabled={isSendingOtp || isCompletingSignup}
                   onClick={sendOtp}
                 >
-                  {isPending ? "Sending OTP..." : "Send OTP"}
+                  {isSendingOtp ? "Sending OTP..." : "Send OTP"}
                 </Button>
               )}
 
@@ -520,9 +529,9 @@ export function Signup() {
                 <Button
                   type="submit"
                   className="w-full h-12 text-base font-bold shadow-lg shadow-primary/25 bg-linear-to-r from-primary to-primary/90 rounded-xl active:scale-[0.98] transition-transform"
-                  disabled={isPending || otp.length !== OTPLength}
+                  disabled={isCompletingSignup || otp.length !== OTPLength}
                 >
-                  {isPending ? "Verifying..." : "Verify OTP & Create account"}
+                  {isCompletingSignup ? "Verifying..." : "Verify OTP & Create account"}
                 </Button>
               ) : null}
             </form>
@@ -534,6 +543,7 @@ export function Signup() {
             variant="ghost"
             size="sm"
             className="text-muted-foreground hover:text-primary"
+            disabled={isSendingOtp || isCompletingSignup}
             onClick={() => navigate("/login")}
           >
             Already have an account? Login

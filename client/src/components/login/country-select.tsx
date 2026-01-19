@@ -1,4 +1,5 @@
 import { useState } from "react"
+import type { ComponentType, SVGProps } from "react"
 import type { Country } from "react-phone-number-input"
 import { getCountries, getCountryCallingCode } from "react-phone-number-input"
 import en from "react-phone-number-input/locale/en"
@@ -21,26 +22,37 @@ import {
 import { ScrollArea } from "../ui/scroll-area"
 import { cn } from "../../lib/utils"
 
+type FlagComponent = ComponentType<SVGProps<SVGSVGElement>>
+const FLAGS_MAP = Flags as unknown as Record<string, FlagComponent>
+
 interface CountrySelectProps {
   country: Country
   setCountry: (country: Country) => void
+  disabled?: boolean
 }
 
-export function CountrySelect({ country, setCountry }: CountrySelectProps) {
+export function CountrySelect({ country, setCountry, disabled = false }: CountrySelectProps) {
   const [open, setOpen] = useState(false)
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover
+      open={open}
+      onOpenChange={(next) => {
+        if (disabled) return
+        setOpen(next)
+      }}
+    >
       <PopoverTrigger asChild>
         <Button
           variant="ghost"
           role="combobox"
           aria-expanded={open}
+          disabled={disabled}
           className="h-12 w-[110px] flex-none justify-between rounded-l-xl rounded-r-none border-r border-border/50 bg-muted/30 hover:bg-muted/50 hover:text-foreground/80 pl-3 pr-2 font-normal"
         >
           {(() => {
-            const Flag = (Flags as any)[country]
-            return <Flag className="w-5 h-4 shrink-0 rounded-[2px]" title={country} />
+            const Flag = FLAGS_MAP[country]
+            return <Flag className="w-5 h-4 shrink-0 rounded-[2px]" aria-label={country} />
           })()}
           <span className="text-base font-semibold text-muted-foreground">
             +{getCountryCallingCode(country)}
@@ -56,7 +68,7 @@ export function CountrySelect({ country, setCountry }: CountrySelectProps) {
             <CommandGroup>
               <ScrollArea className="h-full">
                 {getCountries().map((countryCode) => {
-                  const Flag = (Flags as any)[countryCode]
+                  const Flag = FLAGS_MAP[countryCode]
                   return (
                     <CommandItem
                       key={countryCode}
@@ -66,7 +78,7 @@ export function CountrySelect({ country, setCountry }: CountrySelectProps) {
                         setOpen(false)
                       }}
                     >
-                      <Flag className="mr-2 w-5 h-4 rounded-[2px]" title={countryCode} />
+                      <Flag className="mr-2 w-5 h-4 rounded-[2px]" aria-label={countryCode} />
                       <span>{en[countryCode]}</span>
                       <span className="ml-auto text-muted-foreground">
                         +{getCountryCallingCode(countryCode)}

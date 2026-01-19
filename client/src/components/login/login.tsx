@@ -1,4 +1,4 @@
-import { useState, useTransition } from "react"
+import { useState } from "react"
 import { toast } from "sonner"
 import { Loader2, LogIn, Eye, EyeOff } from "lucide-react"
 import { useNavigate } from "react-router-dom"
@@ -30,7 +30,7 @@ export function Login() {
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string>("")
-  const [isPending, startTransition] = useTransition()
+  const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
   const { login } = useAuthApi()
 
@@ -41,20 +41,21 @@ export function Login() {
 
   const doLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (isPending) return
+    if (isLoading) return
 
-    startTransition(async () => {
-      try {
-        setError("")
-        await login({ username, password })
-        toast.success("Logged in")
-        // AuthContext loads session on app load; simplest is to reload and route.
-        navigate("/dashboard")
-        window.location.reload()
-      } catch {
-        showError(LoginFailedError)
-      }
-    })
+    setIsLoading(true)
+    setError("")
+    try {
+      await login({ username, password })
+      toast.success("Logged in")
+      // AuthContext loads session on app load; simplest is to reload and route.
+      navigate("/dashboard")
+      window.location.reload()
+    } catch {
+      showError(LoginFailedError)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -88,6 +89,7 @@ export function Login() {
                 placeholder="your_username"
                 className="h-12 bg-background rounded-xl border-border/60 focus:ring-4 focus:ring-primary/10 transition-all"
                 required
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
@@ -105,6 +107,7 @@ export function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-12 bg-background rounded-xl border-border/60 focus:ring-4 focus:ring-primary/10 transition-all pr-10"
                   required
+                  disabled={isLoading}
                 />
                 <button
                   type="button"
@@ -123,9 +126,9 @@ export function Login() {
             <Button
               type="submit"
               className="w-full h-12 text-base font-bold shadow-lg shadow-primary/25 bg-linear-to-r from-primary to-primary/90 rounded-xl active:scale-[0.98] transition-transform"
-              disabled={isPending}
+              disabled={isLoading}
             >
-              {isPending ? (
+              {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Logging you in...
