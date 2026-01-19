@@ -21,7 +21,21 @@ import {
 } from "./utils"
 import { useAuthApi } from "../../hooks/useAuthApi"
 
-const OTPLength = 6
+// Constants
+const OTP_LENGTH = 6
+
+// Error messages
+const ERROR_USERNAME_REQUIRED = "Username is required"
+const ERROR_PHONE_REQUIRED = "Phone number is required"
+const ERROR_GENDER_REQUIRED = "Please select a gender"
+const ERROR_FILL_REQUIRED_FIELDS = "Fill all required fields"
+const ERROR_RECAPTCHA_NOT_READY = "reCAPTCHA not ready"
+const ERROR_SEND_OTP_FAILED = "Failed to send OTP"
+const ERROR_SIGNUP_FAILED = "Signup failed"
+
+// Success messages
+const TOAST_OTP_SENT = "OTP sent"
+const TOAST_ACCOUNT_CREATED = "Account created"
 
 export function Signup() {
   const navigate = useNavigate()
@@ -88,7 +102,7 @@ export function Signup() {
 
     // Validate username
     if (!username.trim()) {
-      toast.error("Username is required")
+      toast.error(ERROR_USERNAME_REQUIRED)
       return
     }
 
@@ -121,7 +135,7 @@ export function Signup() {
 
     // Validate gender
     if (typeof isFemale !== "boolean") {
-      toast.error("Please select a gender")
+      toast.error(ERROR_GENDER_REQUIRED)
       return
     }
 
@@ -129,7 +143,7 @@ export function Signup() {
   }
 
   const sendOtp = async () => {
-    if (!phoneNumber.trim()) return toast.error("Phone number is required")
+    if (!phoneNumber.trim()) return toast.error(ERROR_PHONE_REQUIRED)
     if (isSendingOtp) return
 
     setIsSendingOtp(true)
@@ -141,7 +155,7 @@ export function Signup() {
         const containerId = `recaptcha-container-${resetKey}`
         const el = document.getElementById(containerId)
         if (!el) {
-          throw new Error("reCAPTCHA not ready")
+          throw new Error(ERROR_RECAPTCHA_NOT_READY)
         }
         verifier = new RecaptchaVerifier(auth, containerId, { size: "invisible" })
         await verifier.render()
@@ -157,10 +171,10 @@ export function Signup() {
       verifier.clear()
       recaptchaRef.current = null
       setResetKey((x) => x + 1)
-      toast.success("OTP sent")
+      toast.success(TOAST_OTP_SENT)
     } catch (e) {
       console.error(e)
-      const message = e instanceof Error ? e.message : "Failed to send OTP"
+      const message = e instanceof Error ? e.message : ERROR_SEND_OTP_FAILED
       toast.error(message)
     } finally {
       setIsSendingOtp(false)
@@ -171,7 +185,7 @@ export function Signup() {
     e.preventDefault()
     if (!confirmation) return
     if (!dob || !firstName || !lastName || typeof isFemale !== "boolean") {
-      return toast.error("Fill all required fields")
+      return toast.error(ERROR_FILL_REQUIRED_FIELDS)
     }
     if (isCompletingSignup) return
 
@@ -190,12 +204,12 @@ export function Signup() {
         isFemale,
       })
 
-      toast.success("Account created")
+      toast.success(TOAST_ACCOUNT_CREATED)
       navigate("/dashboard")
       window.location.reload()
     } catch (e) {
       console.error(e)
-      const message = e instanceof Error ? e.message : "Signup failed"
+      const message = e instanceof Error ? e.message : ERROR_SIGNUP_FAILED
       toast.error(message)
     } finally {
       setIsCompletingSignup(false)
@@ -500,9 +514,9 @@ export function Signup() {
                   <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                     OTP
                   </Label>
-                  <InputOTP maxLength={OTPLength} value={otp} onChange={setOtp} disabled={isCompletingSignup}>
+                  <InputOTP maxLength={OTP_LENGTH} value={otp} onChange={setOtp} disabled={isCompletingSignup}>
                     <InputOTPGroup className="gap-2">
-                      {[...Array(OTPLength)].map((_, i) => (
+                      {[...Array(OTP_LENGTH)].map((_, i) => (
                         <InputOTPSlot
                           key={i}
                           index={i}
@@ -529,7 +543,7 @@ export function Signup() {
                 <Button
                   type="submit"
                   className="w-full h-12 text-base font-bold shadow-lg shadow-primary/25 bg-linear-to-r from-primary to-primary/90 rounded-xl active:scale-[0.98] transition-transform"
-                  disabled={isCompletingSignup || otp.length !== OTPLength}
+                  disabled={isCompletingSignup || otp.length !== OTP_LENGTH}
                 >
                   {isCompletingSignup ? "Verifying..." : "Verify OTP & Create account"}
                 </Button>

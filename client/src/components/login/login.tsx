@@ -16,14 +16,12 @@ import { Label } from "../ui/label"
 import { InfoMessages } from "./helper"
 import { useAuthApi } from "../../hooks/useAuthApi"
 
-const errorDuration = 2000
-
-// Error messages
-const LoginFailedError = "Login failed"
-
-// Input messages
-const UsernameLabel = "Username"
-const PasswordLabel = "Password"
+// Constants
+const ERROR_DURATION = 2000
+const LOGIN_FAILED_ERROR = "Login failed"
+const USERNAME_LABEL = "Username"
+const PASSWORD_LABEL = "Password"
+const TOAST_LOGIN_SUCCESS = "Logged in"
 
 export function Login() {
   const [username, setUsername] = useState("")
@@ -36,7 +34,7 @@ export function Login() {
 
   const showError = (message: string) => {
     setError(message)
-    setTimeout(() => setError(""), errorDuration)
+    setTimeout(() => setError(""), ERROR_DURATION)
   }
 
   const doLogin = async (e: React.FormEvent) => {
@@ -47,12 +45,12 @@ export function Login() {
     setError("")
     try {
       await login({ username, password })
-      toast.success("Logged in")
+      toast.success(TOAST_LOGIN_SUCCESS)
       // AuthContext loads session on app load; simplest is to reload and route.
       navigate("/dashboard")
       window.location.reload()
     } catch {
-      showError(LoginFailedError)
+      showError(LOGIN_FAILED_ERROR)
     } finally {
       setIsLoading(false)
     }
@@ -80,7 +78,7 @@ export function Login() {
                 htmlFor="username"
                 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide ml-1"
               >
-                {UsernameLabel}
+                {USERNAME_LABEL}
               </Label>
               <Input
                 id="username"
@@ -97,7 +95,7 @@ export function Login() {
                 htmlFor="password"
                 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide ml-1"
               >
-                {PasswordLabel}
+                {PASSWORD_LABEL}
               </Label>
               <div className="relative">
                 <Input

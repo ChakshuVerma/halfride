@@ -7,9 +7,16 @@ import { toast } from "sonner"
 import { useHealthCheck } from "../../hooks/useHealthCheck"
 import { useUserProfileApi } from "../../hooks/useUserProfileApi"
 
+// Constants
+// Error messages
 const ERROR_PUBLIC_API_FAILED = "Public API call failed"
 const ERROR_AUTHENTICATED_API_FAILED = "Authenticated API call failed"
 const ERROR_LOGOUT_FAILED = "Failed to log out"
+
+// Success messages
+const TOAST_PUBLIC_API_SUCCESS = "Public API call successful"
+const TOAST_AUTHENTICATED_API_SUCCESS = "Authenticated API call successful"
+const TOAST_LOGOUT_SUCCESS = "Logged out successfully"
 
 type ProfileUser = {
   FirstName?: string
@@ -37,7 +44,7 @@ const Dashboard = () => {
     startHealthTransition(async () => {
       try {
         await checkHealth()
-        toast.success("Public API call successful")
+        toast.success(TOAST_PUBLIC_API_SUCCESS)
       } catch {
         toast.error(ERROR_PUBLIC_API_FAILED)
       }
@@ -49,7 +56,7 @@ const Dashboard = () => {
       try {
         const data = await fetchProfile()
         setProfileData(data)
-        toast.success("Authenticated API call successful")
+        toast.success(TOAST_AUTHENTICATED_API_SUCCESS)
       } catch {
         toast.error(ERROR_AUTHENTICATED_API_FAILED)
       }
@@ -59,7 +66,7 @@ const Dashboard = () => {
   const handleLogout = async () => {
     try {
       await logout()
-      toast.success("Logged out successfully")
+      toast.success(TOAST_LOGOUT_SUCCESS)
     } catch {
       toast.error(ERROR_LOGOUT_FAILED)
     } finally {

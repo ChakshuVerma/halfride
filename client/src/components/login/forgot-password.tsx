@@ -22,7 +22,19 @@ import { calculatePasswordStrength, validatePassword } from "./utils"
 import { cn } from "@/lib/utils"
 import { useAuthApi } from "../../hooks/useAuthApi"
 
-const OTPLength = 6
+// Constants
+const OTP_LENGTH = 6
+
+// Error messages
+const ERROR_USERNAME_REQUIRED = "Username is required"
+const ERROR_USERNAME_PASSWORD_REQUIRED = "Username and new password are required"
+const ERROR_RECAPTCHA_NOT_READY = "reCAPTCHA not ready"
+const ERROR_SEND_OTP_FAILED = "Failed to send OTP"
+const ERROR_RESET_FAILED = "Reset failed"
+
+// Success messages
+const TOAST_OTP_SENT = "OTP sent"
+const TOAST_PASSWORD_UPDATED = "Password updated. Please login."
 
 export function ForgotPassword() {
   const navigate = useNavigate()
@@ -65,7 +77,7 @@ export function ForgotPassword() {
     e.preventDefault()
     
     if (!username.trim()) {
-      toast.error("Username is required")
+      toast.error(ERROR_USERNAME_REQUIRED)
       return
     }
 
@@ -80,14 +92,14 @@ export function ForgotPassword() {
 
   const sendOtp = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!recaptchaRef.current) return toast.error("reCAPTCHA not ready")
+    if (!recaptchaRef.current) return toast.error(ERROR_RECAPTCHA_NOT_READY)
     if (isSendingOtp) return
 
     setIsSendingOtp(true)
     try {
       const verifier = recaptchaRef.current
       if (!verifier) {
-        toast.error("reCAPTCHA not ready")
+        toast.error(ERROR_RECAPTCHA_NOT_READY)
         return
       }
       const callingCode = getCountryCallingCode(country)
@@ -97,10 +109,10 @@ export function ForgotPassword() {
       verifier.clear()
       recaptchaRef.current = null
       setResetKey((x) => x + 1)
-      toast.success("OTP sent")
+      toast.success(TOAST_OTP_SENT)
     } catch (e) {
       console.error(e)
-      toast.error("Failed to send OTP")
+      toast.error(ERROR_SEND_OTP_FAILED)
     } finally {
       setIsSendingOtp(false)
     }
@@ -109,7 +121,7 @@ export function ForgotPassword() {
   const resetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!confirmation || isResettingPassword) return
-    if (!username || !newPassword) return toast.error("Username and new password are required")
+    if (!username || !newPassword) return toast.error(ERROR_USERNAME_PASSWORD_REQUIRED)
 
     const pwdError = validatePassword(newPassword)
     if (pwdError) {
@@ -128,11 +140,11 @@ export function ForgotPassword() {
         newPassword,
       })
 
-      toast.success("Password updated. Please login.")
+      toast.success(TOAST_PASSWORD_UPDATED)
       navigate("/login")
       } catch (e) {
       console.error(e)
-      toast.error(e?.message || "Reset failed")
+      toast.error(e?.message || ERROR_RESET_FAILED)
     } finally {
       setIsResettingPassword(false)
     }
@@ -268,9 +280,9 @@ export function ForgotPassword() {
                 <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   OTP
                 </Label>
-                <InputOTP maxLength={OTPLength} value={otp} onChange={setOtp} disabled={isResettingPassword}>
-                  <InputOTPGroup className="gap-2">
-                    {[...Array(OTPLength)].map((_, i) => (
+                <InputOTP maxLength={OTP_LENGTH} value={otp} onChange={setOtp} disabled={isResettingPassword}>
+                    <InputOTPGroup className="gap-2">
+                      {[...Array(OTP_LENGTH)].map((_, i) => (
                       <InputOTPSlot
                         key={i}
                         index={i}
