@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from "react"
 import type { ReactNode } from "react"
 import { sessionRequest } from "../lib/api"
+import { API_ROUTES } from "@/lib/apiRoutes"
 
 // Extended user data interface (from registration)
 export interface UserProfile {
@@ -31,10 +32,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const load = async () => {
       try {
-        const me = await sessionRequest<{ ok: true; uid: string; username: string }>("/auth/me")
+        const me = await sessionRequest<{ ok: true; uid: string; username: string }>(API_ROUTES.AUTH_ME)
         setUser({ uid: me.uid, username: me.username })
 
-        const profile = await sessionRequest<{ ok: true; user: any | null }>("/user/profile")
+        const profile = await sessionRequest<{ ok: true; user: any | null }>(API_ROUTES.USER_PROFILE)
         const u = profile.user
         if (u) {
           setUserProfile({
@@ -60,7 +61,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = async () => {
     try {
-      await fetch("/api/auth/logout", { method: "POST", credentials: "include" })
+      await fetch(API_ROUTES.AUTH_LOGOUT, { method: "POST", credentials: "include" })
       setUserProfile(null)
       setUser(null)
     } catch (error) {

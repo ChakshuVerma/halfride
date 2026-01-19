@@ -5,6 +5,7 @@ import { Button } from "../ui/button"
 import { useAuth } from "../../contexts/AuthContext"
 import { toast } from "sonner"
 import { publicRequest, sessionRequest } from "../../lib/api"
+import { API_ROUTES } from "@/lib/apiRoutes"
 
 const ERROR_PUBLIC_API_FAILED = "Public API call failed"
 const ERROR_AUTHENTICATED_API_FAILED = "Authenticated API call failed"
@@ -23,7 +24,7 @@ const Dashboard = () => {
 
   const testPublicEndpoint = useCallback(async () => {
     try {
-      await publicRequest('/health')
+      await publicRequest(API_ROUTES.HEALTH)
       toast.success("Public API call successful")
     } catch {
       toast.error(ERROR_PUBLIC_API_FAILED)
@@ -33,7 +34,7 @@ const Dashboard = () => {
   const testAuthenticatedEndpoint = useCallback(async () => {
     try {
       setLoading(true)
-      const data = await sessionRequest<ProfileData>('/user/profile')
+      const data = await sessionRequest<ProfileData>(API_ROUTES.USER_PROFILE)
       setProfileData(data)
       toast.success("Authenticated API call successful")
     } catch {
