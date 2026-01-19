@@ -1,14 +1,11 @@
-const API_BASE_URL = "/api"
+import { API_ROUTES } from "./apiRoutes"
 
-const ERROR_NOT_AUTHENTICATED = "Not authenticated. Please log in."
-const ERROR_AUTH_FAILED = "Authentication failed. Please log in again."
 const ERROR_REQUEST_FAILED = (status: number) => `Request failed with status ${status}`
 const ERROR_HTTP_ERROR = (status: number) => `HTTP error! status: ${status}`
-const ERROR_UNKNOWN = "Unknown error"
 
 async function refreshSessionOnce() {
   // backend rotates refresh token + returns new access cookie
-  const res = await fetch(`${API_BASE_URL}/auth/refresh`, { method: "POST", credentials: "include" })
+  const res = await fetch(API_ROUTES.AUTH_REFRESH, { method: "POST", credentials: "include" })
   return res.ok
 }
 
@@ -21,7 +18,7 @@ export async function publicRequest<T>(
     ...options.headers,
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(endpoint, {
     ...options,
     headers,
     credentials: "include",
@@ -47,7 +44,7 @@ export async function sessionRequest<T>(endpoint: string, options: RequestInit =
     ...options.headers,
   }
 
-  const response = await fetch(`${API_BASE_URL}${endpoint}`, {
+  const response = await fetch(endpoint, {
     ...options,
     headers,
     credentials: "include",
@@ -57,7 +54,7 @@ export async function sessionRequest<T>(endpoint: string, options: RequestInit =
     if (response.status === 401) {
       const refreshed = await refreshSessionOnce()
       if (refreshed) {
-        const retry = await fetch(`${API_BASE_URL}${endpoint}`, {
+        const retry = await fetch(endpoint, {
           ...options,
           headers,
           credentials: "include",

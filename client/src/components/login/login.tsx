@@ -1,6 +1,6 @@
-import { useState, useTransition } from "react"
+import { useState } from "react"
 import { toast } from "sonner"
-import { Loader2, LogIn } from "lucide-react"
+import { Loader2, LogIn, Eye, EyeOff } from "lucide-react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "../ui/button"
 import {
@@ -14,119 +14,146 @@ import {
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { InfoMessages } from "./helper"
+import { useAuthApi } from "../../hooks/useAuthApi"
 
-const errorDuration = 2000
-
-// Error messages
-const LoginFailedError = "Login failed"
-
-// Input messages
-const UsernameLabel = "Username"
-const PasswordLabel = "Password"
+// Constants
+const ERROR_DURATION = 2000
+const LOGIN_FAILED_ERROR = "Login failed"
+const USERNAME_LABEL = "Username"
+const PASSWORD_LABEL = "Password"
+const TOAST_LOGIN_SUCCESS = "Logged in"
 
 export function Login() {
   const [username, setUsername] = useState("")
   const [password, setPassword] = useState("")
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string>("")
-  const [isPending, startTransition] = useTransition()
+  const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
+  const { login } = useAuthApi()
 
   const showError = (message: string) => {
     setError(message)
-    setTimeout(() => setError(""), errorDuration)
+    setTimeout(() => setError(""), ERROR_DURATION)
   }
 
   const doLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (isPending) return
+    if (isLoading) return
 
-    startTransition(async () => {
-      try {
-        setError("")
-        const resp = await fetch("/api/auth/login", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ username, password }),
-        })
-        if (!resp.ok) throw new Error()
-        toast.success("Logged in")
-        // AuthContext loads session on app load; simplest is to reload and route.
-        navigate("/dashboard")
-        window.location.reload()
-      } catch {
-        showError(LoginFailedError)
-      }
-    })
+    setIsLoading(true)
+    setError("")
+    try {
+      await login({ username, password })
+      toast.success(TOAST_LOGIN_SUCCESS)
+      // AuthContext loads session on app load; simplest is to reload and route.
+      navigate("/dashboard")
+      window.location.reload()
+    } catch {
+      showError(LOGIN_FAILED_ERROR)
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
-    <div className="flex items-center justify-center min-h-[50vh] p-4">
-      <Card className="w-full max-w-md border-border shadow-none rounded-3xl bg-card overflow-hidden ring-1 ring-border">
-
-        
-        <CardHeader className="space-y-3 text-center pt-8 pb-6">
-          <div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-2 text-primary">
-            <LogIn className="w-6 h-6" />
+    <div className="flex items-center justify-center min-h-[50vh] p-4 w-full">
+      <Card className="w-full max-w-[420px] border-border/60 shadow-xl shadow-primary/5 rounded-3xl bg-card overflow-hidden ring-1 ring-border/60 animate-in fade-in slide-in-from-bottom-6 duration-700">
+        <CardHeader className="space-y-3 text-center pt-8 pb-6 bg-linear-to-b from-primary/5 to-transparent">
+          <div className="mx-auto bg-linear-to-tr from-primary/20 to-primary/10 w-16 h-16 rounded-2xl rotate-3 flex items-center justify-center mb-2 text-primary ring-4 ring-background shadow-lg">
+            <LogIn className="w-8 h-8" />
           </div>
-          <CardTitle className="text-3xl font-extrabold tracking-tight text-foreground">
+          <CardTitle className="text-3xl font-bold tracking-tight text-foreground">
             {InfoMessages.welcomeMessage}
           </CardTitle>
-          <CardDescription className="text-base text-muted-foreground/80">
-            Sign in with username and password
+          <CardDescription className="text-base text-muted-foreground/80 font-medium">
+            Sign in to continue to your dashboard
           </CardDescription>
         </CardHeader>
 
-        <CardContent className="px-4 sm:px-8 pb-8 overflow-hidden">
+        <CardContent className="px-6 sm:px-8 pb-8">
           <form onSubmit={doLogin} className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="username">{UsernameLabel}</Label>
+              <Label
+                htmlFor="username"
+                className="text-xs font-semibold text-muted-foreground uppercase tracking-wide ml-1"
+              >
+                {USERNAME_LABEL}
+              </Label>
               <Input
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="your_username"
-                className="h-12 rounded-xl"
+                className="h-12 bg-background rounded-xl border-border/60 focus:ring-4 focus:ring-primary/10 transition-all"
                 required
+                disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">{PasswordLabel}</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="h-12 rounded-xl"
-                required
-              />
+              <Label
+                htmlFor="password"
+                className="text-xs font-semibold text-muted-foreground uppercase tracking-wide ml-1"
+              >
+                {PASSWORD_LABEL}
+              </Label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-12 bg-background rounded-xl border-border/60 focus:ring-4 focus:ring-primary/10 transition-all pr-10"
+                  required
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
             </div>
             {error && (
               <div className="px-4 py-3 rounded-xl bg-destructive/10 border border-destructive/20 text-destructive text-sm font-medium text-center animate-in fade-in duration-200">
                 {error}
               </div>
             )}
-            <Button 
-              type="submit" 
-              className="w-full h-12 text-base font-bold text-primary-foreground shadow-none bg-primary rounded-xl"
-              disabled={isPending}
+            <Button
+              type="submit"
+              className="w-full h-12 text-base font-bold shadow-lg shadow-primary/25 bg-linear-to-r from-primary to-primary/90 rounded-xl active:scale-[0.98] transition-transform"
+              disabled={isLoading}
             >
-              {isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : "Login"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Logging you in...
+                </>
+              ) : (
+                "Continue"
+              )}
             </Button>
           </form>
         </CardContent>
-        
-        <CardFooter className="justify-center flex-col gap-2 pb-8 bg-muted/20 border-t border-border/40">
-          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-primary" onClick={() => navigate("/signup")}>
-            New user? Create an account
+
+        <CardFooter className="justify-center flex-col gap-1 pb-8 bg-muted/20 border-t border-border/40">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs sm:text-sm text-muted-foreground hover:text-primary"
+            onClick={() => navigate("/forgot-password")}
+          >
+            Forgot your password?
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            className="text-muted-foreground hover:text-primary"
-            onClick={() => navigate("/forgot-password")}
+            className="text-xs sm:text-sm text-muted-foreground hover:text-primary"
+            onClick={() => navigate("/signup")}
           >
-            Forgot password?
+            New here? Create an account
           </Button>
         </CardFooter>
       </Card>
