@@ -1,5 +1,7 @@
 import { Routes, Route, Navigate } from "react-router-dom"
 import { Login } from "./components/login/login"
+import { Signup } from "./components/login/signup"
+import { ForgotPassword } from "./components/login/forgot-password"
 import Dashboard from "./components/home/dashboard"
 import { Toaster } from "@/components/ui/sonner"
 import { AuthProvider, useAuth } from "./contexts/AuthContext"
@@ -24,8 +26,11 @@ function AppContent() {
   return (
     <div className="p-2 flex flex-col items-center justify-center min-h-screen bg-background">
       <Routes>
-        <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
-        <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/" replace />} />
+        <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
+        <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />
+        <Route path="/signup" element={user ? <Navigate to="/dashboard" replace /> : <Signup />} />
+        <Route path="/forgot-password" element={user ? <Navigate to="/dashboard" replace /> : <ForgotPassword />} />
+        <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster position="top-center" richColors />

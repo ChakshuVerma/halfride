@@ -29,5 +29,11 @@ export function createApp() {
   // API routes (keep existing paths under /api/*)
   app.use('/api', apiRouter);
 
+  // Basic error handler (avoid Express default HTML error pages)
+  app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error(err);
+    res.status(500).json({ ok: false, error: 'Internal Server Error', message: err?.message ?? 'Unknown error' });
+  });
+
   return app;
 }

@@ -4,23 +4,19 @@ import { LogOut, RefreshCw } from "lucide-react"
 import { Button } from "../ui/button"
 import { useAuth } from "../../contexts/AuthContext"
 import { toast } from "sonner"
-import { authenticatedRequest, publicRequest } from "../../lib/api"
+import { publicRequest, sessionRequest } from "../../lib/api"
 
 const ERROR_PUBLIC_API_FAILED = "Public API call failed"
 const ERROR_AUTHENTICATED_API_FAILED = "Authenticated API call failed"
 const ERROR_LOGOUT_FAILED = "Failed to log out"
 
 type ProfileData = {
-  uid?: string
-  email?: string
-  phone?: string
-  authTime?: number
-  issuedAt?: number
-  expiresAt?: number
+  ok?: boolean
+  user?: any
 }
 
 const Dashboard = () => {
-  const { logout, userProfile, getIdToken, user } = useAuth()
+  const { logout, userProfile, user } = useAuth()
   const [profileData, setProfileData] = useState<ProfileData | null>(null)
   const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
@@ -37,7 +33,7 @@ const Dashboard = () => {
   const testAuthenticatedEndpoint = useCallback(async () => {
     try {
       setLoading(true)
-      const data = await authenticatedRequest<ProfileData>('/user/profile', getIdToken)
+      const data = await sessionRequest<ProfileData>('/user/profile')
       setProfileData(data)
       toast.success("Authenticated API call successful")
     } catch {
@@ -45,7 +41,7 @@ const Dashboard = () => {
     } finally {
       setLoading(false)
     }
-  }, [getIdToken])
+  }, [])
 
   const handleLogout = async () => {
     try {
@@ -120,7 +116,7 @@ const Dashboard = () => {
           <h3 className="font-semibold mb-2">Current Auth State:</h3>
           <div className="text-sm space-y-1">
             <p><strong>User ID:</strong> {user?.uid || 'Not available'}</p>
-            <p><strong>Phone:</strong> {user?.phoneNumber || 'Not available'}</p>
+            <p><strong>Username:</strong> {user?.username || 'Not available'}</p>
             <p><strong>Profile Name:</strong> {userProfile?.firstName || 'Not set'}</p>
           </div>
         </div>
