@@ -1,48 +1,60 @@
-import { useState, useCallback } from "react"
+import { useState, useCallback, useTransition } from "react"
 import { useNavigate } from "react-router-dom"
 import { LogOut, RefreshCw } from "lucide-react"
 import { Button } from "../ui/button"
 import { useAuth } from "../../contexts/AuthContext"
 import { toast } from "sonner"
-import { publicRequest, sessionRequest } from "../../lib/api"
-import { API_ROUTES } from "@/lib/apiRoutes"
+import { useHealthCheck } from "../../hooks/useHealthCheck"
+import { useUserProfileApi } from "../../hooks/useUserProfileApi"
 
 const ERROR_PUBLIC_API_FAILED = "Public API call failed"
 const ERROR_AUTHENTICATED_API_FAILED = "Authenticated API call failed"
 const ERROR_LOGOUT_FAILED = "Failed to log out"
 
+type ProfileUser = {
+  FirstName?: string
+  LastName?: string
+  DOB?: string
+  isFemale?: boolean
+  Phone?: string
+}
+
 type ProfileData = {
   ok?: boolean
-  user?: any
+  user?: ProfileUser | null
 }
 
 const Dashboard = () => {
   const { logout, userProfile, user } = useAuth()
   const [profileData, setProfileData] = useState<ProfileData | null>(null)
-  const [loading, setLoading] = useState(false)
+  const [isHealthPending, startHealthTransition] = useTransition()
+  const [isProfilePending, startProfileTransition] = useTransition()
   const navigate = useNavigate()
+  const { checkHealth } = useHealthCheck()
+  const { fetchProfile } = useUserProfileApi()
 
-  const testPublicEndpoint = useCallback(async () => {
-    try {
-      await publicRequest(API_ROUTES.HEALTH)
-      toast.success("Public API call successful")
-    } catch {
-      toast.error(ERROR_PUBLIC_API_FAILED)
-    }
-  }, [])
+  const testPublicEndpoint = useCallback(() => {
+    startHealthTransition(async () => {
+      try {
+        await checkHealth()
+        toast.success("Public API call successful")
+      } catch {
+        toast.error(ERROR_PUBLIC_API_FAILED)
+      }
+    })
+  }, [checkHealth])
 
-  const testAuthenticatedEndpoint = useCallback(async () => {
-    try {
-      setLoading(true)
-      const data = await sessionRequest<ProfileData>(API_ROUTES.USER_PROFILE)
-      setProfileData(data)
-      toast.success("Authenticated API call successful")
-    } catch {
-      toast.error(ERROR_AUTHENTICATED_API_FAILED)
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const testAuthenticatedEndpoint = useCallback(() => {
+    startProfileTransition(async () => {
+      try {
+        const data = await fetchProfile()
+        setProfileData(data)
+        toast.success("Authenticated API call successful")
+      } catch {
+        toast.error(ERROR_AUTHENTICATED_API_FAILED)
+      }
+    })
+  }, [fetchProfile])
 
   const handleLogout = async () => {
     try {
@@ -83,6 +95,7 @@ const Dashboard = () => {
               variant="outline"
               onClick={testPublicEndpoint}
               size="sm"
+              disabled={isHealthPending}
             >
               Test Public API
             </Button>
@@ -90,9 +103,9 @@ const Dashboard = () => {
               variant="outline"
               onClick={testAuthenticatedEndpoint}
               size="sm"
-              disabled={loading}
+              disabled={isProfilePending}
             >
-              {loading ? (
+              {isProfilePending ? (
                 <>
                   <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                   Loading...

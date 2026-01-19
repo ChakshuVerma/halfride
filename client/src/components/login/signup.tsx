@@ -12,7 +12,6 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "../ui/input-otp"
 import { CountrySelect } from "./country-select"
 import { UserPlus, Eye, EyeOff } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { API_ROUTES } from "@/lib/apiRoutes"
 import {
   calculatePasswordStrength,
   calculateAge,
@@ -20,6 +19,7 @@ import {
   validateName,
   validateAge,
 } from "./utils"
+import { useAuthApi } from "../../hooks/useAuthApi"
 
 const OTPLength = 6
 
@@ -27,6 +27,7 @@ export function Signup() {
   const navigate = useNavigate()
   const [isPending, startTransition] = useTransition()
   const [step, setStep] = useState<1 | 2>(1)
+  const { completeSignup: completeSignupRequest } = useAuthApi()
 
   // account
   const [username, setUsername] = useState("")
@@ -175,24 +176,15 @@ export function Signup() {
         const cred = await confirmation.confirm(otp)
         const firebaseIdToken = await cred.user.getIdToken()
 
-        const resp = await fetch(API_ROUTES.AUTH_SIGNUP_COMPLETE, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            firebaseIdToken,
-            username,
-            password,
-            DOB: dob,
-            FirstName: firstName,
-            LastName: lastName,
-            isFemale,
-          }),
+        await completeSignupRequest({
+          firebaseIdToken,
+          username,
+          password,
+          DOB: dob,
+          FirstName: firstName,
+          LastName: lastName,
+          isFemale,
         })
-        if (!resp.ok) {
-          const err = await resp.json().catch(() => ({}))
-          throw new Error(err.message || "Signup failed")
-        }
 
         toast.success("Account created")
         navigate("/dashboard")

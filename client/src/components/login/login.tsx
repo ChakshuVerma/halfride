@@ -14,7 +14,7 @@ import {
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
 import { InfoMessages } from "./helper"
-import { API_ROUTES } from "@/lib/apiRoutes"
+import { useAuthApi } from "../../hooks/useAuthApi"
 
 const errorDuration = 2000
 
@@ -32,6 +32,7 @@ export function Login() {
   const [error, setError] = useState<string>("")
   const [isPending, startTransition] = useTransition()
   const navigate = useNavigate()
+  const { login } = useAuthApi()
 
   const showError = (message: string) => {
     setError(message)
@@ -45,13 +46,7 @@ export function Login() {
     startTransition(async () => {
       try {
         setError("")
-        const resp = await fetch(API_ROUTES.AUTH_LOGIN, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ username, password }),
-        })
-        if (!resp.ok) throw new Error()
+        await login({ username, password })
         toast.success("Logged in")
         // AuthContext loads session on app load; simplest is to reload and route.
         navigate("/dashboard")

@@ -1,7 +1,8 @@
 import { createContext, useContext, useEffect, useState } from "react"
 import type { ReactNode } from "react"
-import { sessionRequest } from "../lib/api"
-import { API_ROUTES } from "@/lib/apiRoutes"
+import { useAuthApi } from "../hooks/useAuthApi"
+import { useAuthMeApi } from "../hooks/useAuthMeApi"
+import { useUserProfileApi, type ProfileData } from "../hooks/useUserProfileApi"
 
 // Extended user data interface (from registration)
 export interface UserProfile {
@@ -28,14 +29,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<{ uid: string; username: string } | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
+  const { logout: backendLogout } = useAuthApi()
+  const { fetchMe } = useAuthMeApi()
+  const { fetchProfile } = useUserProfileApi()
 
   useEffect(() => {
     const load = async () => {
       try {
-        const me = await sessionRequest<{ ok: true; uid: string; username: string }>(API_ROUTES.AUTH_ME)
+        const me = await fetchMe()
         setUser({ uid: me.uid, username: me.username })
 
-        const profile = await sessionRequest<{ ok: true; user: any | null }>(API_ROUTES.USER_PROFILE)
+        const profile: ProfileData = await fetchProfile()
         const u = profile.user
         if (u) {
           setUserProfile({
@@ -57,11 +61,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     load()
-  }, [])
+    // fetchMe and fetchProfile are stable (wrapped in useCallback with stable deps)
+    // so this effect will only run once on mount, matching original behavior
+  }, [fetchMe, fetchProfile])
 
   const logout = async () => {
     try {
-      await fetch(API_ROUTES.AUTH_LOGOUT, { method: "POST", credentials: "include" })
+      await backendLogout()
       setUserProfile(null)
       setUser(null)
     } catch (error) {

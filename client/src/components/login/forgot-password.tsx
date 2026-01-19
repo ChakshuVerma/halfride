@@ -5,7 +5,6 @@ import { RecaptchaVerifier, signInWithPhoneNumber } from "firebase/auth"
 import { getCountryCallingCode, type Country } from "react-phone-number-input"
 import { KeyRound, Eye, EyeOff } from "lucide-react"
 import { auth } from "../../firebase/setup"
-import { API_ROUTES } from "@/lib/apiRoutes"
 import { Button } from "../ui/button"
 import {
   Card,
@@ -21,6 +20,7 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from "../ui/input-otp"
 import { CountrySelect } from "./country-select"
 import { calculatePasswordStrength, validatePassword } from "./utils"
 import { cn } from "@/lib/utils"
+import { useAuthApi } from "../../hooks/useAuthApi"
 
 const OTPLength = 6
 
@@ -40,6 +40,7 @@ export function ForgotPassword() {
   const [otp, setOtp] = useState("")
   const [resetKey, setResetKey] = useState(0)
   const recaptchaRef = useRef<RecaptchaVerifier | null>(null)
+  const { completeForgotPassword } = useAuthApi()
 
   useEffect(() => {
     const init = async () => {
@@ -118,21 +119,11 @@ export function ForgotPassword() {
         const cred = await confirmation.confirm(otp)
         const firebaseIdToken = await cred.user.getIdToken()
 
-        const resp = await fetch(API_ROUTES.AUTH_FORGOT_PASSWORD_COMPLETE, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({
-            firebaseIdToken,
-            username,
-            newPassword,
-          }),
+        await completeForgotPassword({
+          firebaseIdToken,
+          username,
+          newPassword,
         })
-
-        if (!resp.ok) {
-          const err = await resp.json().catch(() => ({}))
-          throw new Error(err.message || "Reset failed")
-        }
 
         toast.success("Password updated. Please login.")
         navigate("/login")
