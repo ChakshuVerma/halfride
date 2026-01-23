@@ -3,7 +3,7 @@ import { useApi } from "./useApi"
 import { API_ROUTES } from "@/lib/apiRoutes"
 
 export function useHealthCheck() {
-  const { loading, error, publicRequest } = useApi()
+  const { loading, publicRequest } = useApi()
 
   const checkHealth = useCallback(async () => {
     await publicRequest(API_ROUTES.HEALTH)
@@ -12,7 +12,6 @@ export function useHealthCheck() {
   return {
     checkHealth,
     loading,
-    error,
   }
 }
 
