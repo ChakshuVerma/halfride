@@ -198,6 +198,17 @@ export function TravellerModal({
             )}
           </div>
         </div>
+      <div className="flex justify-end pt-2">
+        <button
+          className="px-6 py-2.5 rounded-xl font-bold text-white bg-primary shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          onClick={() => {
+            // Placeholder for connect logic
+            console.log("Connect clicked for", traveller.name)
+          }}
+        >
+          Connect
+        </button>
+      </div>
       </div>
     </div>
   )

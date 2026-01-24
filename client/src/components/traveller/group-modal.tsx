@@ -113,6 +113,17 @@ export function GroupModal({ group }: GroupModalProps) {
             </div>
           </div>
         </div>
+      <div className="flex justify-end pt-2">
+        <button
+          className="px-6 py-2.5 rounded-xl font-bold text-white bg-primary shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          onClick={() => {
+            // Placeholder for join logic
+            console.log("Join Group clicked for", group.name)
+          }}
+        >
+          Join Group
+        </button>
+      </div>
       </div>
     </div>
   )
