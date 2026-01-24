@@ -25,9 +25,9 @@ const TEXTS = {
 
 export function GroupModal({ group }: GroupModalProps) {
   return (
-    <div className="p-8 space-y-7 pr-16">
+    <div className="p-5 sm:p-8 space-y-4 sm:space-y-7 sm:pr-16">
       <DialogHeader className="space-y-4 pb-5 border-b border-border/20">
-        <div className="flex items-start gap-5">
+        <div className="flex items-start gap-4 sm:gap-5">
           <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-primary bg-primary/8 border border-primary/15 shadow-lg shadow-primary/5">
             <UsersRound className="w-7 h-7" />
           </div>
@@ -74,7 +74,7 @@ export function GroupModal({ group }: GroupModalProps) {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4 text-sm">
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-widest">
               {TEXTS.LABELS.MIN_DISTANCE}
@@ -113,9 +113,9 @@ export function GroupModal({ group }: GroupModalProps) {
             </div>
           </div>
         </div>
-      <div className="flex justify-end pt-2">
+      <div className="flex flex-col sm:flex-row justify-end pt-2">
         <button
-          className="px-6 py-2.5 rounded-xl font-bold text-white bg-primary shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all hover:scale-[1.02] active:scale-[0.98]"
+          className="w-full sm:w-auto px-6 py-3 sm:py-2.5 rounded-xl font-bold text-white bg-primary shadow-lg shadow-primary/20 hover:bg-primary/90 transition-all hover:scale-[1.02] active:scale-[0.98]"
           onClick={() => {
             // Placeholder for join logic
             console.log("Join Group clicked for", group.name)

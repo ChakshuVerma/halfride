@@ -25,7 +25,7 @@ function AppContent() {
   }
 
   return (
-    <div className="p-2 flex flex-col items-center justify-center min-h-screen bg-background">
+    <div className="sm:p-2 flex flex-col items-center justify-center min-h-screen bg-background">
       <Routes>
         <Route path="/" element={user ? <Navigate to="/dashboard" replace /> : <Navigate to="/login" replace />} />
         <Route path="/login" element={user ? <Navigate to="/dashboard" replace /> : <Login />} />

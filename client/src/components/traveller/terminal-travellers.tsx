@@ -50,8 +50,8 @@ function ToggleButton({ label, isActive, onClick }: ToggleButtonProps) {
     <button
       type="button"
       onClick={onClick}
-      className={`toggle-button px-5 py-2.5 rounded-xl font-medium relative z-10 transition-colors duration-300 ease-out ${
-        isActive ? "text-primary-foreground" : "text-muted-foreground hover:text-foreground"
+      className={`toggle-button flex-1 md:flex-none w-full md:w-auto px-5 py-2.5 rounded-xl font-medium relative z-10 transition-colors duration-300 ease-out text-center ${
+        isActive ? "text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
       }`}
     >
       {label}
@@ -182,34 +182,34 @@ const TerminalTravellers = () => {
           to { opacity: 1; transform: translateX(0); }
         }
       `}</style>
-      <div className="flex items-center justify-center min-h-[50vh] p-8 w-full">
-        <Card className="w-full max-w-5xl border border-border/20 shadow-xl shadow-black/5 rounded-3xl bg-card/98 backdrop-blur-xl overflow-hidden">
-          <CardHeader className="pt-10 pb-7 px-10 border-b border-border/20">
+      <div className="flex items-center justify-center min-h-[50vh] p-2 sm:p-8 w-full">
+        <Card className="w-full max-w-5xl border border-border/20 shadow-xl shadow-black/5 rounded-3xl bg-card/98 backdrop-blur-xl">
+          <CardHeader className="pt-6 sm:pt-10 pb-6 sm:pb-7 px-6 sm:px-10 border-b border-border/10">
             <div className="flex items-start justify-between gap-8">
-              <div className="flex items-center gap-6">
-                <div className="w-18 h-18 rounded-2xl flex items-center justify-center text-primary bg-primary/8 border border-primary/15 shadow-lg shadow-primary/5">
+              <div className="flex items-center gap-4 sm:gap-6">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-primary bg-primary/5 border border-primary/10 shadow-sm">
                   {viewMode === "individual" ? (
-                    <Users className="w-9 h-9" />
+                    <Users className="w-6 h-6 sm:w-8 sm:h-8" />
                   ) : (
-                    <UsersRound className="w-9 h-9" />
+                    <UsersRound className="w-6 h-6 sm:w-8 sm:h-8" />
                   )}
                 </div>
                 <div>
-                  <CardTitle className="text-3xl font-bold tracking-tight text-foreground leading-tight">
+                  <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight">
                     {TEXTS.LABELS.HEADER}
                   </CardTitle>
                 </div>
               </div>
-              <div className="text-xs font-medium uppercase tracking-widest text-muted-foreground/70 px-4 py-2 rounded-xl bg-muted/40 border border-border/30">
+              <div className="hidden sm:block text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800/50 border border-border/40">
                 {TEXTS.LABELS.DUMMY_DATA}
               </div>
             </div>
           </CardHeader>
 
-          <CardContent className="px-10 pb-10 space-y-7">
+          <CardContent className="px-3 sm:px-10 pb-6 sm:pb-10 space-y-7">
             <div className="flex flex-col gap-6">
-              <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
-                <div className="flex flex-col gap-3 flex-1">
+              <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+                <div className="flex flex-col gap-3 flex-1 w-full">
                   <label className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-widest">
                     {TEXTS.LABELS.AIRPORT_AND_TERMINAL}
                   </label>
@@ -221,7 +221,7 @@ const TerminalTravellers = () => {
                       setSelectedTerminal(terminal)
                     }}
                   >
-                    <SelectTrigger className="h-13 bg-background rounded-2xl border border-border/30 hover:border-border/50 focus:ring-2 focus:ring-primary/20 transition-all duration-200 shadow-sm hover:shadow-md">
+                    <SelectTrigger className="h-13 bg-background rounded-2xl border border-border/30 hover:border-border/50 focus:ring-2 focus:ring-primary/20 transition-all duration-200 shadow-sm hover:shadow-md w-full">
                       <SelectValue placeholder={TEXTS.LABELS.SELECT_PLACEHOLDER} />
                     </SelectTrigger>
                     <SelectContent className="rounded-2xl border border-border/20 shadow-xl">
@@ -239,14 +239,14 @@ const TerminalTravellers = () => {
                 </div>
                 {
                   selectedAirport && selectedTerminal && (
-                    <div className="flex flex-col gap-3">
-                      <label className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-widest">
+                    <div className="flex flex-col gap-2 w-full md:w-auto shrink-0">
+                      <label className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider">
                         {TEXTS.LABELS.VIEW}
                       </label>
-                      <div className="inline-flex items-center rounded-2xl border border-border/30 bg-muted/20 p-1.5 text-sm shadow-sm relative backdrop-blur-sm">
+                      <div className="grid grid-cols-2 gap-0 rounded-xl border border-border/40 bg-zinc-200/50 dark:bg-zinc-800/50 p-1 shadow-sm backdrop-blur-md w-full md:w-[240px] relative">
                         <div
                           aria-hidden="true"
-                          className="absolute inset-y-1.5 left-1.5 w-1/2 rounded-xl bg-primary shadow-md shadow-primary/20 transition-transform duration-300 ease-out"
+                          className="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-lg bg-white dark:bg-zinc-700 shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)]"
                           style={{
                             transform: viewMode === "group" ? "translateX(100%)" : "translateX(0%)",
                           }}
@@ -275,7 +275,7 @@ const TerminalTravellers = () => {
               }}
             >
               <DialogContent
-                className="max-w-xl rounded-3xl border border-border/20 bg-card/98 backdrop-blur-xl shadow-2xl shadow-black/10 p-0 overflow-hidden"
+                className="w-[90vw] sm:w-full max-w-xl max-h-[85vh] overflow-y-auto rounded-2xl sm:rounded-3xl border border-border/20 bg-card/98 backdrop-blur-xl shadow-2xl shadow-black/10 p-0"
                 onPointerDownOutside={(event) => event.preventDefault()}
                 onEscapeKeyDown={(event) => event.preventDefault()}
               >
