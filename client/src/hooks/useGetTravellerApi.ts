@@ -201,9 +201,38 @@ export function useGetTravellerApi() {
     }
   }, [])
 
+  const fetchGroupMembers = useCallback(async (groupId: string, count?: number): Promise<Traveller[]> => {
+    setLoading(true)
+    try {
+      // TODO: Replace with actual API call
+      await new Promise((resolve) => setTimeout(resolve, 600)) // Fake delay
+      // Return a subset of travellers as group members matching the requested count
+      const requestedCount = count || Math.floor(Math.random() * 3) + 2
+      
+      // If we need more members than we have dummy data for, repeat the list
+      const result: Traveller[] = []
+      while (result.length < requestedCount) {
+        const remaining = requestedCount - result.length
+        const slice = dummyTravellers.slice(0, Math.min(remaining, dummyTravellers.length))
+        
+        // Deep clone to provide unique IDs for repeated items
+        const clonedSlice = slice.map((t, idx) => ({
+             ...t, 
+             id: `${t.id}_${result.length + idx}` 
+        }))
+        
+        result.push(...clonedSlice)
+      }
+      return result
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
   return {
     fetchTravellers,
     fetchGroups,
+    fetchGroupMembers,
     loading,
   }
 }

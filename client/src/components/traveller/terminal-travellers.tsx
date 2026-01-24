@@ -2,7 +2,7 @@ import { useEffect, useCallback, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Dialog, DialogContent } from "../ui/dialog"
-import { Users, UsersRound, Loader2 } from "lucide-react"
+import { Users, UsersRound, Loader2, Filter, ArrowUpDown } from "lucide-react"
 import { useGetTravellerApi } from "@/hooks/useGetTravellerApi"
 import { useGetAirportTerminalApi, type AirportTerminalCombo } from "@/hooks/useGetAirportTerminalApi"
 import { TravellerCard } from "./traveller-card"
@@ -31,8 +31,8 @@ const TEXTS = {
     TERMINAL_LOWER: "terminal",
   },
   MESSAGES: {
-    NO_TRAVELLERS: "No travellers for this airport/terminal yet.",
-    NO_GROUPS: "No groups for this airport/terminal yet.",
+    NO_TRAVELLERS: "No travellers found. Try changing the filter.",
+    NO_GROUPS: "No groups found. Try changing the filter.",
   },
   LOADING: "Loading...",
 }
@@ -51,7 +51,7 @@ function ToggleButton({ label, isActive, onClick }: ToggleButtonProps) {
       type="button"
       onClick={onClick}
       className={`toggle-button flex-1 md:flex-none w-full md:w-auto px-5 py-2.5 rounded-xl font-medium relative z-10 transition-colors duration-300 ease-out text-center ${
-        isActive ? "text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
+        isActive ? "text-white font-bold" : "text-muted-foreground hover:text-foreground"
       }`}
     >
       {label}
@@ -68,6 +68,12 @@ const TerminalTravellers = () => {
   const [travellers, setTravellers] = useState<Traveller[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [airportTerminalCombos, setAirportTerminalCombos] = useState<AirportTerminalCombo[]>([])
+
+  type SortOption = "distance" | "wait_time"
+  type FilterGender = "all" | "Male" | "Female"
+
+  const [sortBy, setSortBy] = useState<SortOption>("distance")
+  const [filterGender, setFilterGender] = useState<FilterGender>("all")
 
   // Hooks
   const { fetchTravellers, fetchGroups, loading: isFetchingList } = useGetTravellerApi()
@@ -101,9 +107,39 @@ const TerminalTravellers = () => {
     const title = viewMode === "individual" ? TEXTS.LABELS.TRAVELLERS_TITLE : TEXTS.LABELS.GROUPS_TITLE
 
     const emptyMessage = viewMode === "individual" ? TEXTS.MESSAGES.NO_TRAVELLERS : TEXTS.MESSAGES.NO_GROUPS
-    const count = viewMode === "individual" ? travellers.length : groups.length
     const animation = viewMode === "individual" ? "left" : "right"
     const terminalSubtitle = `${TEXTS.LABELS.DEPARTING_FROM} ${selectedAirport}, ${TEXTS.LABELS.TERMINAL_LOWER} ${selectedTerminal}.`
+
+    // --- Filtering & Sorting Logic ---
+    let processedTravellers = [...travellers]
+    let processedGroups = [...groups]
+
+    // 1. FILTER
+    if (filterGender !== "all") {
+        if (viewMode === "individual") {
+            processedTravellers = processedTravellers.filter(t => t.gender === filterGender)
+        } else {
+            processedGroups = processedGroups.filter(g => g.gender === filterGender)
+        }
+    }
+
+    // 2. SORT
+    const sortFn = (a: any, b: any) => {
+        if (sortBy === "distance") {
+            return a.distanceFromUserKm - b.distanceFromUserKm
+        } else if (sortBy === "wait_time") {
+            return new Date(a.flightDateTime).getTime() - new Date(b.flightDateTime).getTime()
+        }
+        return 0
+    }
+    
+    if (viewMode === "individual") {
+        processedTravellers.sort(sortFn)
+    } else {
+        processedGroups.sort(sortFn)
+    }
+
+    const count = viewMode === "individual" ? processedTravellers.length : processedGroups.length
 
     const getNewTravellerCard = (traveller: Traveller) => {
       return (
@@ -135,12 +171,21 @@ const TerminalTravellers = () => {
         loading={isFetchingList}
       >
         {viewMode === "individual" 
-          ? travellers.map(getNewTravellerCard)
-          : groups.map(getNewGroupCard)
+          ? processedTravellers.map(getNewTravellerCard)
+          : processedGroups.map(getNewGroupCard)
         }
       </ListSection>
     )
-  }, [selectedAirport, selectedTerminal, viewMode, travellers, groups, isFetchingList])
+  }, [
+      selectedAirport, 
+      selectedTerminal, 
+      viewMode, 
+      travellers, 
+      groups, 
+      isFetchingList,
+      sortBy,       // Add dependency
+      filterGender  // Add dependency
+  ])
 
   if (isFetchingCombos) {
     return (
@@ -237,36 +282,86 @@ const TerminalTravellers = () => {
                     </SelectContent>
                   </Select>
                 </div>
+                </div>
                 {
                   selectedAirport && selectedTerminal && (
-                    <div className="flex flex-col gap-2 w-full md:w-auto shrink-0">
-                      <label className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider">
-                        {TEXTS.LABELS.VIEW}
-                      </label>
-                      <div className="grid grid-cols-2 gap-0 rounded-xl border border-border/40 bg-zinc-200/50 dark:bg-zinc-800/50 p-1 shadow-sm backdrop-blur-md w-full md:w-[240px] relative">
-                        <div
-                          aria-hidden="true"
-                          className="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-lg bg-white dark:bg-zinc-700 shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)]"
-                          style={{
-                            transform: viewMode === "group" ? "translateX(100%)" : "translateX(0%)",
-                          }}
-                        />
-                        <ToggleButton
-                          label={TEXTS.LABELS.INDIVIDUAL}
-                          isActive={viewMode === "individual"}
-                          onClick={() => setViewMode("individual")}
-                        />
-                        <ToggleButton
-                          label={TEXTS.LABELS.GROUP}
-                          isActive={viewMode === "group"}
-                          onClick={() => setViewMode("group")}
-                        />
-                      </div>
+                    <div className="flex flex-col gap-6 w-full">
+                       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+                        <div className="flex flex-col gap-2 w-full md:w-auto shrink-0">
+                          <label className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider">
+                            {TEXTS.LABELS.VIEW}
+                          </label>
+                          <div className="grid grid-cols-2 gap-0 rounded-xl border border-border/40 bg-zinc-100/80 dark:bg-zinc-800/80 p-1 shadow-sm backdrop-blur-md w-full md:w-[240px] relative">
+                            <div
+                              aria-hidden="true"
+                              className="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-lg bg-black dark:bg-white shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)]"
+                              style={{
+                                transform: viewMode === "group" ? "translateX(100%)" : "translateX(0%)",
+                              }}
+                            />
+                            <ToggleButton
+                              label={TEXTS.LABELS.INDIVIDUAL}
+                              isActive={viewMode === "individual"}
+                              onClick={() => setViewMode("individual")}
+                            />
+                            <ToggleButton
+                              label={TEXTS.LABELS.GROUP}
+                              isActive={viewMode === "group"}
+                              onClick={() => setViewMode("group")}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col sm:flex-row gap-4 flex-1 justify-end">
+                             {/* Filter */}
+                             <div className="w-full sm:w-[160px]">
+                                <Select
+                                  value={filterGender}
+                                  onValueChange={(val) => setFilterGender(val as FilterGender)}
+                                >
+                                  <SelectTrigger className="h-10 sm:h-11 bg-black text-white border-0 hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90 transition-all rounded-xl gap-2.5 font-medium shadow-lg shadow-black/5">
+                                    <div className="flex items-center gap-2 truncate">
+                                      <Filter className="w-4 h-4 text-white/70 dark:text-black/70" />
+                                      <span className="text-xs">
+                                        {filterGender === 'all' ? 'All Genders' : filterGender}
+                                      </span>
+                                    </div>
+                                  </SelectTrigger>
+                                  <SelectContent className="rounded-xl border border-border/20 shadow-lg">
+                                    <SelectItem value="all">All Genders</SelectItem>
+                                    <SelectItem value="Male" className="text-blue-600 focus:text-blue-600 dark:text-blue-400 dark:focus:text-blue-400 font-medium">Male</SelectItem>
+                                    <SelectItem value="Female" className="text-pink-600 focus:text-pink-600 dark:text-pink-400 dark:focus:text-pink-400 font-medium">Female</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                             </div>
+
+                             {/* Sort */}
+                             <div className="w-full sm:w-[160px]">
+                                <Select
+                                  value={sortBy}
+                                  onValueChange={(val) => setSortBy(val as SortOption)}
+                                >
+                                  <SelectTrigger className="h-10 sm:h-11 bg-black text-white border-0 hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90 transition-all rounded-xl gap-2.5 font-medium shadow-lg shadow-black/5">
+                                     <div className="flex items-center gap-2 truncate">
+                                      <ArrowUpDown className="w-4 h-4 text-white/70 dark:text-black/70" />
+                                      <span className="text-xs">
+                                        {sortBy === 'distance' ? 'Min Distance' : 'Wait Time'}
+                                      </span>
+                                    </div>
+                                  </SelectTrigger>
+                                  <SelectContent className="rounded-xl border border-border/20 shadow-lg">
+                                    <SelectItem value="distance">Min Distance</SelectItem>
+                                    <SelectItem value="wait_time">Wait Time</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                             </div>
+                        </div>
+                       </div>
                     </div>
                   )
                 }
               </div>
-            </div>
+
             <ListSectionWrapper />
             <Dialog
               open={selectedEntity !== null}

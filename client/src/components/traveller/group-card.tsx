@@ -1,4 +1,4 @@
-import { Plane, Users, MapPin, Clock, CalendarRange, ArrowRight } from "lucide-react"
+import { Users, MapPin, Clock, CalendarRange, ArrowRight } from "lucide-react"
 import type { Group } from "./types"
 import { formatWaitTime, formatFlightDateTime } from "./utils"
 
@@ -48,13 +48,7 @@ export function GroupCard({ group, onClick }: GroupCardProps) {
                     {group.name}
                   </h3>
                    <div className="flex items-center gap-2 mt-1">
-                        {/* Flight Pill */}
-                         <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white border border-zinc-200 text-[10px] font-bold text-zinc-600 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-300 shadow-sm">
-                          <Plane className="w-3 h-3" />
-                          {group.flightNumber}
-                        </div>
-                        
-                         {/* Capacity Pill */}
+                        {/* Capacity Pill */}
                         <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white text-violet-600 border border-zinc-200 text-[10px] font-bold dark:bg-zinc-800 dark:border-zinc-700 dark:text-violet-400 shadow-sm">
                             <span>{group.groupSize}/{group.maxUsers} Users</span>
                         </div>
