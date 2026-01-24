@@ -15,5 +15,8 @@ export const API_ROUTES = {
 
   // Health routes
   HEALTH: `${API_BASE_URL}/health`,
+
+  // Flight tracker routes
+  FLIGHT_TRACKER: `${API_BASE_URL}/flight-tracker`,
 } as const
 
