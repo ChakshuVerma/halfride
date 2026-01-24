@@ -18,7 +18,7 @@ const TEXTS = {
     SEPARATOR_DOT: " • ",
   },
   UNITS: {
-    KM_DUMMY: "km (dummy)",
+    KM_DUMMY: "km",
   }
 }
 
@@ -55,7 +55,7 @@ export function TravellerCard({
               {traveller.flightNumber}
             </span>
             <span className="text-muted-foreground/70 font-medium">
-              {traveller.destination} {TEXTS.LABELS.SEPARATOR_DOT} {traveller.terminal}
+              {traveller.destination}
             </span>
           </div>
         </div>
@@ -72,11 +72,6 @@ export function TravellerCard({
           <span className="text-right text-foreground font-semibold">
             {formatFlightDateTime(traveller.flightDateTime)}
           </span>
-        </div>
-
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-muted-foreground/70 font-medium">{TEXTS.LABELS.TERMINAL}</span>
-          <span className="text-right text-foreground font-semibold">{traveller.terminal}</span>
         </div>
 
         <div className="flex items-center justify-between gap-3">
