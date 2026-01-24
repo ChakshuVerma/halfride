@@ -7,6 +7,22 @@ type GroupModalProps = {
   formatWaitTime: (date: Date) => string
 }
 
+const TEXTS = {
+  LABELS: {
+    CAPACITY: "Capacity",
+    MIN_DISTANCE: "Min distance from destinations",
+    WAIT_TIME: "Wait time",
+    GENDER_DIST: "Gender distribution",
+    GROUP_OF: "Group of",
+    FLIGHT_PREFIX: "Flight",
+    SEPARATOR_DOT: " • ",
+  },
+  UNITS: {
+    KM_DUMMY_MIN: "km (dummy min)",
+  }
+}
+
+
 export function GroupModal({ group, formatWaitTime }: GroupModalProps) {
   return (
     <div className="p-8 space-y-7 pr-16">
@@ -31,7 +47,7 @@ export function GroupModal({ group, formatWaitTime }: GroupModalProps) {
             </div>
             <DialogDescription className="text-sm text-muted-foreground/80 inline-flex items-center gap-2 font-medium">
               <Plane className="w-4 h-4" />
-              Group of {group.groupSize} • Flight {group.flightNumber} • {group.terminal}
+              {TEXTS.LABELS.GROUP_OF} {group.groupSize} {TEXTS.LABELS.SEPARATOR_DOT} {TEXTS.LABELS.FLIGHT_PREFIX} {group.flightNumber} {TEXTS.LABELS.SEPARATOR_DOT} {group.terminal}
             </DialogDescription>
           </div>
         </div>
@@ -41,7 +57,7 @@ export function GroupModal({ group, formatWaitTime }: GroupModalProps) {
         <div>
           <div className="flex items-center justify-between mb-3">
             <span className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-widest">
-              Capacity
+              {TEXTS.LABELS.CAPACITY}
             </span>
             <span className="text-sm font-semibold text-foreground">
               {group.groupSize}/{group.maxUsers} (
@@ -61,16 +77,16 @@ export function GroupModal({ group, formatWaitTime }: GroupModalProps) {
         <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-widest">
-              Min distance from destinations
+              {TEXTS.LABELS.MIN_DISTANCE}
             </span>
             <span className="text-foreground font-semibold text-base">
-              {group.distanceFromUserKm} km (dummy min)
+              {group.distanceFromUserKm} {TEXTS.UNITS.KM_DUMMY_MIN}
             </span>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-widest">
-              Wait time
+              {TEXTS.LABELS.WAIT_TIME}
             </span>
             <span className="text-foreground font-semibold text-base">
               {formatWaitTime(group.flightDateTime)}
@@ -79,7 +95,7 @@ export function GroupModal({ group, formatWaitTime }: GroupModalProps) {
 
           <div className="flex flex-col gap-1.5 col-span-2">
             <span className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-widest mb-2">
-              Gender distribution
+              {TEXTS.LABELS.GENDER_DIST}
             </span>
             <div className="flex items-center gap-5">
               <span className="inline-flex items-center gap-2">

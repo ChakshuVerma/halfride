@@ -13,6 +13,30 @@ type TravellerModalProps = {
   formatWaitTime: (date: Date) => string
 }
 
+const TEXTS = {
+  LABELS: {
+    DESTINATION: "Destination",
+    FLIGHT_TIME_DATE: "Flight time & date",
+    TERMINAL: "Terminal",
+    FLIGHT_NUMBER: "Flight number",
+    DISTANCE: "Distance from your dest",
+    WAIT_TIME: "Wait time",
+    LAST_UPDATED: "Last updated arrival time: ",
+    ETA: "ETA: ",
+    FETCHING: "Fetching latest arrival time…",
+    REFRESHING: "Refreshing...",
+    REFRESH: "Refresh",
+    MIN_AGO: "min ago",
+    FLIGHT_PREFIX: "Flight",
+    SEPARATOR_DOT: " • ",
+    SEPARATOR_DASH: " – ",
+  },
+  UNITS: {
+      KM_DUMMY: "km (dummy)",
+  }
+}
+
+
 export function TravellerModal({
   traveller,
   flightInfo,
@@ -52,7 +76,7 @@ export function TravellerModal({
             </div>
             <DialogDescription className="text-sm text-muted-foreground/80 inline-flex items-center gap-2 font-medium">
               <Plane className="w-4 h-4" />
-              Flight {traveller.flightNumber} • {traveller.destination} • {traveller.terminal}
+              {TEXTS.LABELS.FLIGHT_PREFIX} {traveller.flightNumber} {TEXTS.LABELS.SEPARATOR_DOT} {traveller.destination} {TEXTS.LABELS.SEPARATOR_DOT} {traveller.terminal}
             </DialogDescription>
           </div>
         </div>
@@ -62,14 +86,14 @@ export function TravellerModal({
         <div className="grid grid-cols-2 gap-x-8 gap-y-4 text-sm">
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-widest">
-              Destination
+              {TEXTS.LABELS.DESTINATION}
             </span>
             <span className="text-foreground font-semibold text-base">{traveller.destination}</span>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-widest">
-              Flight time &amp; date
+              {TEXTS.LABELS.FLIGHT_TIME_DATE}
             </span>
             <span className="text-foreground font-semibold text-base">
               {formatFlightDateTime(traveller.flightDateTime)}
@@ -78,30 +102,30 @@ export function TravellerModal({
 
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-widest">
-              Terminal
+              {TEXTS.LABELS.TERMINAL}
             </span>
             <span className="text-foreground font-semibold text-base">{traveller.terminal}</span>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-widest">
-              Flight number
+              {TEXTS.LABELS.FLIGHT_NUMBER}
             </span>
             <span className="text-foreground font-semibold text-base">{traveller.flightNumber}</span>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-widest">
-              Distance from your dest
+              {TEXTS.LABELS.DISTANCE}
             </span>
             <span className="text-foreground font-semibold text-base">
-              {traveller.distanceFromUserKm} km (dummy)
+              {traveller.distanceFromUserKm} {TEXTS.UNITS.KM_DUMMY}
             </span>
           </div>
 
           <div className="flex flex-col gap-1.5">
             <span className="text-xs font-semibold text-muted-foreground/70 uppercase tracking-widest">
-              Wait time
+              {TEXTS.LABELS.WAIT_TIME}
             </span>
             <span className="text-foreground font-semibold text-base">
               {formatWaitTime(traveller.flightDateTime)}
@@ -114,17 +138,17 @@ export function TravellerModal({
             {flightInfo ? (
               <>
                 <div>
-                  <span className="text-muted-foreground/70">Last updated arrival time: </span>
+                  <span className="text-muted-foreground/70">{TEXTS.LABELS.LAST_UPDATED}</span>
                   <span className="font-semibold text-foreground">{flightInfo.arrivalTimeLocal}</span>
                   <span className="ml-2 text-[11px] text-muted-foreground/60">
-                    ({lastUpdatedMinutesAgo} min ago)
+                    ({lastUpdatedMinutesAgo} {TEXTS.LABELS.MIN_AGO})
                   </span>
                 </div>
                 {(flightInfo.etaLocal || flightInfo.statusShort || flightInfo.statusDetail) && (
                   <div className="text-xs flex flex-col gap-1.5">
                     {!flightInfo.isLanded && flightInfo.etaLocal && (
                       <div>
-                        <span className="text-muted-foreground/70">ETA: </span>
+                        <span className="text-muted-foreground/70">{TEXTS.LABELS.ETA}</span>
                         <span className="font-semibold text-foreground">{flightInfo.etaLocal}</span>
                       </div>
                     )}
@@ -132,7 +156,7 @@ export function TravellerModal({
                       {(flightInfo.statusShort || flightInfo.statusDetail) && (
                         <span className="font-medium text-foreground">
                           {flightInfo.statusShort}
-                          {flightInfo.statusDetail ? ` – ${flightInfo.statusDetail}` : ""}
+                          {flightInfo.statusDetail ? `${TEXTS.LABELS.SEPARATOR_DASH}${flightInfo.statusDetail}` : ""}
                         </span>
                       )}
                       {!flightInfo.isLanded && flightInfo.timingCategory && flightInfo.timingLabel && (
@@ -154,7 +178,7 @@ export function TravellerModal({
               </>
             ) : (
               <span className="text-muted-foreground/70 font-medium">
-                Fetching latest arrival time…
+                {TEXTS.LABELS.FETCHING}
               </span>
             )}
             {flightError && (
@@ -168,7 +192,7 @@ export function TravellerModal({
               disabled={isRefreshingFlight}
               className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-60 disabled:cursor-not-allowed hover:bg-primary/90 transition-all duration-200 shadow-md hover:shadow-lg"
             >
-              {isRefreshingFlight ? "Refreshing..." : "Refresh"}
+              {isRefreshingFlight ? TEXTS.LABELS.REFRESHING : TEXTS.LABELS.REFRESH}
             </button>
           )}
         </div>

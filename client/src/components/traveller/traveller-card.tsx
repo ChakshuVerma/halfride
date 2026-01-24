@@ -8,6 +8,22 @@ type TravellerCardProps = {
   formatWaitTime: (date: Date) => string
 }
 
+const TEXTS = {
+  LABELS: {
+    DESTINATION: "Destination",
+    FLIGHT_TIME_DATE: "Flight time & date",
+    TERMINAL: "Terminal",
+    FLIGHT_NUMBER: "Flight number",
+    DISTANCE: "Distance from your dest",
+    WAIT_TIME: "Wait time",
+    SEPARATOR_DOT: " • ",
+  },
+  UNITS: {
+    KM_DUMMY: "km (dummy)",
+  }
+}
+
+
 export function TravellerCard({
   traveller,
   onClick,
@@ -42,7 +58,7 @@ export function TravellerCard({
               {traveller.flightNumber}
             </span>
             <span className="text-muted-foreground/70 font-medium">
-              {traveller.destination} • {traveller.terminal}
+              {traveller.destination} {TEXTS.LABELS.SEPARATOR_DOT} {traveller.terminal}
             </span>
           </div>
         </div>
@@ -50,36 +66,36 @@ export function TravellerCard({
 
       <div className="mt-5 pt-5 border-t border-border/20 grid sm:grid-cols-2 gap-x-8 gap-y-3 text-xs">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-muted-foreground/70 font-medium">Destination</span>
+          <span className="text-muted-foreground/70 font-medium">{TEXTS.LABELS.DESTINATION}</span>
           <span className="text-right text-foreground font-semibold">{traveller.destination}</span>
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <span className="text-muted-foreground/70 font-medium">Flight time &amp; date</span>
+          <span className="text-muted-foreground/70 font-medium">{TEXTS.LABELS.FLIGHT_TIME_DATE}</span>
           <span className="text-right text-foreground font-semibold">
             {formatFlightDateTime(traveller.flightDateTime)}
           </span>
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <span className="text-muted-foreground/70 font-medium">Terminal</span>
+          <span className="text-muted-foreground/70 font-medium">{TEXTS.LABELS.TERMINAL}</span>
           <span className="text-right text-foreground font-semibold">{traveller.terminal}</span>
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <span className="text-muted-foreground/70 font-medium">Flight number</span>
+          <span className="text-muted-foreground/70 font-medium">{TEXTS.LABELS.FLIGHT_NUMBER}</span>
           <span className="text-right text-foreground font-semibold">{traveller.flightNumber}</span>
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <span className="text-muted-foreground/70 font-medium">Distance from your dest</span>
+          <span className="text-muted-foreground/70 font-medium">{TEXTS.LABELS.DISTANCE}</span>
           <span className="text-right text-foreground font-semibold">
-            {traveller.distanceFromUserKm} km (dummy)
+            {traveller.distanceFromUserKm} {TEXTS.UNITS.KM_DUMMY}
           </span>
         </div>
 
         <div className="flex items-center justify-between gap-3">
-          <span className="text-muted-foreground/70 font-medium">Wait time</span>
+          <span className="text-muted-foreground/70 font-medium">{TEXTS.LABELS.WAIT_TIME}</span>
           <span className="text-right text-foreground font-semibold">
             {formatWaitTime(traveller.flightDateTime)}
           </span>

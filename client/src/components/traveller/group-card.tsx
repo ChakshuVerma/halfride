@@ -7,6 +7,21 @@ type GroupCardProps = {
   formatWaitTime: (date: Date) => string
 }
 
+const TEXTS = {
+  LABELS: {
+    SEATS: "seats",
+    CAPACITY: "Capacity",
+    MIN_DISTANCE: "Min distance from destinations",
+    WAIT_TIME: "Wait time",
+    GENDER_DIST: "Gender distribution",
+    SEPARATOR_DOT: " • ",
+  },
+  UNITS: {
+    KM_DUMMY_MIN: "km (dummy min)",
+  }
+}
+
+
 export function GroupCard({ group, onClick, formatWaitTime }: GroupCardProps) {
   return (
     <div
@@ -22,11 +37,11 @@ export function GroupCard({ group, onClick, formatWaitTime }: GroupCardProps) {
           </div>
           <div className="inline-flex items-center gap-3 text-xs text-muted-foreground/80">
             <span className="px-3.5 py-1.5 rounded-xl bg-primary/8 text-primary font-semibold border border-primary/15 shadow-sm">
-              {group.groupSize}/{group.maxUsers} seats
+              {group.groupSize}/{group.maxUsers} {TEXTS.LABELS.SEATS}
             </span>
             <span className="text-muted-foreground/70 font-medium inline-flex items-center gap-1.5">
               <Plane className="w-3.5 h-3.5" />
-              {group.flightNumber} • {group.terminal}
+              {group.flightNumber} {TEXTS.LABELS.SEPARATOR_DOT} {group.terminal}
             </span>
           </div>
         </div>
@@ -35,7 +50,7 @@ export function GroupCard({ group, onClick, formatWaitTime }: GroupCardProps) {
       <div className="mt-5 pt-5 border-t border-border/20 space-y-4 text-xs">
         <div>
           <div className="flex items-center justify-between mb-3">
-            <span className="text-muted-foreground/70 font-medium">Capacity</span>
+            <span className="text-muted-foreground/70 font-medium">{TEXTS.LABELS.CAPACITY}</span>
             <span className="text-foreground font-semibold">
               {Math.round((group.groupSize / group.maxUsers) * 100)}%
             </span>
@@ -52,21 +67,21 @@ export function GroupCard({ group, onClick, formatWaitTime }: GroupCardProps) {
 
         <div className="grid sm:grid-cols-2 gap-x-8 gap-y-3">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-muted-foreground/70 font-medium">Min distance from destinations</span>
+            <span className="text-muted-foreground/70 font-medium">{TEXTS.LABELS.MIN_DISTANCE}</span>
             <span className="text-right text-foreground font-semibold">
-              {group.distanceFromUserKm} km (dummy min)
+              {group.distanceFromUserKm} {TEXTS.UNITS.KM_DUMMY_MIN}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3">
-            <span className="text-muted-foreground/70 font-medium">Wait time</span>
+            <span className="text-muted-foreground/70 font-medium">{TEXTS.LABELS.WAIT_TIME}</span>
             <span className="text-right text-foreground font-semibold">
               {formatWaitTime(group.flightDateTime)}
             </span>
           </div>
 
           <div className="flex items-center justify-between gap-3 sm:col-span-2">
-            <span className="text-muted-foreground/70 font-medium">Gender distribution</span>
+            <span className="text-muted-foreground/70 font-medium">{TEXTS.LABELS.GENDER_DIST}</span>
             <span className="text-right">
               <span className="inline-flex items-center gap-2">
                 <span className="w-3 h-3 rounded-full bg-blue-500 shadow-sm" />

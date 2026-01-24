@@ -10,6 +10,12 @@ interface ListSectionProps {
   children: ReactNode
 }
 
+const TEXTS = {
+  RESULT: "result",
+  SUFFIX_S: "s"
+}
+
+
 function ListSection({ title, subtitle, count, emptyMessage, animation, children }: ListSectionProps) {
   const animationName = animation === "left" ? "slideInFromLeft" : "slideInFromRight"
   
@@ -24,7 +30,7 @@ function ListSection({ title, subtitle, count, emptyMessage, animation, children
           <div className="text-xs text-muted-foreground/70 font-medium">{subtitle}</div>
         </div>
         <div className="text-xs font-semibold text-muted-foreground/80 px-4 py-2 rounded-xl bg-muted/40 border border-border/30 shadow-sm">
-          {count} result{count === 1 ? "" : "s"}
+          {count} {TEXTS.RESULT}{count === 1 ? "" : TEXTS.SUFFIX_S}
         </div>
       </div>
       <div className="h-[480px]">

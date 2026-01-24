@@ -14,6 +14,31 @@ import type { Traveller, Group, ViewMode, SelectedEntity } from "./types"
 import ListSection from "./list-section"
 import { formatWaitTime, formatFlightDateTime } from "./utils"
 
+const TEXTS = {
+  ERRORS: {
+    TRAVELLER_OR_FLIGHT_NOT_FOUND: "Traveller or flight info not found",
+    REFRESH_FLIGHT_ERROR: "Could not refresh flight arrival time.",
+  },
+  LABELS: {
+    DUMMY_DATA: "Dummy data",
+    AIRPORT_AND_TERMINAL: "Airport & terminal",
+    SELECT_PLACEHOLDER: "Select airport & terminal",
+    VIEW: "View",
+    INDIVIDUAL: "Individual",
+    GROUP: "Group",
+    TRAVELLERS_TITLE: "Travellers",
+    GROUPS_TITLE: "Groups",
+    HEADER: "Terminal travellers & groups",
+    DEPARTING_FROM: "Departing from",
+    TERMINAL_LOWER: "terminal",
+  },
+  MESSAGES: {
+    NO_TRAVELLERS: "No travellers for this airport/terminal yet.",
+    NO_GROUPS: "No groups for this airport/terminal yet.",
+  },
+}
+
+
 // Toggle button component
 interface ToggleButtonProps {
   label: string
@@ -63,6 +88,7 @@ const TerminalTravellers = () => {
   
   useEffect(() => {
     const loadData = async () => {
+      try {
       if (viewMode === "individual") {
         const fetchedTravellers = await fetchTravellers()
         setTravellers(fetchedTravellers)
@@ -70,6 +96,9 @@ const TerminalTravellers = () => {
         const fetchedGroups = await fetchGroups()
         setGroups(fetchedGroups)
       }
+    } catch {
+      // Do nothing
+    }
     }
     void loadData()
   }, [viewMode, fetchTravellers, fetchGroups])
@@ -114,7 +143,7 @@ const TerminalTravellers = () => {
       const traveller = travellers.find((t) => t.id === travellerId)
 
       if (!traveller?.flightDateTime || !traveller?.flightNumber) {
-        throw new Error("Traveller or flight info not found")
+        throw new Error(TEXTS.ERRORS.TRAVELLER_OR_FLIGHT_NOT_FOUND)
       }
 
       const flightInfo = await fetchFlightTrackerByFlightNumber(
@@ -127,7 +156,7 @@ const TerminalTravellers = () => {
         [travellerId]: flightInfo,
       }))
     } catch {
-      setFlightError("Could not refresh flight arrival time.")
+      setFlightError(TEXTS.ERRORS.REFRESH_FLIGHT_ERROR)
     }
   }
 
@@ -137,7 +166,7 @@ const TerminalTravellers = () => {
     }
   }, [activeTravellerId])
 
-  const terminalSubtitle = `Departing from ${activeAirport}, terminal ${activeTerminal}.`
+  const terminalSubtitle = `${TEXTS.LABELS.DEPARTING_FROM} ${activeAirport}, ${TEXTS.LABELS.TERMINAL_LOWER} ${activeTerminal}.`
 
   return (
     <>
@@ -165,12 +194,12 @@ const TerminalTravellers = () => {
                 </div>
                 <div>
                   <CardTitle className="text-3xl font-bold tracking-tight text-foreground leading-tight">
-                    Terminal travellers &amp; groups
+                    {TEXTS.LABELS.HEADER}
                   </CardTitle>
                 </div>
               </div>
               <div className="text-xs font-medium uppercase tracking-widest text-muted-foreground/70 px-4 py-2 rounded-xl bg-muted/40 border border-border/30">
-                Dummy data
+                {TEXTS.LABELS.DUMMY_DATA}
               </div>
             </div>
           </CardHeader>
@@ -180,7 +209,7 @@ const TerminalTravellers = () => {
               <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
                 <div className="flex flex-col gap-3 flex-1">
                   <label className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-widest">
-                    Airport &amp; terminal
+                    {TEXTS.LABELS.AIRPORT_AND_TERMINAL}
                   </label>
                   <Select
                     value={`${activeAirport}__${activeTerminal}`}
@@ -191,7 +220,7 @@ const TerminalTravellers = () => {
                     }}
                   >
                     <SelectTrigger className="h-13 bg-background rounded-2xl border border-border/30 hover:border-border/50 focus:ring-2 focus:ring-primary/20 transition-all duration-200 shadow-sm hover:shadow-md">
-                      <SelectValue placeholder="Select airport & terminal" />
+                      <SelectValue placeholder={TEXTS.LABELS.SELECT_PLACEHOLDER} />
                     </SelectTrigger>
                     <SelectContent className="rounded-2xl border border-border/20 shadow-xl">
                       {airportTerminalCombos.map((combo) => (
@@ -209,7 +238,7 @@ const TerminalTravellers = () => {
 
                 <div className="flex flex-col gap-3">
                   <label className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-widest">
-                    View
+                    {TEXTS.LABELS.VIEW}
                   </label>
                   <div className="inline-flex items-center rounded-2xl border border-border/30 bg-muted/20 p-1.5 text-sm shadow-sm relative backdrop-blur-sm">
                     <div
@@ -220,12 +249,12 @@ const TerminalTravellers = () => {
                       }}
                     />
                     <ToggleButton
-                      label="Individual"
+                      label={TEXTS.LABELS.INDIVIDUAL}
                       isActive={viewMode === "individual"}
                       onClick={() => setViewMode("individual")}
                     />
                     <ToggleButton
-                      label="Group"
+                      label={TEXTS.LABELS.GROUP}
                       isActive={viewMode === "group"}
                       onClick={() => setViewMode("group")}
                     />
@@ -236,10 +265,10 @@ const TerminalTravellers = () => {
 
             {viewMode === "individual" && (
               <ListSection
-                title="Travellers"
+                title={TEXTS.LABELS.TRAVELLERS_TITLE}
                 subtitle={terminalSubtitle}
                 count={travellersForTerminal.length}
-                emptyMessage="No travellers for this airport/terminal yet."
+                emptyMessage={TEXTS.MESSAGES.NO_TRAVELLERS}
                 animation="left"
               >
                 {travellersForTerminal.map((traveller) => (
@@ -256,10 +285,10 @@ const TerminalTravellers = () => {
 
             {viewMode === "group" && (
               <ListSection
-                title="Groups"
+                title={TEXTS.LABELS.GROUPS_TITLE}
                 subtitle={terminalSubtitle}
                 count={groupsForTerminal.length}
-                emptyMessage="No groups for this airport/terminal yet."
+                emptyMessage={TEXTS.MESSAGES.NO_GROUPS}
                 animation="right"
               >
                 {groupsForTerminal.map((group) => (
