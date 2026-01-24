@@ -1,10 +1,10 @@
 import { Plane } from "lucide-react"
 import type { Group } from "./types"
+import { formatWaitTime } from "./utils"
 
 type GroupCardProps = {
   group: Group
   onClick: () => void
-  formatWaitTime: (date: Date) => string
 }
 
 const TEXTS = {
@@ -21,8 +21,7 @@ const TEXTS = {
   }
 }
 
-
-export function GroupCard({ group, onClick, formatWaitTime }: GroupCardProps) {
+export function GroupCard({ group, onClick }: GroupCardProps) {
   return (
     <div
       className="border rounded-2xl p-6 shadow-md hover:shadow-xl transition-all duration-300 cursor-pointer group backdrop-blur-sm bg-card/40 border-border/40 hover:border-primary/20 hover:bg-card/80"

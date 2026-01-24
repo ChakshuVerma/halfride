@@ -1,5 +1,6 @@
 import {type ReactNode} from "react"
 import { ScrollArea } from "../ui/scroll-area"
+import { Loader2 } from "lucide-react"
 // Reusable list section component for travellers and groups
 interface ListSectionProps {
   title: string
@@ -8,17 +9,28 @@ interface ListSectionProps {
   emptyMessage: string
   animation: "left" | "right"
   children: ReactNode
+  loading?: boolean
 }
 
 const TEXTS = {
   RESULT: "result",
-  SUFFIX_S: "s"
+  SUFFIX_S: "s",
+  LOADING: "Fetching your co-travellers...",
 }
 
 
-function ListSection({ title, subtitle, count, emptyMessage, animation, children }: ListSectionProps) {
+function ListSection({ title, subtitle, count, emptyMessage, animation, children, loading }: ListSectionProps) {
   const animationName = animation === "left" ? "slideInFromLeft" : "slideInFromRight"
   
+    if (loading) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full py-16 text-muted-foreground/60 gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-primary/60" />
+          <span className="text-sm font-medium">{TEXTS.LOADING}</span>
+        </div>
+      )
+    }
+
   return (
     <div
       className="border rounded-2xl bg-muted/20 border-border/20 overflow-hidden shadow-lg shadow-black/5 backdrop-blur-sm"
@@ -33,7 +45,7 @@ function ListSection({ title, subtitle, count, emptyMessage, animation, children
           {count} {TEXTS.RESULT}{count === 1 ? "" : TEXTS.SUFFIX_S}
         </div>
       </div>
-      <div className="h-[480px]">
+      <div className="max-h-[480px] overflow-y-auto">
         <ScrollArea className="h-full px-5 py-5">
           <div className="space-y-4">
             {count === 0 ? (

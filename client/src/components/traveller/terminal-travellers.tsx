@@ -1,9 +1,8 @@
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useCallback, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Dialog, DialogContent } from "../ui/dialog"
-import { Users, UsersRound } from "lucide-react"
-import { useFlightTrackerApi, type FlightArrivalInfo } from "@/hooks/useFlightTrackerApi"
+import { Users, UsersRound, Loader2 } from "lucide-react"
 import { useGetTravellerApi } from "@/hooks/useGetTravellerApi"
 import { useGetAirportTerminalApi, type AirportTerminalCombo } from "@/hooks/useGetAirportTerminalApi"
 import { TravellerCard } from "./traveller-card"
@@ -12,7 +11,6 @@ import { TravellerModal } from "./traveller-modal"
 import { GroupModal } from "./group-modal"
 import type { Traveller, Group, ViewMode, SelectedEntity } from "./types"
 import ListSection from "./list-section"
-import { formatWaitTime, formatFlightDateTime } from "./utils"
 
 const TEXTS = {
   ERRORS: {
@@ -36,6 +34,7 @@ const TEXTS = {
     NO_TRAVELLERS: "No travellers for this airport/terminal yet.",
     NO_GROUPS: "No groups for this airport/terminal yet.",
   },
+  LOADING: "Loading...",
 }
 
 
@@ -61,21 +60,18 @@ function ToggleButton({ label, isActive, onClick }: ToggleButtonProps) {
 }
 
 const TerminalTravellers = () => {
+  // States
   const [selectedAirport, setSelectedAirport] = useState<string | undefined>(undefined)
   const [selectedTerminal, setSelectedTerminal] = useState<string | undefined>(undefined)
   const [viewMode, setViewMode] = useState<ViewMode>("individual")
   const [selectedEntity, setSelectedEntity] = useState<SelectedEntity>(null)
-  const [flightInfoByTraveller, setFlightInfoByTraveller] = useState<
-    Record<string, FlightArrivalInfo | undefined>
-  >({})
-  const [flightError, setFlightError] = useState<string | null>(null)
   const [travellers, setTravellers] = useState<Traveller[]>([])
   const [groups, setGroups] = useState<Group[]>([])
   const [airportTerminalCombos, setAirportTerminalCombos] = useState<AirportTerminalCombo[]>([])
 
-  const { fetchFlightTrackerByFlightNumber, loading: isRefreshingFlight } = useFlightTrackerApi()
-  const { fetchTravellers, fetchGroups } = useGetTravellerApi()
-  const { fetchAirportTerminalCombos } = useGetAirportTerminalApi()
+  // Hooks
+  const { fetchTravellers, fetchGroups, loading: isFetchingList } = useGetTravellerApi()
+  const { fetchAirportTerminalCombos, loading: isFetchingCombos } = useGetAirportTerminalApi()
 
   useEffect(() => {
     const loadCombos = async () => {
@@ -83,90 +79,93 @@ const TerminalTravellers = () => {
       setAirportTerminalCombos(fetchedCombos)
     }
     void loadCombos()
-  }, [fetchAirportTerminalCombos])
+  }, [])
 
-  
   useEffect(() => {
+    if (!selectedAirport || !selectedTerminal) return
+
     const loadData = async () => {
-      try {
       if (viewMode === "individual") {
-        const fetchedTravellers = await fetchTravellers()
+        const fetchedTravellers = await fetchTravellers(selectedAirport, selectedTerminal)
         setTravellers(fetchedTravellers)
       } else if (viewMode === "group") {
-        const fetchedGroups = await fetchGroups()
+        const fetchedGroups = await fetchGroups(selectedAirport, selectedTerminal)
         setGroups(fetchedGroups)
       }
-    } catch {
-      // Do nothing
-    }
     }
     void loadData()
-  }, [viewMode, fetchTravellers, fetchGroups])
+  }, [viewMode, fetchTravellers, fetchGroups, selectedAirport, selectedTerminal])
 
-  const allItems = useMemo(() => [...travellers, ...groups], [travellers, groups])
+  const ListSectionWrapper = useCallback(() => {
+    if (!selectedAirport || !selectedTerminal) return null
+    const title = viewMode === "individual" ? TEXTS.LABELS.TRAVELLERS_TITLE : TEXTS.LABELS.GROUPS_TITLE
+    const data = viewMode === "individual" ? travellers : groups
+    const emptyMessage = viewMode === "individual" ? TEXTS.MESSAGES.NO_TRAVELLERS : TEXTS.MESSAGES.NO_GROUPS
+    const count = viewMode === "individual" ? travellers.length : groups.length
+    const animation = viewMode === "individual" ? "left" : "right"
+    const terminalSubtitle = `${TEXTS.LABELS.DEPARTING_FROM} ${selectedAirport}, ${TEXTS.LABELS.TERMINAL_LOWER} ${selectedTerminal}.`
 
-  const airports = useMemo(() => {
-    const all = allItems.map((item) => item.airportName)
-    return Array.from(new Set(all)).sort()
-  }, [allItems])
-
-  const activeAirport = selectedAirport || airports[0]
-
-  const terminals = useMemo(() => {
-    const all = allItems
-      .filter((item) => item.airportName === activeAirport)
-      .map((item) => item.terminal)
-    return Array.from(new Set(all)).sort()
-  }, [allItems, activeAirport])
-
-  const activeTerminal = selectedTerminal || terminals[0]
-
-  const filterByTerminal = <T extends { airportName: string; terminal: string }>(items: T[]) =>
-    items.filter((item) => item.airportName === activeAirport && item.terminal === activeTerminal)
-
-  const travellersForTerminal = useMemo(
-    () => filterByTerminal(travellers),
-    [travellers, activeAirport, activeTerminal],
-  )
-
-  const groupsForTerminal = useMemo(
-    () => filterByTerminal(groups),
-    [groups, activeAirport, activeTerminal],
-  )
-
-  const activeTravellerId =
-    selectedEntity && selectedEntity.type === "traveller" ? selectedEntity.data.id : null
-
-  const fetchArrivalInfo = async (travellerId: string) => {
-    try {
-      setFlightError(null)
-      const traveller = travellers.find((t) => t.id === travellerId)
-
-      if (!traveller?.flightDateTime || !traveller?.flightNumber) {
-        throw new Error(TEXTS.ERRORS.TRAVELLER_OR_FLIGHT_NOT_FOUND)
-      }
-
-      const flightInfo = await fetchFlightTrackerByFlightNumber(
-        traveller.flightNumber,
-        traveller.flightDateTime,
+    const getNewTravellerCard = (traveller: Traveller) => {
+      return (
+        <TravellerCard
+          key={traveller.id}
+          traveller={traveller}
+          onClick={() => setSelectedEntity({ type: "traveller", data: traveller })}
+        />
       )
-
-      setFlightInfoByTraveller((prev) => ({
-        ...prev,
-        [travellerId]: flightInfo,
-      }))
-    } catch {
-      setFlightError(TEXTS.ERRORS.REFRESH_FLIGHT_ERROR)
     }
+    
+    const getNewGroupCard = (group: Group) => {
+      return (
+        <GroupCard
+          key={group.id}
+          group={group}
+          onClick={() => setSelectedEntity({ type: "group", data: group })}
+        />
+      )
+    }
+
+    return (
+      <ListSection
+        title={title}
+        subtitle={terminalSubtitle}
+        count={count}
+        emptyMessage={emptyMessage}
+        animation={animation}
+        loading={isFetchingList}
+      >
+        {data.map((item) => viewMode === "individual" ? getNewTravellerCard(item) : getNewGroupCard(item))}
+      </ListSection>
+    )
+  }, [selectedAirport, selectedTerminal, viewMode, travellers, groups, isFetchingList])
+
+  if (isFetchingCombos) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full py-16 text-muted-foreground/60 gap-3">
+        <Loader2 className="w-8 h-8 animate-spin text-primary/60" />
+        <span className="text-sm font-medium">{TEXTS.LOADING}</span>
+      </div>
+    )
   }
 
-  useEffect(() => {
-    if (activeTravellerId && !flightInfoByTraveller[activeTravellerId] && !isRefreshingFlight) {
-      void fetchArrivalInfo(activeTravellerId)
-    }
-  }, [activeTravellerId])
+  const ModalWrapper = () => {
+    if (!selectedEntity) return
 
-  const terminalSubtitle = `${TEXTS.LABELS.DEPARTING_FROM} ${activeAirport}, ${TEXTS.LABELS.TERMINAL_LOWER} ${activeTerminal}.`
+    if (selectedEntity.type === "traveller") {
+      return (
+       <TravellerModal
+        traveller={selectedEntity.data}
+      />
+      )
+    }
+    if (selectedEntity.type === "group") {
+      return (
+       <GroupModal
+          group={selectedEntity.data}
+        />
+      )
+    }
+  }
 
   return (
     <>
@@ -212,7 +211,7 @@ const TerminalTravellers = () => {
                     {TEXTS.LABELS.AIRPORT_AND_TERMINAL}
                   </label>
                   <Select
-                    value={`${activeAirport}__${activeTerminal}`}
+                    value={`${selectedAirport}__${selectedTerminal}`}
                     onValueChange={(value) => {
                       const [airportName, terminal] = value.split("__")
                       setSelectedAirport(airportName)
@@ -235,73 +234,37 @@ const TerminalTravellers = () => {
                     </SelectContent>
                   </Select>
                 </div>
-
-                <div className="flex flex-col gap-3">
-                  <label className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-widest">
-                    {TEXTS.LABELS.VIEW}
-                  </label>
-                  <div className="inline-flex items-center rounded-2xl border border-border/30 bg-muted/20 p-1.5 text-sm shadow-sm relative backdrop-blur-sm">
-                    <div
-                      aria-hidden="true"
-                      className="absolute inset-y-1.5 left-1.5 w-1/2 rounded-xl bg-primary shadow-md shadow-primary/20 transition-transform duration-300 ease-out"
-                      style={{
-                        transform: viewMode === "group" ? "translateX(100%)" : "translateX(0%)",
-                      }}
-                    />
-                    <ToggleButton
-                      label={TEXTS.LABELS.INDIVIDUAL}
-                      isActive={viewMode === "individual"}
-                      onClick={() => setViewMode("individual")}
-                    />
-                    <ToggleButton
-                      label={TEXTS.LABELS.GROUP}
-                      isActive={viewMode === "group"}
-                      onClick={() => setViewMode("group")}
-                    />
-                  </div>
-                </div>
+                {
+                  selectedAirport && selectedTerminal && (
+                    <div className="flex flex-col gap-3">
+                      <label className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-widest">
+                        {TEXTS.LABELS.VIEW}
+                      </label>
+                      <div className="inline-flex items-center rounded-2xl border border-border/30 bg-muted/20 p-1.5 text-sm shadow-sm relative backdrop-blur-sm">
+                        <div
+                          aria-hidden="true"
+                          className="absolute inset-y-1.5 left-1.5 w-1/2 rounded-xl bg-primary shadow-md shadow-primary/20 transition-transform duration-300 ease-out"
+                          style={{
+                            transform: viewMode === "group" ? "translateX(100%)" : "translateX(0%)",
+                          }}
+                        />
+                        <ToggleButton
+                          label={TEXTS.LABELS.INDIVIDUAL}
+                          isActive={viewMode === "individual"}
+                          onClick={() => setViewMode("individual")}
+                        />
+                        <ToggleButton
+                          label={TEXTS.LABELS.GROUP}
+                          isActive={viewMode === "group"}
+                          onClick={() => setViewMode("group")}
+                        />
+                      </div>
+                    </div>
+                  )
+                }
               </div>
             </div>
-
-            {viewMode === "individual" && (
-              <ListSection
-                title={TEXTS.LABELS.TRAVELLERS_TITLE}
-                subtitle={terminalSubtitle}
-                count={travellersForTerminal.length}
-                emptyMessage={TEXTS.MESSAGES.NO_TRAVELLERS}
-                animation="left"
-              >
-                {travellersForTerminal.map((traveller) => (
-                  <TravellerCard
-                    key={traveller.id}
-                    traveller={traveller}
-                    onClick={() => setSelectedEntity({ type: "traveller", data: traveller })}
-                    formatFlightDateTime={formatFlightDateTime}
-                    formatWaitTime={formatWaitTime}
-                  />
-                ))}
-              </ListSection>
-            )}
-
-            {viewMode === "group" && (
-              <ListSection
-                title={TEXTS.LABELS.GROUPS_TITLE}
-                subtitle={terminalSubtitle}
-                count={groupsForTerminal.length}
-                emptyMessage={TEXTS.MESSAGES.NO_GROUPS}
-                animation="right"
-              >
-                {groupsForTerminal.map((group) => (
-                  <GroupCard
-                    key={group.id}
-                    group={group}
-                    onClick={() => setSelectedEntity({ type: "group", data: group })}
-                    formatWaitTime={formatWaitTime}
-                  />
-                ))}
-              </ListSection>
-            )}
-
+            <ListSectionWrapper />
             <Dialog
               open={selectedEntity !== null}
               onOpenChange={(open) => {
@@ -313,24 +276,7 @@ const TerminalTravellers = () => {
                 onPointerDownOutside={(event) => event.preventDefault()}
                 onEscapeKeyDown={(event) => event.preventDefault()}
               >
-                {selectedEntity && selectedEntity.type === "traveller" && (
-                  <TravellerModal
-                    traveller={selectedEntity.data}
-                    flightInfo={flightInfoByTraveller[selectedEntity.data.id]}
-                    flightError={flightError}
-                    isRefreshingFlight={isRefreshingFlight}
-                    onRefresh={() => fetchArrivalInfo(selectedEntity.data.id)}
-                    formatFlightDateTime={formatFlightDateTime}
-                    formatWaitTime={formatWaitTime}
-                  />
-                )}
-
-                {selectedEntity && selectedEntity.type === "group" && (
-                  <GroupModal
-                    group={selectedEntity.data}
-                    formatWaitTime={formatWaitTime}
-                  />
-                )}
+                <ModalWrapper />
               </DialogContent>
             </Dialog>
           </CardContent>

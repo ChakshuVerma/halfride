@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { useCallback, useState } from "react"
 import type { Traveller, Group } from "@/components/traveller/types"
 
 // Dummy data – this will eventually come from the backend
@@ -143,22 +143,49 @@ const dummyGroups: Group[] = [
 ]
 
 export function useGetTravellerApi() {
-  const fetchTravellers = useCallback(async (): Promise<Traveller[]> => {
-    // TODO: Replace with actual API call
-    // return sessionRequest<Traveller[]>(API_ROUTES.TRAVELLERS)
-    await new Promise((resolve) => setTimeout(resolve, 800)) // Fake delay
-    return dummyTravellers
+  const [loading, setLoading] = useState(false)
+
+  const fetchTravellers = useCallback(async (airportName?: string, terminal?: string): Promise<Traveller[]> => {
+    setLoading(true)
+    try {
+      // TODO: Replace with actual API call
+      // return sessionRequest<Traveller[]>(API_ROUTES.TRAVELLERS, { params: { airportName, terminal } })
+      await new Promise((resolve) => setTimeout(resolve, 800)) // Fake delay
+      let data = dummyTravellers
+      if (airportName) {
+        data = data.filter((t) => t.airportName === airportName)
+      }
+      if (terminal) {
+        data = data.filter((t) => t.terminal === terminal)
+      }
+      return data
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
-  const fetchGroups = useCallback(async (): Promise<Group[]> => {
-    // TODO: Replace with actual API call
-    // return sessionRequest<Group[]>(API_ROUTES.GROUPS)
-    await new Promise((resolve) => setTimeout(resolve, 600)) // Fake delay
-    return dummyGroups
+  const fetchGroups = useCallback(async (airportName?: string, terminal?: string): Promise<Group[]> => {
+    setLoading(true)
+    try {
+      // TODO: Replace with actual API call
+      // return sessionRequest<Group[]>(API_ROUTES.GROUPS, { params: { airportName, terminal } })
+      await new Promise((resolve) => setTimeout(resolve, 600)) // Fake delay
+      let data = dummyGroups
+      if (airportName) {
+        data = data.filter((g) => g.airportName === airportName)
+      }
+      if (terminal) {
+        data = data.filter((g) => g.terminal === terminal)
+      }
+      return data
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   return {
     fetchTravellers,
     fetchGroups,
+    loading,
   }
 }

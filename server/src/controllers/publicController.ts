@@ -26,7 +26,6 @@ export async function publicFlightStatus(_req: Request, res: Response) {
     const flightDateRaw = _req.query.date as string | undefined;
 
     let url = DEFAULT_FLIGHTSTATS_URL;
-    console.log(flightNumberRaw, flightDateRaw)
     if (flightNumberRaw && flightDateRaw) {
       const [carrierFs, numberPart] = flightNumberRaw.trim().split(/\s+/);
       const [yearStr, monthStr, dayStr] = flightDateRaw.split('-');
@@ -49,11 +48,7 @@ export async function publicFlightStatus(_req: Request, res: Response) {
         .status(response.status)
         .json({ ok: false, error: 'Failed to fetch flight status' });
     }
-
-    // console.log(response)
-
     const data = await response.json();
-    console.log(data)
     return res.json({ ok: true, data });
   } catch (error) {
     console.error('Error fetching flight status', error);

@@ -1,11 +1,10 @@
 import { Plane, User } from "lucide-react"
 import type { Traveller } from "./types"
+import { formatWaitTime, formatFlightDateTime } from "./utils"
 
 type TravellerCardProps = {
   traveller: Traveller
   onClick: () => void
-  formatFlightDateTime: (date: Date) => string
-  formatWaitTime: (date: Date) => string
 }
 
 const TEXTS = {
@@ -27,8 +26,6 @@ const TEXTS = {
 export function TravellerCard({
   traveller,
   onClick,
-  formatFlightDateTime,
-  formatWaitTime,
 }: TravellerCardProps) {
   return (
     <div

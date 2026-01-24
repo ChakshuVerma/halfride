@@ -1,16 +1,12 @@
+import { useEffect, useState } from "react"
 import { DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Users, Plane, User } from "lucide-react"
 import type { Traveller } from "./types"
-import type { FlightArrivalInfo } from "@/hooks/useFlightTrackerApi"
+import { useFlightTrackerApi, type FlightArrivalInfo } from "@/hooks/useFlightTrackerApi"
+import { formatWaitTime, formatFlightDateTime } from "./utils"
 
 type TravellerModalProps = {
   traveller: Traveller
-  flightInfo?: FlightArrivalInfo
-  flightError: string | null
-  isRefreshingFlight: boolean
-  onRefresh: () => void
-  formatFlightDateTime: (date: Date) => string
-  formatWaitTime: (date: Date) => string
 }
 
 const TEXTS = {
@@ -36,20 +32,36 @@ const TEXTS = {
   }
 }
 
-
 export function TravellerModal({
   traveller,
-  flightInfo,
-  flightError,
-  isRefreshingFlight,
-  onRefresh,
-  formatFlightDateTime,
-  formatWaitTime,
 }: TravellerModalProps) {
+  const { fetchFlightTrackerByFlightNumber } = useFlightTrackerApi()
+  const [flightInfo, setFlightInfo] = useState<FlightArrivalInfo | undefined>(undefined)
+  const [flightError, setFlightError] = useState<string | null>(null)
+
+  const fetchArrivalInfo = async () => {
+    try {
+      setFlightError(null)
+      if (!traveller?.flightDateTime || !traveller?.flightNumber) {
+        throw new Error("Traveller or flight info not found")
+      }
+
+      const info = await fetchFlightTrackerByFlightNumber(
+        traveller.flightNumber,
+        traveller.flightDateTime,
+      )
+      setFlightInfo(info)
+    } catch {
+      setFlightError("Could not refresh flight arrival time.")
+    }
+  }
+
+  useEffect(() => {
+    void fetchArrivalInfo()
+  }, [traveller.id])
   const lastUpdatedMinutesAgo = flightInfo
     ? Math.floor((Date.now() - flightInfo.lastUpdatedAt) / 60000)
     : null
-  const isStale = lastUpdatedMinutesAgo === null || lastUpdatedMinutesAgo > 10
 
   return (
     <div className="p-8 space-y-7 pr-16">
@@ -185,16 +197,6 @@ export function TravellerModal({
               <div className="mt-1.5 text-xs text-destructive font-medium">{flightError}</div>
             )}
           </div>
-          {isStale && (
-            <button
-              type="button"
-              onClick={onRefresh}
-              disabled={isRefreshingFlight}
-              className="inline-flex items-center justify-center px-5 py-2.5 rounded-xl bg-primary text-primary-foreground text-xs font-semibold disabled:opacity-60 disabled:cursor-not-allowed hover:bg-primary/90 transition-all duration-200 shadow-md hover:shadow-lg"
-            >
-              {isRefreshingFlight ? TEXTS.LABELS.REFRESHING : TEXTS.LABELS.REFRESH}
-            </button>
-          )}
         </div>
       </div>
     </div>

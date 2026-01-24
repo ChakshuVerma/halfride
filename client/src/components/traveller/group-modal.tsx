@@ -1,10 +1,10 @@
 import { DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog"
 import { UsersRound, Plane, User } from "lucide-react"
 import type { Group } from "./types"
+import { formatWaitTime } from "./utils"
 
 type GroupModalProps = {
   group: Group
-  formatWaitTime: (date: Date) => string
 }
 
 const TEXTS = {
@@ -23,7 +23,7 @@ const TEXTS = {
 }
 
 
-export function GroupModal({ group, formatWaitTime }: GroupModalProps) {
+export function GroupModal({ group }: GroupModalProps) {
   return (
     <div className="p-8 space-y-7 pr-16">
       <DialogHeader className="space-y-4 pb-5 border-b border-border/20">
