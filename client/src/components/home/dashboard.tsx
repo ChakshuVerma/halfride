@@ -122,6 +122,12 @@ const Dashboard = () => {
               )}
             </Button>
           </div>
+          <Button
+            size="sm"
+            onClick={() => navigate("/terminal")}
+          >
+            View terminal travellers &amp; groups
+          </Button>
         </div>
 
         {profileData && (

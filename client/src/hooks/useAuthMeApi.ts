@@ -9,7 +9,7 @@ type AuthMeResponse = {
 }
 
 export function useAuthMeApi() {
-  const { loading, error, sessionRequest } = useApi()
+  const { loading, sessionRequest } = useApi()
 
   const fetchMe = useCallback(async () => {
     return sessionRequest<AuthMeResponse>(API_ROUTES.AUTH_ME)
@@ -18,6 +18,5 @@ export function useAuthMeApi() {
   return {
     fetchMe,
     loading,
-    error,
   }
 }

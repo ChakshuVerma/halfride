@@ -16,7 +16,7 @@ export type ProfileData = {
 }
 
 export function useUserProfileApi() {
-  const { loading, error, sessionRequest } = useApi()
+  const { loading, sessionRequest } = useApi()
 
   const fetchProfile = useCallback(async () => {
     return sessionRequest<ProfileData>(API_ROUTES.USER_PROFILE)
@@ -25,7 +25,6 @@ export function useUserProfileApi() {
   return {
     fetchProfile,
     loading,
-    error,
   }
 }
 

@@ -11,6 +11,11 @@ export default defineConfig({
   },
   server: {
     proxy: {
+      "/flightstats": {
+        target: "https://www.flightstats.com",
+        changeOrigin: true,
+        secure: true,
+      },
       "/api": {
         target: "http://localhost:3000",
         changeOrigin: true,

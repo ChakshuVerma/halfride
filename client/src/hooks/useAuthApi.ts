@@ -24,7 +24,7 @@ type ForgotPasswordCompletePayload = {
 }
 
 export function useAuthApi() {
-  const { publicRequest, sessionRequest } = useApi()
+  const { loading, publicRequest, sessionRequest } = useApi()
 
   const login = useCallback(
     async ({ username, password }: LoginPayload) => {
@@ -67,6 +67,7 @@ export function useAuthApi() {
     completeSignup,
     completeForgotPassword,
     logout,
+    loading,
   }
 }
 
