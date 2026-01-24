@@ -8,6 +8,9 @@ export type Traveller = {
   terminal: string
   flightNumber: string
   distanceFromUserKm: number
+  bio?: string
+  tags?: string[]
+  isVerified?: boolean
 }
 
 export type Group = {

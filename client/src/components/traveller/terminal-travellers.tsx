@@ -99,7 +99,7 @@ const TerminalTravellers = () => {
   const ListSectionWrapper = useCallback(() => {
     if (!selectedAirport || !selectedTerminal) return null
     const title = viewMode === "individual" ? TEXTS.LABELS.TRAVELLERS_TITLE : TEXTS.LABELS.GROUPS_TITLE
-    const data = viewMode === "individual" ? travellers : groups
+
     const emptyMessage = viewMode === "individual" ? TEXTS.MESSAGES.NO_TRAVELLERS : TEXTS.MESSAGES.NO_GROUPS
     const count = viewMode === "individual" ? travellers.length : groups.length
     const animation = viewMode === "individual" ? "left" : "right"
@@ -134,7 +134,10 @@ const TerminalTravellers = () => {
         animation={animation}
         loading={isFetchingList}
       >
-        {data.map((item) => viewMode === "individual" ? getNewTravellerCard(item) : getNewGroupCard(item))}
+        {viewMode === "individual" 
+          ? travellers.map(getNewTravellerCard)
+          : groups.map(getNewGroupCard)
+        }
       </ListSection>
     )
   }, [selectedAirport, selectedTerminal, viewMode, travellers, groups, isFetchingList])

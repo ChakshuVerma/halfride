@@ -13,6 +13,9 @@ const dummyTravellers: Traveller[] = [
     terminal: "T1",
     flightNumber: "AI 111",
     distanceFromUserKm: 12,
+    bio: "Tech enthusiast loving the startup life.",
+    tags: ["Tech", "Coffee", "Startups"],
+    isVerified: true,
   },
   {
     id: "t2",
@@ -24,6 +27,9 @@ const dummyTravellers: Traveller[] = [
     terminal: "T1",
     flightNumber: "AI 853",
     distanceFromUserKm: 25,
+    bio: "Fashion designer looking for travel buddies.",
+    tags: ["Fashion", "Art", "Travel"],
+    isVerified: true,
   },
   {
     id: "t3",
@@ -35,6 +41,9 @@ const dummyTravellers: Traveller[] = [
     terminal: "T2",
     flightNumber: "AI 185",
     distanceFromUserKm: 8,
+    bio: "Musician on tour. Let's jam?",
+    tags: ["Music", "Guitar", "Concerts"],
+    isVerified: false,
   },
   {
     id: "t4",
@@ -46,6 +55,9 @@ const dummyTravellers: Traveller[] = [
     terminal: "T3",
     flightNumber: "AI 443",
     distanceFromUserKm: 16,
+    bio: "Foodie exploring the best cuisines.",
+    tags: ["Foodie", "Cooking", "Photography"],
+    isVerified: true,
   },
   {
     id: "t5",
@@ -57,6 +69,9 @@ const dummyTravellers: Traveller[] = [
     terminal: "T2",
     flightNumber: "AI 485",
     distanceFromUserKm: 22,
+    bio: "Fitness freak and extensive traveler.",
+    tags: ["Fitness", "Gym", "Hiking"],
+    isVerified: false,
   },
   {
     id: "t6",
@@ -68,6 +83,9 @@ const dummyTravellers: Traveller[] = [
     terminal: "T1",
     flightNumber: "AI 1706",
     distanceFromUserKm: 10,
+    bio: "Bookworm and nature lover.",
+    tags: ["Books", "Nature", "Quiet"],
+    isVerified: true,
   },
 ]
 
