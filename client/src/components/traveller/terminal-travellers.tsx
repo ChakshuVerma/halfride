@@ -2,14 +2,16 @@ import { useEffect, useCallback, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Dialog, DialogContent } from "../ui/dialog"
-import { Users, UsersRound, Loader2, Filter, ArrowUpDown } from "lucide-react"
+import { UsersRound, Loader2, Filter, ArrowUpDown, User, MapPin } from "lucide-react"
+
+// ... (lines 6-172) removed
 import { useGetTravellerApi } from "@/hooks/useGetTravellerApi"
 import { useGetAirportTerminalApi, type AirportTerminalCombo } from "@/hooks/useGetAirportTerminalApi"
 import { TravellerCard } from "./traveller-card"
 import { GroupCard } from "./group-card"
 import { TravellerModal } from "./traveller-modal"
 import { GroupModal } from "./group-modal"
-import type { Traveller, Group, ViewMode, SelectedEntity } from "./types"
+import { type Traveller, type Group, type ViewMode, type SelectedEntity, ENTITY_TYPE, VIEW_MODE } from "./types"
 import ListSection from "./list-section"
 
 const TEXTS = {
@@ -63,7 +65,7 @@ const TerminalTravellers = () => {
   // States
   const [selectedAirport, setSelectedAirport] = useState<string | undefined>(undefined)
   const [selectedTerminal, setSelectedTerminal] = useState<string | undefined>(undefined)
-  const [viewMode, setViewMode] = useState<ViewMode>("individual")
+  const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODE.INDIVIDUAL)
   const [selectedEntity, setSelectedEntity] = useState<SelectedEntity>(null)
   const [travellers, setTravellers] = useState<Traveller[]>([])
   const [groups, setGroups] = useState<Group[]>([])
@@ -91,10 +93,10 @@ const TerminalTravellers = () => {
     if (!selectedAirport || !selectedTerminal) return
 
     const loadData = async () => {
-      if (viewMode === "individual") {
+      if (viewMode === VIEW_MODE.INDIVIDUAL) {
         const fetchedTravellers = await fetchTravellers(selectedAirport, selectedTerminal)
         setTravellers(fetchedTravellers)
-      } else if (viewMode === "group") {
+      } else if (viewMode === VIEW_MODE.GROUP) {
         const fetchedGroups = await fetchGroups(selectedAirport, selectedTerminal)
         setGroups(fetchedGroups)
       }
@@ -104,10 +106,10 @@ const TerminalTravellers = () => {
 
   const ListSectionWrapper = useCallback(() => {
     if (!selectedAirport || !selectedTerminal) return null
-    const title = viewMode === "individual" ? TEXTS.LABELS.TRAVELLERS_TITLE : TEXTS.LABELS.GROUPS_TITLE
+    const title = viewMode === VIEW_MODE.INDIVIDUAL ? TEXTS.LABELS.TRAVELLERS_TITLE : TEXTS.LABELS.GROUPS_TITLE
 
-    const emptyMessage = viewMode === "individual" ? TEXTS.MESSAGES.NO_TRAVELLERS : TEXTS.MESSAGES.NO_GROUPS
-    const animation = viewMode === "individual" ? "left" : "right"
+    const emptyMessage = viewMode === VIEW_MODE.INDIVIDUAL ? TEXTS.MESSAGES.NO_TRAVELLERS : TEXTS.MESSAGES.NO_GROUPS
+    const animation = viewMode === VIEW_MODE.INDIVIDUAL ? "left" : "right"
     const terminalSubtitle = `${TEXTS.LABELS.DEPARTING_FROM} ${selectedAirport}, ${TEXTS.LABELS.TERMINAL_LOWER} ${selectedTerminal}.`
 
     // --- Filtering & Sorting Logic ---
@@ -116,7 +118,7 @@ const TerminalTravellers = () => {
 
     // 1. FILTER
     if (filterGender !== "all") {
-        if (viewMode === "individual") {
+        if (viewMode === VIEW_MODE.INDIVIDUAL) {
             processedTravellers = processedTravellers.filter(t => t.gender === filterGender)
         } else {
             processedGroups = processedGroups.filter(g => g.gender === filterGender)
@@ -133,20 +135,20 @@ const TerminalTravellers = () => {
         return 0
     }
     
-    if (viewMode === "individual") {
+    if (viewMode === VIEW_MODE.INDIVIDUAL) {
         processedTravellers.sort(sortFn)
     } else {
         processedGroups.sort(sortFn)
     }
 
-    const count = viewMode === "individual" ? processedTravellers.length : processedGroups.length
+    const count = viewMode === VIEW_MODE.INDIVIDUAL ? processedTravellers.length : processedGroups.length
 
     const getNewTravellerCard = (traveller: Traveller) => {
       return (
         <TravellerCard
           key={traveller.id}
           traveller={traveller}
-          onClick={() => setSelectedEntity({ type: "traveller", data: traveller })}
+          onClick={() => setSelectedEntity({ type: ENTITY_TYPE.TRAVELLER, data: traveller })}
         />
       )
     }
@@ -156,7 +158,7 @@ const TerminalTravellers = () => {
         <GroupCard
           key={group.id}
           group={group}
-          onClick={() => setSelectedEntity({ type: "group", data: group })}
+          onClick={() => setSelectedEntity({ type: ENTITY_TYPE.GROUP, data: group })}
         />
       )
     }
@@ -169,8 +171,9 @@ const TerminalTravellers = () => {
         emptyMessage={emptyMessage}
         animation={animation}
         loading={isFetchingList}
+        icon={viewMode === VIEW_MODE.INDIVIDUAL ? <User className="w-5 h-5" /> : <UsersRound className="w-5 h-5" />}
       >
-        {viewMode === "individual" 
+        {viewMode === VIEW_MODE.INDIVIDUAL 
           ? processedTravellers.map(getNewTravellerCard)
           : processedGroups.map(getNewGroupCard)
         }
@@ -199,14 +202,14 @@ const TerminalTravellers = () => {
   const ModalWrapper = () => {
     if (!selectedEntity) return
 
-    if (selectedEntity.type === "traveller") {
+    if (selectedEntity.type === ENTITY_TYPE.TRAVELLER) {
       return (
        <TravellerModal
         traveller={selectedEntity.data}
       />
       )
     }
-    if (selectedEntity.type === "group") {
+    if (selectedEntity.type === ENTITY_TYPE.GROUP) {
       return (
        <GroupModal
           group={selectedEntity.data}
@@ -233,8 +236,8 @@ const TerminalTravellers = () => {
             <div className="flex items-start justify-between gap-8">
               <div className="flex items-center gap-4 sm:gap-6">
                 <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-primary bg-primary/5 border border-primary/10 shadow-sm">
-                  {viewMode === "individual" ? (
-                    <Users className="w-6 h-6 sm:w-8 sm:h-8" />
+                  {viewMode === VIEW_MODE.INDIVIDUAL ? (
+                    <User className="w-6 h-6 sm:w-8 sm:h-8" />
                   ) : (
                     <UsersRound className="w-6 h-6 sm:w-8 sm:h-8" />
                   )}
@@ -296,18 +299,18 @@ const TerminalTravellers = () => {
                               aria-hidden="true"
                               className="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-lg bg-black dark:bg-white shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)]"
                               style={{
-                                transform: viewMode === "group" ? "translateX(100%)" : "translateX(0%)",
+                                transform: viewMode === VIEW_MODE.GROUP ? "translateX(100%)" : "translateX(0%)",
                               }}
                             />
                             <ToggleButton
                               label={TEXTS.LABELS.INDIVIDUAL}
-                              isActive={viewMode === "individual"}
-                              onClick={() => setViewMode("individual")}
+                              isActive={viewMode === VIEW_MODE.INDIVIDUAL}
+                              onClick={() => setViewMode(VIEW_MODE.INDIVIDUAL)}
                             />
                             <ToggleButton
                               label={TEXTS.LABELS.GROUP}
-                              isActive={viewMode === "group"}
-                              onClick={() => setViewMode("group")}
+                              isActive={viewMode === VIEW_MODE.GROUP}
+                              onClick={() => setViewMode(VIEW_MODE.GROUP)}
                             />
                           </div>
                         </div>
@@ -360,6 +363,20 @@ const TerminalTravellers = () => {
                     </div>
                   )
                 }
+
+                {!selectedAirport && !selectedTerminal && (
+                   <div className="flex flex-col items-center justify-center py-16 sm:py-20 text-center space-y-4 rounded-3xl border border-dashed border-border/40 bg-muted/5">
+                      <div className="p-4 rounded-full bg-primary/5 text-primary mb-2">
+                         <MapPin className="w-8 h-8 sm:w-10 sm:h-10 opacity-50" />
+                      </div>
+                      <div className="space-y-1 max-w-sm px-4">
+                        <h3 className="text-lg font-semibold text-foreground">Select a Terminal</h3>
+                        <p className="text-sm text-muted-foreground/70">
+                          Please select an airport and terminal above to view available travellers and groups.
+                        </p>
+                      </div>
+                   </div>
+                )}
               </div>
 
             <ListSectionWrapper />

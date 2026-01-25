@@ -1,4 +1,4 @@
-import { Plane, User, MapPin, Clock, CalendarRange, CheckCircle2 } from "lucide-react"
+import { Plane, User, MapPin, Clock, CalendarRange } from "lucide-react"
 import type { Traveller } from "./types"
 import { formatWaitTime, formatFlightDateTime } from "./utils"
 
