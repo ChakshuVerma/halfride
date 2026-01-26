@@ -1,19 +1,60 @@
 import { useEffect, useState } from "react"
 import { DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog"
-import { Plane, User, Clock, MapPin, Navigation, Info, Briefcase, ArrowRight, XCircle, CheckCircle2, Loader2, Heart } from "lucide-react"
+import { Plane, User, Clock, Navigation, Info, XCircle, CheckCircle2, Loader2, Heart } from "lucide-react"
 import type { Traveller } from "./types"
 import { useFlightTrackerApi, type FlightArrivalInfo } from "@/hooks/useFlightTrackerApi"
+
+const CONSTANTS = {
+  STATUS_KEYWORDS: {
+    CANCELLED: "cancelled",
+    NOT_YET_STARTED: "not yet started",
+    EARLY: "early",
+    LATE: "late",
+  },
+  MESSAGES: {
+    TRACKING_UNAVAILABLE: "Live tracking currently unavailable",
+    SYNCING: "Syncing Radar",
+    RETRY: "Retry Sync",
+    SYNCED: "Synced",
+    AGO: "ago",
+    DEP: "DEP",
+    ORIGIN: "Origin",
+    ARR: "ARR",
+    TERM_PREFIX: "T",
+    TERM_UNKNOWN: "Term --",
+    ARRIVAL: "Arrival",
+    GATE_BELT: "Gate & Belt",
+    GATE_PREFIX: "G-",
+    GATE_TBD: "Gate TBD",
+    BELT: "Belt",
+    DISTANCE: "Distance",
+    KM: "km",
+    WAIT_TIME: "Wait Time",
+    LANDED: "Landed",
+    ARRIVED: "Arrived",
+    INTERESTS: "Interests & Vibes",
+    CONNECT: "Connect with",
+  },
+  COLORS: {
+    CANCELLED: { text: "text-rose-500", bg: "bg-rose-500/10", border: "border-rose-500/20" },
+    LANDED: { text: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/20" },
+    NOT_STARTED: { text: "text-slate-500", bg: "bg-slate-500/10", border: "border-slate-500/20" },
+    EARLY: { text: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+    LATE: { text: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+    DEFAULT: { text: "text-indigo-500", bg: "bg-indigo-500/10", border: "border-indigo-500/20" },
+  }
+};
 
 type TravellerModalProps = { traveller: Traveller }
 
 const getStatusStyles = (info?: FlightArrivalInfo) => {
   const status = info?.statusShort?.toLowerCase() || "";
-  if (status.includes("cancelled")) return { color: "text-rose-500", bg: "bg-rose-500/10", border: "border-rose-500/20", icon: <XCircle className="w-4 h-4" /> };
-  if (info?.isLanded) return { color: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/20", icon: <CheckCircle2 className="w-4 h-4" /> };
-  if (status.includes("not yet started")) return { color: "text-slate-500", bg: "bg-slate-500/10", border: "border-slate-500/20", icon: <Clock className="w-4 h-4" /> };
-  if (info?.timingCategory === "early") return { color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20", icon: <Plane className="w-4 h-4" /> };
-  if (info?.timingCategory === "late") return { color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20", icon: <Clock className="w-4 h-4" /> };
-  return { color: "text-indigo-500", bg: "bg-indigo-500/10", border: "border-indigo-500/20", icon: <Plane className="w-4 h-4" /> };
+  if (status.includes(CONSTANTS.STATUS_KEYWORDS.CANCELLED)) return { ...CONSTANTS.COLORS.CANCELLED, icon: <XCircle className="w-4 h-4" /> };
+  if (info?.isLanded) return { ...CONSTANTS.COLORS.LANDED, icon: <CheckCircle2 className="w-4 h-4" /> };
+  if (status.includes(CONSTANTS.STATUS_KEYWORDS.NOT_YET_STARTED)) return { ...CONSTANTS.COLORS.NOT_STARTED, icon: <Clock className="w-4 h-4" /> };
+  if (info?.timingCategory === CONSTANTS.STATUS_KEYWORDS.EARLY) return { ...CONSTANTS.COLORS.EARLY, icon: <Plane className="w-4 h-4" /> };
+  if (info?.timingCategory === CONSTANTS.STATUS_KEYWORDS.LATE) return { ...CONSTANTS.COLORS.LATE, icon: <Clock className="w-4 h-4" /> };
+  return { ...CONSTANTS.COLORS.DEFAULT, icon: <Plane className="w-4 h-4" /> };
 };
 
 export function TravellerModal({ traveller }: TravellerModalProps) {
@@ -35,16 +76,16 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
       const info = await fetchFlightTrackerByFlightNumber(traveller.flightNumber, traveller.flightDateTime)
       setFlightInfo(info)
     } catch {
-      setFlightError("Live tracking currently unavailable")
+      setFlightError(CONSTANTS.MESSAGES.TRACKING_UNAVAILABLE)
     }
   }
 
   useEffect(() => { void fetchArrivalInfo() }, [traveller.id])
 
   const calculateWaitTime = () => {
-    if (flightInfo?.isLanded) return "Landed";
+    if (flightInfo?.isLanded) return CONSTANTS.MESSAGES.LANDED;
     const diff = new Date(traveller.flightDateTime).getTime() - now;
-    if (diff <= 0) return "Arrived";
+    if (diff <= 0) return CONSTANTS.MESSAGES.ARRIVED;
     const h = Math.floor(diff / 3600000);
     const m = Math.floor((diff % 3600000) / 60000);
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
@@ -78,7 +119,7 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
         {isLoading ? (
           <div className="flex flex-col items-center gap-4 py-16 animate-in fade-in duration-300">
             <Loader2 className="w-10 h-10 animate-spin text-primary/30" />
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/30">Syncing Radar</span>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/30">{CONSTANTS.MESSAGES.SYNCING}</span>
           </div>
         ) : (
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -89,7 +130,7 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
                 <div className="flex flex-col items-center gap-2 px-8 text-center py-8">
                   <Info className="w-6 h-6 text-muted-foreground/20" />
                   <p className="text-[11px] font-bold text-muted-foreground/50 uppercase tracking-widest">{flightError}</p>
-                  <button onClick={fetchArrivalInfo} className="text-[9px] font-black uppercase text-primary mt-2 underline">Retry Sync</button>
+                  <button onClick={fetchArrivalInfo} className="text-[9px] font-black uppercase text-primary mt-2 underline">{CONSTANTS.MESSAGES.RETRY}</button>
                 </div>
               ) : flightInfo && (
                 <div className="p-5 sm:p-6 space-y-6">
@@ -98,14 +139,14 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
                       {s.icon} {flightInfo.statusShort}
                     </div>
                     <div className="text-[9px] font-bold text-muted-foreground/40 uppercase">
-                      Synced {Math.floor((now - (flightInfo.lastUpdatedAt || 0)) / 60000)}m ago
+                      {CONSTANTS.MESSAGES.SYNCED} {Math.floor((now - (flightInfo.lastUpdatedAt || 0)) / 60000)}m {CONSTANTS.MESSAGES.AGO}
                     </div>
                   </div>
 
                   <div className="flex items-center justify-between gap-6 px-2">
                     <div className="text-center font-black">
-                       <div className="text-lg">DEP</div>
-                       <div className="text-[8px] text-muted-foreground/40 uppercase">Origin</div>
+                       <div className="text-lg">{CONSTANTS.MESSAGES.DEP}</div>
+                       <div className="text-[8px] text-muted-foreground/40 uppercase">{CONSTANTS.MESSAGES.ORIGIN}</div>
                     </div>
                     <div className="flex-1 relative h-px bg-current opacity-10">
                        <div className={`absolute top-1/2 -translate-y-1/2 p-2 rounded-full bg-background border-2 shadow-sm transition-all duration-700 ${s.color} ${s.border} ${flightInfo.isLanded ? 'right-0' : 'left-1/2'}`}>
@@ -113,21 +154,21 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
                        </div>
                     </div>
                     <div className="text-center font-black">
-                       <div className="text-lg">ARR</div>
-                       <div className="text-[8px] text-muted-foreground/40 uppercase">{flightInfo.terminal ? `T${flightInfo.terminal}` : 'Term --'}</div>
+                       <div className="text-lg">{CONSTANTS.MESSAGES.ARR}</div>
+                       <div className="text-[8px] text-muted-foreground/40 uppercase">{flightInfo.terminal ? `${CONSTANTS.MESSAGES.TERM_PREFIX}${flightInfo.terminal}` : CONSTANTS.MESSAGES.TERM_UNKNOWN}</div>
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-6 pt-4 border-t border-current/5">
                     <div>
-                      <div className="text-[9px] font-black text-muted-foreground/40 uppercase">Arrival</div>
+                      <div className="text-[9px] font-black text-muted-foreground/40 uppercase">{CONSTANTS.MESSAGES.ARRIVAL}</div>
                       <div className={`text-lg font-black tabular-nums ${s.color}`}>{flightInfo.arrivalTimeLocal}</div>
                       {flightInfo.timingLabel && <div className="text-[9px] font-bold opacity-60 uppercase">{flightInfo.timingLabel}</div>}
                     </div>
                     <div className="text-right">
-                      <div className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-tighter">Gate & Belt</div>
-                      <div className="text-sm font-black">{flightInfo.gate ? `G-${flightInfo.gate}` : 'Gate TBD'}</div>
-                      {flightInfo.baggage && <div className="text-[10px] font-bold text-muted-foreground/60 uppercase">Belt {flightInfo.baggage}</div>}
+                      <div className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-tighter">{CONSTANTS.MESSAGES.GATE_BELT}</div>
+                      <div className="text-sm font-black">{flightInfo.gate ? `${CONSTANTS.MESSAGES.GATE_PREFIX}${flightInfo.gate}` : CONSTANTS.MESSAGES.GATE_TBD}</div>
+                      {flightInfo.baggage && <div className="text-[10px] font-bold text-muted-foreground/60 uppercase">{CONSTANTS.MESSAGES.BELT} {flightInfo.baggage}</div>}
                     </div>
                   </div>
                 </div>
@@ -137,12 +178,12 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
             {/* Metrics Grid */}
             <div className="grid grid-cols-2 gap-3">
               <div className="p-4 rounded-3xl bg-muted/10 border border-border/10">
-                <div className="text-[9px] font-black text-muted-foreground/40 uppercase mb-1 tracking-widest">Distance</div>
-                <span className="text-xl font-black tracking-tight">{traveller.distanceFromUserKm} <span className="text-xs font-normal">km</span></span>
+                <div className="text-[9px] font-black text-muted-foreground/40 uppercase mb-1 tracking-widest">{CONSTANTS.MESSAGES.DISTANCE}</div>
+                <span className="text-xl font-black tracking-tight">{traveller.distanceFromUserKm} <span className="text-xs font-normal">{CONSTANTS.MESSAGES.KM}</span></span>
               </div>
               <div className="p-4 rounded-3xl bg-muted/10 border border-border/10">
-                <div className="text-[9px] font-black text-muted-foreground/40 uppercase mb-1 tracking-widest">Wait Time</div>
-                <span className={`text-xl font-black tracking-tight ${calculateWaitTime() === "Landed" ? 'text-blue-500' : ''}`}>
+                <div className="text-[9px] font-black text-muted-foreground/40 uppercase mb-1 tracking-widest">{CONSTANTS.MESSAGES.WAIT_TIME}</div>
+                <span className={`text-xl font-black tracking-tight ${calculateWaitTime() === CONSTANTS.MESSAGES.LANDED ? 'text-blue-500' : ''}`}>
                   {calculateWaitTime()}
                 </span>
               </div>
@@ -152,7 +193,7 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
             {traveller.tags && traveller.tags.length > 0 && (
               <div className="space-y-3 px-1">
                 <div className="flex items-center gap-2 text-[9px] font-black text-muted-foreground/40 uppercase tracking-[0.2em]">
-                  <Heart className="w-3 h-3" /> Interests & Vibes
+                  <Heart className="w-3 h-3" /> {CONSTANTS.MESSAGES.INTERESTS}
                 </div>
                 <div className="flex flex-wrap gap-1.5">
                   {traveller.tags.map((tag, i) => (
@@ -166,7 +207,7 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
 
             {/* Action Button */}
             <button className="w-full py-4.5 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:brightness-105 active:scale-[0.98] transition-all">
-              Connect with {traveller.name.split(' ')[0]}
+              {CONSTANTS.MESSAGES.CONNECT} {traveller.name.split(' ')[0]}
             </button>
 
           </div>

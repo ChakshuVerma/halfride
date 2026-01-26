@@ -176,8 +176,6 @@ export function useFlightTrackerApi() {
       const year = flightDate.getFullYear()
       const month = flightDate.getMonth() + 1
       const day = flightDate.getDate()
-      // Add a fake delay of 500ms
-      await new Promise((resolve) => setTimeout(resolve, 500))
       return fetchFlightTracker({ carrier, flightNum, year, month, day })
     },
     [fetchFlightTracker]

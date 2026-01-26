@@ -17,11 +17,31 @@ import { InfoMessages } from "./helper"
 import { useAuthApi } from "../../hooks/useAuthApi"
 
 // Constants
-const ERROR_DURATION = 2000
-const LOGIN_FAILED_ERROR = "Login failed"
-const USERNAME_LABEL = "Username"
-const PASSWORD_LABEL = "Password"
-const TOAST_LOGIN_SUCCESS = "Logged in"
+const CONSTANTS = {
+  ERROR_DURATION: 2000,
+  ERRORS: {
+    LOGIN_FAILED: "Login failed",
+  },
+  LABELS: {
+    USERNAME: "Username",
+    PASSWORD: "Password",
+    SIGN_IN_DESC: "Sign in to continue to your dashboard",
+    CONTINUE: "Continue",
+    LOGGING_IN: "Logging you in...",
+    FORGOT_PASSWORD: "Forgot your password?",
+    CREATE_ACCOUNT: "New here? Create an account",
+  },
+  PLACEHOLDERS: {
+    USERNAME: "your_username",
+  },
+  TOASTS: {
+    LOGIN_SUCCESS: "Logged in",
+  },
+  TYPES: {
+    TEXT: "text",
+    PASSWORD: "password",
+  }
+}
 
 export function Login() {
   const [username, setUsername] = useState("")
@@ -34,7 +54,7 @@ export function Login() {
 
   const showError = (message: string) => {
     setError(message)
-    setTimeout(() => setError(""), ERROR_DURATION)
+    setTimeout(() => setError(""), CONSTANTS.ERROR_DURATION)
   }
 
   const doLogin = async (e: React.FormEvent) => {
@@ -45,12 +65,12 @@ export function Login() {
     setError("")
     try {
       await login({ username, password })
-      toast.success(TOAST_LOGIN_SUCCESS)
+      toast.success(CONSTANTS.TOASTS.LOGIN_SUCCESS)
       // AuthContext loads session on app load; simplest is to reload and route.
       navigate("/dashboard")
       window.location.reload()
     } catch {
-      showError(LOGIN_FAILED_ERROR)
+      showError(CONSTANTS.ERRORS.LOGIN_FAILED)
     } finally {
       setIsLoading(false)
     }
@@ -67,7 +87,7 @@ export function Login() {
             {InfoMessages.welcomeMessage}
           </CardTitle>
           <CardDescription className="text-base text-muted-foreground/80 font-medium">
-            Sign in to continue to your dashboard
+            {CONSTANTS.LABELS.SIGN_IN_DESC}
           </CardDescription>
         </CardHeader>
 
@@ -78,13 +98,13 @@ export function Login() {
                 htmlFor="username"
                 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide ml-1"
               >
-                {USERNAME_LABEL}
+                {CONSTANTS.LABELS.USERNAME}
               </Label>
               <Input
                 id="username"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="your_username"
+                placeholder={CONSTANTS.PLACEHOLDERS.USERNAME}
                 className="h-12 bg-background rounded-xl border-border/60 focus:ring-4 focus:ring-primary/10 transition-all"
                 required
                 disabled={isLoading}
@@ -95,12 +115,12 @@ export function Login() {
                 htmlFor="password"
                 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide ml-1"
               >
-                {PASSWORD_LABEL}
+                {CONSTANTS.LABELS.PASSWORD}
               </Label>
               <div className="relative">
                 <Input
                   id="password"
-                  type={showPassword ? "text" : "password"}
+                  type={showPassword ? CONSTANTS.TYPES.TEXT : CONSTANTS.TYPES.PASSWORD}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="h-12 bg-background rounded-xl border-border/60 focus:ring-4 focus:ring-primary/10 transition-all pr-10"
@@ -129,10 +149,10 @@ export function Login() {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Logging you in...
+                  {CONSTANTS.LABELS.LOGGING_IN}
                 </>
               ) : (
-                "Continue"
+                CONSTANTS.LABELS.CONTINUE
               )}
             </Button>
           </form>
@@ -145,7 +165,7 @@ export function Login() {
             className="text-xs sm:text-sm text-muted-foreground hover:text-primary"
             onClick={() => navigate("/forgot-password")}
           >
-            Forgot your password?
+            {CONSTANTS.LABELS.FORGOT_PASSWORD}
           </Button>
           <Button
             variant="ghost"
@@ -153,7 +173,7 @@ export function Login() {
             className="text-xs sm:text-sm text-muted-foreground hover:text-primary"
             onClick={() => navigate("/signup")}
           >
-            New here? Create an account
+            {CONSTANTS.LABELS.CREATE_ACCOUNT}
           </Button>
         </CardFooter>
       </Card>

@@ -2,24 +2,34 @@ import { Users, MapPin, Clock, CalendarRange, ArrowRight } from "lucide-react"
 import type { Group } from "./types"
 import { formatWaitTime, formatFlightDateTime } from "./utils"
 
-type GroupCardProps = {
-  group: Group
-  onClick: () => void
-}
-
-const TEXTS = {
+const CONSTANTS = {
   LABELS: {
     SEATS: "seats",
     CAPACITY: "Capacity",
     DESTINATION: "Destination",
     FLIGHT_TIME: "Flight",
     WAIT_TIME: "Wait",
-    DISTANCE: "Distance away",
-    JOIN: "Join Group"
   },
   UNITS: {
     KM: "km",
+    PERCENT: "%",
+  },
+  SUFFIX: {
+    USERS: "Users",
+    FULL: "Full",
+  },
+  BUTTONS: {
+    VIEW_MORE: "View More",
+  },
+  GENDER: {
+    MALE: "Male",
+    FEMALE: "Female",
   }
+}
+
+type GroupCardProps = {
+  group: Group
+  onClick: () => void
 }
 
 export function GroupCard({ group, onClick }: GroupCardProps) {
@@ -50,7 +60,7 @@ export function GroupCard({ group, onClick }: GroupCardProps) {
                    <div className="flex items-center gap-2 mt-1">
                         {/* Capacity Pill */}
                         <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white text-violet-600 border border-zinc-200 text-[10px] font-bold dark:bg-zinc-800 dark:border-zinc-700 dark:text-violet-400 shadow-sm">
-                            <span>{group.groupSize}/{group.maxUsers} Users</span>
+                            <span>{group.groupSize}/{group.maxUsers} {CONSTANTS.SUFFIX.USERS}</span>
                         </div>
                    </div>
                 </div>
@@ -60,8 +70,8 @@ export function GroupCard({ group, onClick }: GroupCardProps) {
         {/* Capacity Bar */}
         <div className="mt-4">
              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{TEXTS.LABELS.CAPACITY}</span>
-                <span className="text-[10px] font-bold text-foreground">{percentFull}% Full</span>
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{CONSTANTS.LABELS.CAPACITY}</span>
+                <span className="text-[10px] font-bold text-foreground">{percentFull}{CONSTANTS.UNITS.PERCENT} {CONSTANTS.SUFFIX.FULL}</span>
              </div>
              <div className="h-2 w-full rounded-full bg-white border border-zinc-100 dark:bg-white/10 dark:border-white/5 overflow-hidden shadow-sm">
                 <div 
@@ -72,10 +82,10 @@ export function GroupCard({ group, onClick }: GroupCardProps) {
              {/* Gender Dist Dots - Visual Only */}
              <div className="flex justify-end mt-1.5 gap-1">
                  {Array.from({ length: group.genderBreakdown.male }).map((_, i) => (
-                    <div key={`m-${i}`} className="w-1.5 h-1.5 rounded-full bg-blue-500" title="Male" />
+                    <div key={`m-${i}`} className="w-1.5 h-1.5 rounded-full bg-blue-500" title={CONSTANTS.GENDER.MALE} />
                  ))}
                  {Array.from({ length: group.genderBreakdown.female }).map((_, i) => (
-                    <div key={`f-${i}`} className="w-1.5 h-1.5 rounded-full bg-pink-500" title="Female" />
+                    <div key={`f-${i}`} className="w-1.5 h-1.5 rounded-full bg-pink-500" title={CONSTANTS.GENDER.FEMALE} />
                  ))}
              </div>
         </div>
@@ -88,7 +98,7 @@ export function GroupCard({ group, onClick }: GroupCardProps) {
            {/* Destination */}
            <div className="flex flex-col gap-1">
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
-                  <MapPin className="w-3 h-3" /> {TEXTS.LABELS.DESTINATION}
+                  <MapPin className="w-3 h-3" /> {CONSTANTS.LABELS.DESTINATION}
               </span>
               <span className="text-xs font-bold text-foreground truncate" title={group.destination}>
                   {group.destination}
@@ -98,7 +108,7 @@ export function GroupCard({ group, onClick }: GroupCardProps) {
            {/* Time */}
            <div className="flex flex-col gap-1 sm:border-l border-zinc-100 sm:pl-3 pt-2 sm:pt-0 border-t sm:border-t-0 dark:border-white/5">
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> {TEXTS.LABELS.FLIGHT_TIME}
+                  <Clock className="w-3 h-3" /> {CONSTANTS.LABELS.FLIGHT_TIME}
               </span>
               <span className="text-xs font-bold text-foreground">
                   {formatFlightDateTime(group.flightDateTime).split(',')[1]} 
@@ -108,7 +118,7 @@ export function GroupCard({ group, onClick }: GroupCardProps) {
            {/* Wait */}
            <div className="flex flex-col gap-1 sm:border-l border-zinc-100 sm:pl-3 pt-2 sm:pt-0 border-t sm:border-t-0 dark:border-white/5">
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
-                 <CalendarRange className="w-3 h-3" /> {TEXTS.LABELS.WAIT_TIME}
+                 <CalendarRange className="w-3 h-3" /> {CONSTANTS.LABELS.WAIT_TIME}
               </span>
               <span className="text-xs font-bold text-foreground">
                   {formatWaitTime(group.flightDateTime)}
@@ -120,7 +130,7 @@ export function GroupCard({ group, onClick }: GroupCardProps) {
         <div className="px-4 py-3 bg-zinc-50/30 border-t border-zinc-100 dark:bg-zinc-900/30 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0 transition-colors duration-300">
            <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 w-full sm:w-auto justify-center sm:justify-start">
               <MapPin className="w-3.5 h-3.5 text-primary" />
-              {group.distanceFromUserKm} {TEXTS.UNITS.KM}
+              {group.distanceFromUserKm} {CONSTANTS.UNITS.KM}
            </span>
            <button 
             onClick={(e) => {
@@ -129,7 +139,7 @@ export function GroupCard({ group, onClick }: GroupCardProps) {
             }}
             className="w-full sm:w-auto text-xs font-bold bg-foreground text-background px-6 py-2.5 sm:py-1.5 rounded-xl shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-1"
            >
-              View More <ArrowRight className="w-3 h-3" />
+              {CONSTANTS.BUTTONS.VIEW_MORE} <ArrowRight className="w-3 h-3" />
            </button>
         </div>
       </div>
