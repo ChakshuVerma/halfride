@@ -5,11 +5,7 @@ import { useGetTravellerApi } from "@/hooks/useGetTravellerApi"
 import type { Group, Traveller } from "./types"
 import { formatWaitTime } from "./utils"
 
-type GroupModalProps = {
-  group: Group
-}
-
-const TEXTS = {
+const CONSTANTS = {
   LABELS: {
     CAPACITY: "Group Capacity",
     MIN_DISTANCE: "Min Dist",
@@ -20,11 +16,27 @@ const TEXTS = {
     SEPARATOR_DOT: " • ",
     JOIN: "Join Group",
     MEMBERS: "Members",
-    NO_MEMBERS: "No members found"
+    NO_MEMBERS: "No members found",
+    USERS_Lower: "users",
+    TERM: "Term",
+    OF: "of",
+    GROUP_FULL: "Group Full",
   },
   UNITS: {
     KM_MIN: "km (min)",
+  },
+  LOGS: {
+    LOAD_FAILED: "Failed to load members",
+    JOIN_CLICKED: "Join Group clicked for",
+  },
+  GENDER: {
+    MALE: "Male",
+    FEMALE: "Female",
   }
+}
+
+type GroupModalProps = {
+  group: Group
 }
 
 export function GroupModal({ group }: GroupModalProps) {
@@ -42,7 +54,7 @@ export function GroupModal({ group }: GroupModalProps) {
         const data = await fetchGroupMembers(group.id, group.groupSize)
         setMembers(data)
       } catch (err) {
-        console.error("Failed to load members", err)
+        console.error(CONSTANTS.LOGS.LOAD_FAILED, err)
       } finally {
         setIsLoadingMembers(false)
       }
@@ -51,7 +63,7 @@ export function GroupModal({ group }: GroupModalProps) {
   }, [group.id, fetchGroupMembers])
 
   const renderGenderBar = (type: "Male" | "Female") => {
-    const isMale = type === "Male"
+    const isMale = type === CONSTANTS.GENDER.MALE
     const count = isMale ? group.genderBreakdown.male : group.genderBreakdown.female
     const className = isMale ? "rounded-l-lg border-l" : "rounded-r-lg border-r"
 
@@ -101,10 +113,10 @@ export function GroupModal({ group }: GroupModalProps) {
             <DialogDescription className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground/80 font-medium">
               <span className="inline-flex items-center gap-1 bg-muted/30 px-2 py-0.5 rounded-md border border-border/40">
                 <Users className="w-3 h-3" />
-                {group.groupSize} users
+                {group.groupSize} {CONSTANTS.LABELS.USERS_Lower}
               </span>
               <span className="text-muted-foreground/40">•</span>
-              <span>Term {group.terminal}</span>
+              <span>{CONSTANTS.LABELS.TERM} {group.terminal}</span>
             </DialogDescription>
           </div>
         </div>
@@ -115,10 +127,10 @@ export function GroupModal({ group }: GroupModalProps) {
          <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest">
-              {TEXTS.LABELS.CAPACITY}
+              {CONSTANTS.LABELS.CAPACITY}
             </span>
             <span className="text-xs font-semibold text-foreground">
-              {group.groupSize} <span className="text-muted-foreground font-normal">of</span> {group.maxUsers}
+              {group.groupSize} <span className="text-muted-foreground font-normal">{CONSTANTS.LABELS.OF}</span> {group.maxUsers}
             </span>
           </div>
           <div className="h-2 w-full rounded-full bg-muted/30 overflow-hidden shadow-inner ring-1 ring-border/10">
@@ -138,17 +150,17 @@ export function GroupModal({ group }: GroupModalProps) {
           <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/10 border border-border/10">
              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
                <MapPin className="w-3 h-3" />
-               {TEXTS.LABELS.MIN_DISTANCE}
+               {CONSTANTS.LABELS.MIN_DISTANCE}
              </div>
              <span className="text-lg font-bold text-foreground">
-               {group.distanceFromUserKm} <span className="text-xs font-medium text-muted-foreground">{TEXTS.UNITS.KM_MIN}</span>
+               {group.distanceFromUserKm} <span className="text-xs font-medium text-muted-foreground">{CONSTANTS.UNITS.KM_MIN}</span>
              </span>
           </div>
 
           <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/10 border border-border/10">
             <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
                <Clock className="w-3 h-3" />
-               {TEXTS.LABELS.WAIT_TIME}
+               {CONSTANTS.LABELS.WAIT_TIME}
              </div>
             <span className="text-lg font-bold text-foreground">
               {formatWaitTime(group.flightDateTime)}
@@ -159,7 +171,7 @@ export function GroupModal({ group }: GroupModalProps) {
         {/* Gender Distribution */}
         <div className="rounded-xl bg-muted/5 border border-border/10 p-3 space-y-2.5">
            <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest block">
-              {TEXTS.LABELS.GENDER_DIST}
+              {CONSTANTS.LABELS.GENDER_DIST}
            </span>
            <div className="flex items-center gap-1.5">
              {renderGenderBar("Male")}
@@ -170,7 +182,7 @@ export function GroupModal({ group }: GroupModalProps) {
         {/* Group Members List */}
         <div className="space-y-2.5 pt-2 border-t border-border/10">
           <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest block">
-            {TEXTS.LABELS.MEMBERS} ({members.length})
+            {CONSTANTS.LABELS.MEMBERS} ({members.length})
           </span>
           <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
             {isLoadingMembers ? (
@@ -181,7 +193,7 @@ export function GroupModal({ group }: GroupModalProps) {
               members.map((member) => (
                 <div key={member.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/10 transition-colors border border-transparent hover:border-border/5">
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 border shadow-sm ${
-                    member.gender === "Male"
+                    member.gender === CONSTANTS.GENDER.MALE
                       ? "bg-linear-to-br from-blue-500/10 to-blue-500/5 border-blue-500/10 text-blue-600"
                       : "bg-linear-to-br from-pink-500/10 to-pink-500/5 border-pink-500/10 text-pink-600"
                   }`}>
@@ -200,7 +212,7 @@ export function GroupModal({ group }: GroupModalProps) {
                 </div>
               ))
             ) : (
-               <p className="text-xs text-muted-foreground py-2 text-center">{TEXTS.LABELS.NO_MEMBERS}</p>
+               <p className="text-xs text-muted-foreground py-2 text-center">{CONSTANTS.LABELS.NO_MEMBERS}</p>
             )}
           </div>
         </div>
@@ -215,14 +227,14 @@ export function GroupModal({ group }: GroupModalProps) {
                 : "bg-primary text-primary-foreground hover:shadow-lg hover:shadow-primary/25 active:scale-[0.99]"
               }`}
             onClick={() => {
-              console.log("Join Group clicked for", group.name)
+              console.log(CONSTANTS.LOGS.JOIN_CLICKED, group.name)
             }}
           >
             {!isFull && (
                <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
             )}
             <span className="relative flex items-center justify-center gap-2 font-bold text-sm tracking-wide">
-              {isFull ? "Group Full" : TEXTS.LABELS.JOIN}
+              {isFull ? CONSTANTS.LABELS.GROUP_FULL : CONSTANTS.LABELS.JOIN}
               {!isFull && <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />}
             </span>
           </button>

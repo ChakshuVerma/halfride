@@ -14,7 +14,7 @@ import { GroupModal } from "./group-modal"
 import { type Traveller, type Group, type ViewMode, type SelectedEntity, ENTITY_TYPE, VIEW_MODE } from "./types"
 import ListSection from "./list-section"
 
-const TEXTS = {
+const CONSTANTS = {
   ERRORS: {
     TRAVELLER_OR_FLIGHT_NOT_FOUND: "Traveller or flight info not found",
     REFRESH_FLIGHT_ERROR: "Could not refresh flight arrival time.",
@@ -31,12 +31,24 @@ const TEXTS = {
     HEADER: "Terminal travellers & groups",
     DEPARTING_FROM: "Departing from",
     TERMINAL_LOWER: "terminal",
+    ALL_GENDERS: "All Genders",
+    MIN_DISTANCE: "Min Distance",
+    WAIT_TIME: "Wait Time",
+    SELECT_TERMINAL_TITLE: "Select a Terminal",
+    SELECT_TERMINAL_MSG: "Please select an airport and terminal above to view available travellers and groups.",
   },
   MESSAGES: {
     NO_TRAVELLERS: "No travellers found. Try changing the filter.",
     NO_GROUPS: "No groups found. Try changing the filter.",
   },
   LOADING: "Loading...",
+  VALUES: {
+     ALL: "all",
+     MALE: "Male",
+     FEMALE: "Female",
+     DISTANCE: "distance",
+     WAIT_TIME_VAL: "wait_time",
+  }
 }
 
 
@@ -110,18 +122,18 @@ const TerminalTravellers = () => {
 
   const ListSectionWrapper = useCallback(() => {
     if (!selectedAirport || !selectedTerminal) return null
-    const title = viewMode === VIEW_MODE.INDIVIDUAL ? TEXTS.LABELS.TRAVELLERS_TITLE : TEXTS.LABELS.GROUPS_TITLE
+    const title = viewMode === VIEW_MODE.INDIVIDUAL ? CONSTANTS.LABELS.TRAVELLERS_TITLE : CONSTANTS.LABELS.GROUPS_TITLE
 
-    const emptyMessage = viewMode === VIEW_MODE.INDIVIDUAL ? TEXTS.MESSAGES.NO_TRAVELLERS : TEXTS.MESSAGES.NO_GROUPS
+    const emptyMessage = viewMode === VIEW_MODE.INDIVIDUAL ? CONSTANTS.MESSAGES.NO_TRAVELLERS : CONSTANTS.MESSAGES.NO_GROUPS
     const animation = viewMode === VIEW_MODE.INDIVIDUAL ? "left" : "right"
-    const terminalSubtitle = `${TEXTS.LABELS.DEPARTING_FROM} ${selectedAirport}, ${TEXTS.LABELS.TERMINAL_LOWER} ${selectedTerminal}.`
+    const terminalSubtitle = `${CONSTANTS.LABELS.DEPARTING_FROM} ${selectedAirport}, ${CONSTANTS.LABELS.TERMINAL_LOWER} ${selectedTerminal}.`
 
     // --- Filtering & Sorting Logic ---
     let processedTravellers = [...travellers]
     let processedGroups = [...groups]
 
     // 1. FILTER
-    if (filterGender !== "all") {
+    if (filterGender !== CONSTANTS.VALUES.ALL) {
         if (viewMode === VIEW_MODE.INDIVIDUAL) {
             processedTravellers = processedTravellers.filter(t => t.gender === filterGender)
         } else {
@@ -131,9 +143,9 @@ const TerminalTravellers = () => {
 
     // 2. SORT
     const sortFn = (a: any, b: any) => {
-        if (sortBy === "distance") {
+        if (sortBy === CONSTANTS.VALUES.DISTANCE) {
             return a.distanceFromUserKm - b.distanceFromUserKm
-        } else if (sortBy === "wait_time") {
+        } else if (sortBy === CONSTANTS.VALUES.WAIT_TIME_VAL) {
             return new Date(a.flightDateTime).getTime() - new Date(b.flightDateTime).getTime()
         }
         return 0
@@ -198,7 +210,7 @@ const TerminalTravellers = () => {
     return (
       <div className="flex flex-col items-center justify-center h-full py-16 text-muted-foreground/60 gap-3">
         <Loader2 className="w-8 h-8 animate-spin text-primary/60" />
-        <span className="text-sm font-medium">{TEXTS.LOADING}</span>
+        <span className="text-sm font-medium">{CONSTANTS.LOADING}</span>
       </div>
     )
   }
@@ -248,12 +260,12 @@ const TerminalTravellers = () => {
                 </div>
                 <div>
                   <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight">
-                    {TEXTS.LABELS.HEADER}
+                    {CONSTANTS.LABELS.HEADER}
                   </CardTitle>
                 </div>
               </div>
               <div className="hidden sm:block text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800/50 border border-border/40">
-                {TEXTS.LABELS.DUMMY_DATA}
+                {CONSTANTS.LABELS.DUMMY_DATA}
               </div>
             </div>
           </CardHeader>
@@ -263,7 +275,7 @@ const TerminalTravellers = () => {
               <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
                 <div className="flex flex-col gap-3 flex-1 w-full">
                   <label className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-widest">
-                    {TEXTS.LABELS.AIRPORT_AND_TERMINAL}
+                    {CONSTANTS.LABELS.AIRPORT_AND_TERMINAL}
                   </label>
                   <Select
                     value={`${selectedAirport}__${selectedTerminal}`}
@@ -274,7 +286,7 @@ const TerminalTravellers = () => {
                     }}
                   >
                     <SelectTrigger className="h-13 bg-background rounded-2xl border border-border/30 hover:border-border/50 focus:ring-2 focus:ring-primary/20 transition-all duration-200 shadow-sm hover:shadow-md w-full">
-                      <SelectValue placeholder={TEXTS.LABELS.SELECT_PLACEHOLDER} />
+                      <SelectValue placeholder={CONSTANTS.LABELS.SELECT_PLACEHOLDER} />
                     </SelectTrigger>
                     <SelectContent className="rounded-2xl border border-border/20 shadow-xl">
                       {airportTerminalCombos.map((combo) => (
@@ -297,7 +309,7 @@ const TerminalTravellers = () => {
                         {/* Toggle */}
                         <div className="flex flex-col gap-3 w-full xl:w-auto">
                           <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">
-                            {TEXTS.LABELS.VIEW}
+                            {CONSTANTS.LABELS.VIEW}
                           </label>
                           <div className="flex p-1 bg-zinc-100/50 dark:bg-zinc-800/50 border border-zinc-200/50 dark:border-white/5 rounded-xl relative w-full xl:w-[280px]">
                             {/* Sliding Background */}
@@ -308,12 +320,12 @@ const TerminalTravellers = () => {
                               `}
                             />
                             <ToggleButton
-                              label={TEXTS.LABELS.INDIVIDUAL}
+                              label={CONSTANTS.LABELS.INDIVIDUAL}
                               isActive={viewMode === VIEW_MODE.INDIVIDUAL}
                               onClick={() => setViewMode(VIEW_MODE.INDIVIDUAL)}
                             />
                             <ToggleButton
-                              label={TEXTS.LABELS.GROUP}
+                              label={CONSTANTS.LABELS.GROUP}
                               isActive={viewMode === VIEW_MODE.GROUP}
                               onClick={() => setViewMode(VIEW_MODE.GROUP)}
                             />
@@ -332,14 +344,14 @@ const TerminalTravellers = () => {
                                     <div className="flex items-center gap-2.5 truncate">
                                       <Filter className="w-4 h-4 text-zinc-400" />
                                       <span className="text-sm text-zinc-700 dark:text-zinc-200">
-                                        {filterGender === 'all' ? 'All Genders' : filterGender}
+                                        {filterGender === CONSTANTS.VALUES.ALL ? CONSTANTS.LABELS.ALL_GENDERS : filterGender}
                                       </span>
                                     </div>
                                   </SelectTrigger>
                                   <SelectContent className="rounded-xl border border-zinc-200 dark:border-white/10 shadow-xl p-1">
-                                    <SelectItem value="all" className="rounded-lg">All Genders</SelectItem>
-                                    <SelectItem value="Male" className="text-blue-600 focus:text-blue-600 dark:text-blue-400 dark:focus:text-blue-400 font-medium rounded-lg">Male</SelectItem>
-                                    <SelectItem value="Female" className="text-pink-600 focus:text-pink-600 dark:text-pink-400 dark:focus:text-pink-400 font-medium rounded-lg">Female</SelectItem>
+                                    <SelectItem value={CONSTANTS.VALUES.ALL} className="rounded-lg">{CONSTANTS.LABELS.ALL_GENDERS}</SelectItem>
+                                    <SelectItem value={CONSTANTS.VALUES.MALE} className="text-blue-600 focus:text-blue-600 dark:text-blue-400 dark:focus:text-blue-400 font-medium rounded-lg">{CONSTANTS.VALUES.MALE}</SelectItem>
+                                    <SelectItem value={CONSTANTS.VALUES.FEMALE} className="text-pink-600 focus:text-pink-600 dark:text-pink-400 dark:focus:text-pink-400 font-medium rounded-lg">{CONSTANTS.VALUES.FEMALE}</SelectItem>
                                   </SelectContent>
                                 </Select>
                              </div>
@@ -354,13 +366,13 @@ const TerminalTravellers = () => {
                                      <div className="flex items-center gap-2.5 truncate">
                                       <ArrowUpDown className="w-4 h-4 text-zinc-400" />
                                       <span className="text-sm text-zinc-700 dark:text-zinc-200">
-                                        {sortBy === 'distance' ? 'Min Distance' : 'Wait Time'}
+                                        {sortBy === CONSTANTS.VALUES.DISTANCE ? CONSTANTS.LABELS.MIN_DISTANCE : CONSTANTS.LABELS.WAIT_TIME}
                                       </span>
                                     </div>
                                   </SelectTrigger>
                                   <SelectContent className="rounded-xl border border-zinc-200 dark:border-white/10 shadow-xl p-1">
-                                    <SelectItem value="distance" className="rounded-lg">Min Distance</SelectItem>
-                                    <SelectItem value="wait_time" className="rounded-lg">Wait Time</SelectItem>
+                                    <SelectItem value={CONSTANTS.VALUES.DISTANCE} className="rounded-lg">{CONSTANTS.LABELS.MIN_DISTANCE}</SelectItem>
+                                    <SelectItem value={CONSTANTS.VALUES.WAIT_TIME_VAL} className="rounded-lg">{CONSTANTS.LABELS.WAIT_TIME}</SelectItem>
                                   </SelectContent>
                                 </Select>
                              </div>
@@ -376,9 +388,9 @@ const TerminalTravellers = () => {
                          <MapPin className="w-8 h-8 sm:w-10 sm:h-10 opacity-50" />
                       </div>
                       <div className="space-y-1 max-w-sm px-4">
-                        <h3 className="text-lg font-semibold text-foreground">Select a Terminal</h3>
+                        <h3 className="text-lg font-semibold text-foreground">{CONSTANTS.LABELS.SELECT_TERMINAL_TITLE}</h3>
                         <p className="text-sm text-muted-foreground/70">
-                          Please select an airport and terminal above to view available travellers and groups.
+                          {CONSTANTS.LABELS.SELECT_TERMINAL_MSG}
                         </p>
                       </div>
                    </div>

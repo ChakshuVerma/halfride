@@ -23,18 +23,45 @@ import { cn } from "@/lib/utils"
 import { useAuthApi } from "../../hooks/useAuthApi"
 
 // Constants
-const OTP_LENGTH = 6
-
-// Error messages
-const ERROR_USERNAME_REQUIRED = "Username is required"
-const ERROR_USERNAME_PASSWORD_REQUIRED = "Username and new password are required"
-const ERROR_RECAPTCHA_NOT_READY = "reCAPTCHA not ready"
-const ERROR_SEND_OTP_FAILED = "Failed to send OTP"
-const ERROR_RESET_FAILED = "Reset failed"
-
-// Success messages
-const TOAST_OTP_SENT = "OTP sent"
-const TOAST_PASSWORD_UPDATED = "Password updated. Please login."
+const CONSTANTS = {
+  OTP_LENGTH: 6,
+  ERRORS: {
+    USERNAME_REQUIRED: "Username is required",
+    USERNAME_PASSWORD_REQUIRED: "Username and new password are required",
+    RECAPTCHA_NOT_READY: "reCAPTCHA not ready",
+    SEND_OTP_FAILED: "Failed to send OTP",
+    RESET_FAILED: "Reset failed",
+  },
+  TOASTS: {
+    OTP_SENT: "OTP sent",
+    PASSWORD_UPDATED: "Password updated. Please login.",
+  },
+  LABELS: {
+    HEADER_TITLE: "Reset password",
+    HEADER_DESC: "Verify your phone via OTP, then choose a new password.",
+    USERNAME: "Username",
+    NEW_PASSWORD: "New password",
+    PHONE: "Phone",
+    OTP: "OTP",
+    BACK_TO_LOGIN: "Back to login",
+  },
+  BUTTONS: {
+    RESETTING: "Resetting password...",
+    SENDING_OTP: "Sending OTP...",
+    VERIFY_UPDATE: "Verify OTP & Update password",
+    SEND_OTP: "Send OTP",
+    CONTINUE: "Continue",
+  },
+  PASSWORD_STRENGTH: {
+    WEAK: "Weak password",
+    MEDIUM: "Medium strength",
+    STRONG: "Strong password",
+    HINT: "Use 8+ characters with uppercase, lowercase, numbers, and special characters",
+  },
+  PLACEHOLDERS: {
+    PHONE: "9876543210",
+  }
+}
 
 export function ForgotPassword() {
   const navigate = useNavigate()
@@ -77,7 +104,7 @@ export function ForgotPassword() {
     e.preventDefault()
     
     if (!username.trim()) {
-      toast.error(ERROR_USERNAME_REQUIRED)
+      toast.error(CONSTANTS.ERRORS.USERNAME_REQUIRED)
       return
     }
 
@@ -92,14 +119,14 @@ export function ForgotPassword() {
 
   const sendOtp = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!recaptchaRef.current) return toast.error(ERROR_RECAPTCHA_NOT_READY)
+    if (!recaptchaRef.current) return toast.error(CONSTANTS.ERRORS.RECAPTCHA_NOT_READY)
     if (isSendingOtp) return
 
     setIsSendingOtp(true)
     try {
       const verifier = recaptchaRef.current
       if (!verifier) {
-        toast.error(ERROR_RECAPTCHA_NOT_READY)
+        toast.error(CONSTANTS.ERRORS.RECAPTCHA_NOT_READY)
         return
       }
       const callingCode = getCountryCallingCode(country)
@@ -109,10 +136,10 @@ export function ForgotPassword() {
       verifier.clear()
       recaptchaRef.current = null
       setResetKey((x) => x + 1)
-      toast.success(TOAST_OTP_SENT)
+      toast.success(CONSTANTS.TOASTS.OTP_SENT)
     } catch (e) {
       console.error(e)
-      toast.error(ERROR_SEND_OTP_FAILED)
+      toast.error(CONSTANTS.ERRORS.SEND_OTP_FAILED)
     } finally {
       setIsSendingOtp(false)
     }
@@ -121,7 +148,7 @@ export function ForgotPassword() {
   const resetPassword = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!confirmation || isResettingPassword) return
-    if (!username || !newPassword) return toast.error(ERROR_USERNAME_PASSWORD_REQUIRED)
+    if (!username || !newPassword) return toast.error(CONSTANTS.ERRORS.USERNAME_PASSWORD_REQUIRED)
 
     const pwdError = validatePassword(newPassword)
     if (pwdError) {
@@ -140,11 +167,11 @@ export function ForgotPassword() {
         newPassword,
       })
 
-      toast.success(TOAST_PASSWORD_UPDATED)
+      toast.success(CONSTANTS.TOASTS.PASSWORD_UPDATED)
       navigate("/login")
       } catch (e) {
       console.error(e)
-      toast.error(e?.message || ERROR_RESET_FAILED)
+      toast.error(e?.message || CONSTANTS.ERRORS.RESET_FAILED)
     } finally {
       setIsResettingPassword(false)
     }
@@ -157,9 +184,9 @@ export function ForgotPassword() {
           <div className="mx-auto bg-linear-to-tr from-primary/20 to-primary/10 w-16 h-16 rounded-2xl rotate-3 flex items-center justify-center mb-2 text-primary ring-4 ring-background shadow-lg">
             <KeyRound className="w-8 h-8" />
           </div>
-          <CardTitle className="text-3xl font-bold tracking-tight text-foreground">Reset password</CardTitle>
+          <CardTitle className="text-3xl font-bold tracking-tight text-foreground">{CONSTANTS.LABELS.HEADER_TITLE}</CardTitle>
           <CardDescription className="text-base text-muted-foreground/80 font-medium">
-            Verify your phone via OTP, then choose a new password.
+            {CONSTANTS.LABELS.HEADER_DESC}
           </CardDescription>
         </CardHeader>
 
@@ -170,7 +197,7 @@ export function ForgotPassword() {
                 htmlFor="username"
                 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide ml-1"
               >
-                Username
+                {CONSTANTS.LABELS.USERNAME}
               </Label>
               <Input
                 id="username"
@@ -187,7 +214,7 @@ export function ForgotPassword() {
                 htmlFor="newPassword"
                 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide ml-1"
               >
-                New password
+                {CONSTANTS.LABELS.NEW_PASSWORD}
               </Label>
               <div className="relative">
                 <Input
@@ -241,11 +268,11 @@ export function ForgotPassword() {
                     />
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {passwordStrength === "weak" && "Weak password"}
-                    {passwordStrength === "medium" && "Medium strength"}
-                    {passwordStrength === "strong" && "Strong password"}
+                    {passwordStrength === "weak" && CONSTANTS.PASSWORD_STRENGTH.WEAK}
+                    {passwordStrength === "medium" && CONSTANTS.PASSWORD_STRENGTH.MEDIUM}
+                    {passwordStrength === "strong" && CONSTANTS.PASSWORD_STRENGTH.STRONG}
                     {!passwordStrength &&
-                      "Use 8+ characters with uppercase, lowercase, numbers, and special characters"}
+                      CONSTANTS.PASSWORD_STRENGTH.HINT}
                   </p>
                 </div>
               )}
@@ -257,13 +284,13 @@ export function ForgotPassword() {
                   htmlFor="phone"
                   className="text-xs font-semibold text-muted-foreground uppercase tracking-wide ml-1"
                 >
-                  Phone
+                  {CONSTANTS.LABELS.PHONE}
                 </Label>
                 <div className="flex w-full items-center rounded-xl border-2 border-border/50 bg-background/50 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary">
                   <CountrySelect country={country} setCountry={setCountry} />
                   <Input
                     id="phone"
-                    placeholder="9876543210"
+                    placeholder={CONSTANTS.PLACEHOLDERS.PHONE}
                     type="tel"
                     className="flex-1 h-12 border-none bg-transparent shadow-none focus-visible:ring-0 rounded-l-none rounded-r-xl"
                     value={phoneNumber}
@@ -278,11 +305,11 @@ export function ForgotPassword() {
             {confirmation && (
               <div className="space-y-3 flex flex-col items-center">
                 <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                  OTP
+                  {CONSTANTS.LABELS.OTP}
                 </Label>
-                <InputOTP maxLength={OTP_LENGTH} value={otp} onChange={setOtp} disabled={isResettingPassword}>
+                <InputOTP maxLength={CONSTANTS.OTP_LENGTH} value={otp} onChange={setOtp} disabled={isResettingPassword}>
                     <InputOTPGroup className="gap-2">
-                      {[...Array(OTP_LENGTH)].map((_, i) => (
+                      {[...Array(CONSTANTS.OTP_LENGTH)].map((_, i) => (
                       <InputOTPSlot
                         key={i}
                         index={i}
@@ -306,14 +333,14 @@ export function ForgotPassword() {
               disabled={isSendingOtp || isResettingPassword}
             >
               {isResettingPassword
-                ? "Resetting password..."
+                ? CONSTANTS.BUTTONS.RESETTING
                 : isSendingOtp
-                  ? "Sending OTP..."
+                  ? CONSTANTS.BUTTONS.SENDING_OTP
                   : confirmation
-                    ? "Verify OTP & Update password"
+                    ? CONSTANTS.BUTTONS.VERIFY_UPDATE
                     : credentialsValidated
-                      ? "Send OTP"
-                      : "Continue"}
+                      ? CONSTANTS.BUTTONS.SEND_OTP
+                      : CONSTANTS.BUTTONS.CONTINUE}
             </Button>
           </form>
         </CardContent>
@@ -326,7 +353,7 @@ export function ForgotPassword() {
             disabled={isResettingPassword || isSendingOtp}
             onClick={() => navigate("/login")}
           >
-            Back to login
+            {CONSTANTS.LABELS.BACK_TO_LOGIN}
           </Button>
         </CardFooter>
       </Card>
