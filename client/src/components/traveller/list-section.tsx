@@ -1,5 +1,5 @@
 import { type ReactNode } from "react"
-import { ScrollArea } from "../ui/scroll-area"
+// import { ScrollArea } from "../ui/scroll-area"
 import { Loader2, Ghost, Sparkles } from "lucide-react"
 
 // Reusable list section component for travellers and groups
@@ -70,8 +70,8 @@ function ListSection({ title, subtitle, count, emptyMessage, animation, children
       </div>
 
       {/* List Container - Improved mobile scrolling */}
-      <div className="relative h-[65vh] sm:h-[500px] lg:h-[550px] w-full bg-gradient-to-b from-transparent to-black/5 dark:to-white/5">
-        <ScrollArea className="h-full">
+      <div className="relative w-full bg-gradient-to-b from-transparent to-black/5 dark:to-white/5">
+        <div className="max-h-[65vh] sm:max-h-[500px] lg:max-h-[550px] overflow-y-auto w-full [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-black/10 dark:[&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-track]:bg-transparent">
           <div className="p-3 sm:p-6 pb-20 sm:pb-6 space-y-4">
             {count === 0 ? (
               <div className="flex flex-col items-center justify-center h-[300px] px-6 text-center relative overflow-hidden rounded-2xl border border-dashed border-border/40 bg-white/5 m-2">
@@ -97,7 +97,7 @@ function ListSection({ title, subtitle, count, emptyMessage, animation, children
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
       </div>
     </div>
   )

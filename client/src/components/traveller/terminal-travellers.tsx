@@ -52,9 +52,13 @@ function ToggleButton({ label, isActive, onClick }: ToggleButtonProps) {
     <button
       type="button"
       onClick={onClick}
-      className={`toggle-button flex-1 md:flex-none w-full md:w-auto px-5 py-2.5 rounded-xl font-medium relative z-10 transition-colors duration-300 ease-out text-center ${
-        isActive ? "text-white font-bold" : "text-muted-foreground hover:text-foreground"
-      }`}
+      className={`
+        relative z-10 flex-1 px-4 py-2 text-sm font-semibold transition-all duration-300 ease-out rounded-lg
+        ${isActive 
+          ? "text-zinc-900 dark:text-zinc-100 shadow-xs" 
+          : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-200"
+        }
+      `}
     >
       {label}
     </button>
@@ -288,19 +292,20 @@ const TerminalTravellers = () => {
                 </div>
                 {
                   selectedAirport && selectedTerminal && (
-                    <div className="flex flex-col gap-6 w-full">
-                       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-                        <div className="flex flex-col gap-2 w-full md:w-auto shrink-0">
-                          <label className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider">
+                    <div className="flex flex-col gap-6 w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+                       <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6">
+                        {/* Toggle */}
+                        <div className="flex flex-col gap-3 w-full xl:w-auto">
+                          <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest pl-1">
                             {TEXTS.LABELS.VIEW}
                           </label>
-                          <div className="grid grid-cols-2 gap-0 rounded-xl border border-border/40 bg-zinc-100/80 dark:bg-zinc-800/80 p-1 shadow-sm backdrop-blur-md w-full md:w-[240px] relative">
+                          <div className="flex p-1 bg-zinc-100/50 dark:bg-zinc-800/50 border border-zinc-200/50 dark:border-white/5 rounded-xl relative w-full xl:w-[280px]">
+                            {/* Sliding Background */}
                             <div
-                              aria-hidden="true"
-                              className="absolute inset-y-1 left-1 w-[calc(50%-4px)] rounded-lg bg-black dark:bg-white shadow-sm transition-transform duration-300 ease-[cubic-bezier(0.2,0,0,1)]"
-                              style={{
-                                transform: viewMode === VIEW_MODE.GROUP ? "translateX(100%)" : "translateX(0%)",
-                              }}
+                              className={`
+                                absolute inset-y-1 w-[calc(50%-4px)] bg-white dark:bg-zinc-700 rounded-lg shadow-sm border border-zinc-200/50 dark:border-white/5 transition-all duration-300 ease-[cubic-bezier(0.2,0,0,1)]
+                                ${viewMode === VIEW_MODE.GROUP ? "translate-x-[calc(100%+4px)]" : "translate-x-1"}
+                              `}
                             />
                             <ToggleButton
                               label={TEXTS.LABELS.INDIVIDUAL}
@@ -315,46 +320,47 @@ const TerminalTravellers = () => {
                           </div>
                         </div>
 
-                        <div className="flex flex-col sm:flex-row gap-4 flex-1 justify-end">
+                        {/* Filters & Sort */}
+                        <div className="flex flex-col sm:flex-row gap-3 flex-1 justify-end">
                              {/* Filter */}
-                             <div className="w-full sm:w-[160px]">
+                             <div className="w-full sm:w-[180px]">
                                 <Select
                                   value={filterGender}
                                   onValueChange={(val) => setFilterGender(val as FilterGender)}
                                 >
-                                  <SelectTrigger className="h-10 sm:h-11 bg-black text-white border-0 hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90 transition-all rounded-xl gap-2.5 font-medium shadow-lg shadow-black/5">
-                                    <div className="flex items-center gap-2 truncate">
-                                      <Filter className="w-4 h-4 text-white/70 dark:text-black/70" />
-                                      <span className="text-xs">
+                                  <SelectTrigger className="h-11 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20 transition-all rounded-xl font-medium shadow-sm">
+                                    <div className="flex items-center gap-2.5 truncate">
+                                      <Filter className="w-4 h-4 text-zinc-400" />
+                                      <span className="text-sm text-zinc-700 dark:text-zinc-200">
                                         {filterGender === 'all' ? 'All Genders' : filterGender}
                                       </span>
                                     </div>
                                   </SelectTrigger>
-                                  <SelectContent className="rounded-xl border border-border/20 shadow-lg">
-                                    <SelectItem value="all">All Genders</SelectItem>
-                                    <SelectItem value="Male" className="text-blue-600 focus:text-blue-600 dark:text-blue-400 dark:focus:text-blue-400 font-medium">Male</SelectItem>
-                                    <SelectItem value="Female" className="text-pink-600 focus:text-pink-600 dark:text-pink-400 dark:focus:text-pink-400 font-medium">Female</SelectItem>
+                                  <SelectContent className="rounded-xl border border-zinc-200 dark:border-white/10 shadow-xl p-1">
+                                    <SelectItem value="all" className="rounded-lg">All Genders</SelectItem>
+                                    <SelectItem value="Male" className="text-blue-600 focus:text-blue-600 dark:text-blue-400 dark:focus:text-blue-400 font-medium rounded-lg">Male</SelectItem>
+                                    <SelectItem value="Female" className="text-pink-600 focus:text-pink-600 dark:text-pink-400 dark:focus:text-pink-400 font-medium rounded-lg">Female</SelectItem>
                                   </SelectContent>
                                 </Select>
                              </div>
 
                              {/* Sort */}
-                             <div className="w-full sm:w-[160px]">
+                             <div className="w-full sm:w-[180px]">
                                 <Select
                                   value={sortBy}
                                   onValueChange={(val) => setSortBy(val as SortOption)}
                                 >
-                                  <SelectTrigger className="h-10 sm:h-11 bg-black text-white border-0 hover:bg-black/90 dark:bg-white dark:text-black dark:hover:bg-white/90 transition-all rounded-xl gap-2.5 font-medium shadow-lg shadow-black/5">
-                                     <div className="flex items-center gap-2 truncate">
-                                      <ArrowUpDown className="w-4 h-4 text-white/70 dark:text-black/70" />
-                                      <span className="text-xs">
+                                  <SelectTrigger className="h-11 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20 transition-all rounded-xl font-medium shadow-sm">
+                                     <div className="flex items-center gap-2.5 truncate">
+                                      <ArrowUpDown className="w-4 h-4 text-zinc-400" />
+                                      <span className="text-sm text-zinc-700 dark:text-zinc-200">
                                         {sortBy === 'distance' ? 'Min Distance' : 'Wait Time'}
                                       </span>
                                     </div>
                                   </SelectTrigger>
-                                  <SelectContent className="rounded-xl border border-border/20 shadow-lg">
-                                    <SelectItem value="distance">Min Distance</SelectItem>
-                                    <SelectItem value="wait_time">Wait Time</SelectItem>
+                                  <SelectContent className="rounded-xl border border-zinc-200 dark:border-white/10 shadow-xl p-1">
+                                    <SelectItem value="distance" className="rounded-lg">Min Distance</SelectItem>
+                                    <SelectItem value="wait_time" className="rounded-lg">Wait Time</SelectItem>
                                   </SelectContent>
                                 </Select>
                              </div>

@@ -11,6 +11,7 @@ export type Traveller = {
   bio?: string
   tags?: string[]
   isVerified?: boolean
+  username: string
 }
 
 export type Group = {
