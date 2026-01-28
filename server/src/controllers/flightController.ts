@@ -1,354 +1,259 @@
 import type { Request, Response } from 'express';
-import { FieldValue } from 'firebase-admin/firestore';
 import { admin } from '../firebase/admin';
+import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 
-const CACHE_TTL_MS = 30 * 60 * 1000; // 30 minutes
-const RATE_WINDOW_MS = 30 * 60 * 1000; // 30 minutes
-const RATE_MAX = 5;
-
-// Firestore has a ~1MB document limit. The upstream payload can be huge due to positions[].
-// Cache only a small tail of positions to avoid write failures.
-const MAX_POSITIONS_TO_CACHE = 25;
-
-function pad2(n: number) {
-  return String(n).padStart(2, '0');
+/**
+ * TYPES & INTERFACES
+ */
+interface FlightDoc {
+  flightId: string;
+  carrier: string;
+  flightNumber: string;
+  flightDate: string;
+  etaFetchedAt: Timestamp | FieldValue | null;
+  flightData: any | null;
+  updatedAt: FieldValue;
+  createdAt?: FieldValue;
+  status?: 'active' | 'completed' | 'pending_initial_fetch';
 }
 
-function toFlightDateKey(year: number, month: number, day: number) {
-  return `${year}-${pad2(month)}-${pad2(day)}`; // YYYY-MM-DD
-}
-
-function getUid(req: Request) {
-  // Most of your protected endpoints use cookie session auth (req.auth).
-  // Fallback to Firebase token auth if you ever decide to protect this route with verifyToken.
-  return req.auth?.uid ?? req.user?.uid ?? null;
-}
-
-function sanitizeForCache(raw: any) {
-  // Avoid mutating the live response we might return.
-  const copy = typeof structuredClone === 'function' ? structuredClone(raw) : JSON.parse(JSON.stringify(raw));
-
-  const positions = copy?.data?.positional?.flexTrack?.positions;
-  if (Array.isArray(positions) && positions.length > MAX_POSITIONS_TO_CACHE) {
-    copy.data.positional.flexTrack.positions = positions.slice(-MAX_POSITIONS_TO_CACHE);
-    copy.meta = { ...(copy.meta ?? {}), positionsTruncated: true, cachedPositions: MAX_POSITIONS_TO_CACHE };
-  } else {
-    copy.meta = { ...(copy.meta ?? {}), positionsTruncated: false };
-  }
-
-  return copy;
-}
-
-function deriveStoredFields(raw: any, params: { flightDate: string; carrier: string; flightNumber: string }) {
-  const d = raw?.data ?? null;
-
-  const airlineName = d?.resultHeader?.carrier?.name ?? d?.ticketHeader?.carrier?.name ?? null;
-
-  const source =
-    d?.resultHeader?.departureAirportFS ??
-    d?.positional?.departureAirportCode ??
-    d?.departureAirport?.fs ??
-    null;
-
-  const destination =
-    d?.resultHeader?.arrivalAirportFS ??
-    d?.positional?.arrivalAirportCode ??
-    d?.arrivalAirport?.fs ??
-    null;
-
-  const delayMinutes =
-    d?.status?.delay?.arrival?.minutes ??
-    d?.status?.delay?.departure?.minutes ??
-    null;
-
-  const etaUTC =
-    d?.schedule?.estimatedActualArrivalUTC ??
-    d?.schedule?.scheduledArrivalUTC ??
-    null;
-
-  return {
-    carrier: params.carrier,
-    flightNumber: params.flightNumber,
-    flightDate: params.flightDate,
-    airline: airlineName,
-    source,
-    destination,
-    delayMinutes,
-    etaUTC,
+interface FlightStatsResponse {
+  data?: {
+    resultHeader?: { carrier?: { name?: string } };
+    ticketHeader?: { carrier?: { name?: string } };
+    departureAirport?: { fs?: string; terminal?: string; gate?: string };
+    arrivalAirport?: { fs?: string; terminal?: string; gate?: string; baggage?: string };
+    positional?: { departureAirportCode?: string; arrivalAirportCode?: string };
+    schedule?: {
+      scheduledDepartureUTC?: string;
+      scheduledArrivalUTC?: string;
+      estimatedActualArrivalUTC?: string;
+      scheduledArrival?: { dateUtc: string };
+      estimatedActualArrival?: { dateUtc: string };
+    };
+    status?: {
+      status?: string;
+      statusDescription?: string;
+      statusCode?: string;
+      delay?: { arrival?: { minutes?: number } };
+    };
+    flightNote?: {
+      phase?: string;
+      message?: string;
+      landed?: boolean;
+    };
   };
 }
 
-async function consumeRateLimit(uid: string) {
-  const db = admin.firestore();
-  const ref = db.collection('flightRateLimits').doc(uid);
-  const now = Date.now();
+/**
+ * SHARED UTILS & CONSTANTS
+ */
+const TEN_MINUTES_IN_MS = 0;
 
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
+const isDateTodayOrTomorrow = (inputDate: Date): boolean => {
+  const compareInput = new Date(inputDate);
+  compareInput.setHours(0, 0, 0, 0);
 
-    if (!snap.exists) {
-      tx.set(ref, { windowStartMs: now, count: 1, updatedAt: FieldValue.serverTimestamp() });
-      return;
-    }
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
 
-    const data = snap.data() as any;
-    const windowStartMs = Number(data?.windowStartMs ?? 0);
-    const count = Number(data?.count ?? 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
 
-    // New window
-    if (!windowStartMs || now - windowStartMs >= RATE_WINDOW_MS) {
-      tx.set(ref, { windowStartMs: now, count: 1, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
-      return;
-    }
+  return (
+    compareInput.getTime() === today.getTime() ||
+    compareInput.getTime() === tomorrow.getTime()
+  );
+};
 
-    if (count >= RATE_MAX) {
-      const err: any = new Error('Rate limit exceeded');
-      err.statusCode = 429;
-      throw err;
-    }
+const isStale = (etaFetchedAt: Timestamp | undefined | null): boolean => {
+  if (!etaFetchedAt) return true;
+  return Date.now() - etaFetchedAt.toMillis() > TEN_MINUTES_IN_MS;
+};
 
-    tx.set(ref, { count: FieldValue.increment(1), updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+/**
+ * SHARED CORE LOGIC: Fetching and Mapping
+ */
+async function fetchAndMapFlightData(carrier: string, fNum: string, y: number, m: number, d: number) {
+  const upstreamUrl = `https://www.flightstats.com/v2/api-next/flight-tracker/${carrier}/${fNum}/${y}/${m}/${d}`;
+  console.log(upstreamUrl);
+  
+  const apiResponse = await fetch(upstreamUrl, {
+    headers: { 'accept': 'application/json', 'user-agent': 'halfride-server/1.0' }
   });
+
+  if (!apiResponse.ok) throw new Error(`Upstream API returned ${apiResponse.status}`);
+
+  const raw = (await apiResponse.json()) as FlightStatsResponse;
+  const f = raw?.data;
+
+  if (!f || (!f.status && !f.schedule)) {
+    throw new Error('Flight not found in external tracking system');
+  }
+
+  const isLanded = f.status?.statusCode === 'L' || f.status?.statusCode === 'A' || !!f.flightNote?.landed;
+
+  return {
+    airlineName: f.resultHeader?.carrier?.name || f.ticketHeader?.carrier?.name || null,
+    
+    departure: {
+      airportCode: f.departureAirport?.fs || f.positional?.departureAirportCode || null,
+      terminal: f.departureAirport?.terminal || null,
+      gate: f.departureAirport?.gate || null,
+      scheduledTime: f.schedule?.scheduledDepartureUTC || null,
+    },
+
+    arrival: {
+      airportCode: f.arrivalAirport?.fs || f.positional?.arrivalAirportCode || null,
+      terminal: f.arrivalAirport?.terminal || null,
+      gate: f.arrivalAirport?.gate || null,
+      baggage: f.arrivalAirport?.baggage || null,
+      scheduledTime: f.schedule?.scheduledArrivalUTC || f.schedule?.scheduledArrival?.dateUtc || null,
+      estimatedActualTime: f.schedule?.estimatedActualArrivalUTC || f.schedule?.estimatedActualArrival?.dateUtc || null,
+    },
+
+    schedule: {
+      scheduledArrival: f.schedule?.scheduledArrivalUTC || f.schedule?.scheduledArrival?.dateUtc || null,
+      estimatedActualArrival: f.schedule?.estimatedActualArrivalUTC || f.schedule?.estimatedActualArrival?.dateUtc || null,
+    },
+    status: {
+      status: f.status?.status || null,
+      statusDescription: f.status?.statusDescription || null,
+      statusCode: f.status?.statusCode || null,
+      delayMinutes: f.status?.delay?.arrival?.minutes || 0,
+    },
+    flightNote: {
+      phase: f.flightNote?.phase || null,
+      message: f.flightNote?.message || null,
+      landed: isLanded,
+    },
+    isLanded: isLanded
+  };
 }
 
-async function consumeRateLimitForFlightKey(uid: string, flightKey: string) {
-  const db = admin.firestore();
-  const ref = db.collection('flightRateLimits').doc(uid);
-  const now = Date.now();
+/**
+ * ENDPOINT 1: CREATE FLIGHT ENTRY
+ */
+export async function createFlightEntry(req: Request, res: Response) {
+  const { carrier: rawCarrier, flightNumber: rawFlightNumber, year, month, day } = req.params;
 
-  await db.runTransaction(async (tx) => {
-    const snap = await tx.get(ref);
+  const carrier = String(rawCarrier ?? '').trim().toUpperCase();
+  const fNum = String(rawFlightNumber ?? '').trim();
+  const y = Number(year);
+  const m = Number(month);
+  const d = Number(day);
 
-    // First ever window
-    if (!snap.exists) {
-      tx.set(ref, {
-        windowStartMs: now,
-        count: 1,
-        keys: [flightKey],
-        updatedAt: FieldValue.serverTimestamp(),
-      });
-      return;
-    }
-
-    const data = snap.data() as any;
-    const windowStartMs = Number(data?.windowStartMs ?? 0);
-    const keys = Array.isArray(data?.keys) ? (data.keys as string[]) : [];
-    const count = Number(data?.count ?? keys.length ?? 0);
-
-    // New window
-    if (!windowStartMs || now - windowStartMs >= RATE_WINDOW_MS) {
-      tx.set(
-        ref,
-        { windowStartMs: now, count: 1, keys: [flightKey], updatedAt: FieldValue.serverTimestamp() },
-        { merge: true }
-      );
-      return;
-    }
-
-    // Same window: if this flight key was already looked up, do not count again.
-    if (keys.includes(flightKey)) {
-      tx.set(ref, { updatedAt: FieldValue.serverTimestamp() }, { merge: true });
-      return;
-    }
-
-    if (count >= RATE_MAX) {
-      const err: any = new Error('Rate limit exceeded');
-      err.statusCode = 429;
-      throw err;
-    }
-
-    tx.set(
-      ref,
-      {
-        count: FieldValue.increment(1),
-        keys: FieldValue.arrayUnion(flightKey),
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
-  });
-}
-
-export async function getFlightTracker(req: Request, res: Response) {
-  const uid = getUid(req);
-  if (!uid) return res.status(401).json({ ok: false, error: 'Unauthorized' });
-
-  const carrier = String(req.params.carrier ?? '').trim().toUpperCase();
-  const flightNumber = String(req.params.flightNumber ?? '').trim();
-  const year = Number(req.params.year);
-  const month = Number(req.params.month);
-  const day = Number(req.params.day);
-
-  if (!carrier || !flightNumber || !Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+  if (!carrier || !fNum || isNaN(y) || isNaN(m) || isNaN(d)) {
     return res.status(400).json({ ok: false, error: 'Bad Request', message: 'Invalid params' });
   }
-  if (month < 1 || month > 12 || day < 1 || day > 31 || year < 2000 || year > 2100) {
-    return res.status(400).json({ ok: false, error: 'Bad Request', message: 'Invalid date' });
+
+  if (!isDateTodayOrTomorrow(new Date(y, m - 1, d))) {
+    return res.status(400).json({ ok: false, error: 'Bad Request', message: 'Only today/tomorrow allowed' });
   }
 
-  const flightDate = toFlightDateKey(year, month, day);
-  const cacheKey = `${carrier}_${flightNumber}_${flightDate}`;
-
+  const flightDocId = `${carrier}_${fNum}_${y}-${m}-${d}`;
   const db = admin.firestore();
-  const cacheRef = db.collection('flightCache').doc(cacheKey);
+  const flightRef = db.collection('flightDetail').doc(flightDocId);
 
-  // 1) Cache check (valid + invalid)
   try {
-    const snap = await cacheRef.get();
-    if (snap.exists) {
-      const cached = snap.data() as any;
-      const fetchedAtMs = Number(cached?.fetchedAtMs ?? 0);
-
-      if (fetchedAtMs && Date.now() - fetchedAtMs < CACHE_TTL_MS) {
-        const fields = {
-          carrier: cached?.carrier ?? carrier,
-          flightNumber: cached?.flightNumber ?? flightNumber,
-          flightDate: cached?.flightDate ?? flightDate,
-          airline: cached?.airline ?? null,
-          source: cached?.source ?? null,
-          destination: cached?.destination ?? null,
-          delayMinutes: cached?.delayMinutes ?? null,
-          etaUTC: cached?.etaUTC ?? null,
-        };
-
-        if (cached?.isValid) {
-          return res.json({
-            ok: true,
-            cached: true,
-            valid: true,
-            fetchedAtMs,
-            ...fields,
-            data: cached?.payload ?? null,
-          });
-        }
-
-        return res.status(404).json({
-          ok: false,
-          cached: true,
-          valid: false,
-          fetchedAtMs,
-          reason: cached?.invalidReason ?? 'not_found',
-          ...fields,
-          data: null,
-        });
-      }
-    }
-  } catch (e: any) {
-    return res.status(500).json({ ok: false, error: 'Internal Server Error', message: `Cache read failed: ${e?.message ?? 'Unknown error'}` });
-  }
-
-  // 2) Fetch upstream (FlightStats)
-  // Enforce per-user rate limit only when we must hit upstream, and count unique flight keys per window.
-  try {
-    await consumeRateLimitForFlightKey(uid, cacheKey);
-  } catch (e: any) {
-    if (e?.statusCode === 429) {
-      return res
-        .status(429)
-        .json({ ok: false, error: 'Too Many Requests', message: 'Max 5 unique flight lookups per 30 minutes' });
-    }
-    return res.status(500).json({ ok: false, error: 'Internal Server Error', message: e?.message ?? 'Rate limiter failed' });
-  }
-
-  const upstreamUrl = `https://www.flightstats.com/v2/api-next/flight-tracker/${encodeURIComponent(carrier)}/${encodeURIComponent(
-    flightNumber
-  )}/${year}/${month}/${day}`;
-
-  const abort = new AbortController();
-  const timeout = setTimeout(() => abort.abort(), 10_000);
-
-  let raw: any = null;
-  let httpStatus: number | null = null;
-  try {
-    const r = await fetch(upstreamUrl, {
-      method: 'GET',
-      headers: {
-        accept: 'application/json',
-        'user-agent': 'halfride-server/1.0',
-      },
-      signal: abort.signal,
-    });
-    httpStatus = r.status;
-    const text = await r.text();
-    raw = text ? JSON.parse(text) : null;
-    if (!r.ok) raw = null;
-  } catch {
-    raw = null;
-  } finally {
-    clearTimeout(timeout);
-  }
-
-  const isValid = !!raw?.data;
-  const stored = deriveStoredFields(raw, { flightDate, carrier, flightNumber });
-  const fetchedAtMs = Date.now();
-
-  // 3) Save result (valid or invalid) + return
-  try {
-    if (isValid) {
-      const cachedPayload = sanitizeForCache(raw);
-
-      await cacheRef.set(
-        {
-          carrier,
-          flightNumber,
-          flightDate,
-          airline: stored.airline ?? null,
-          source: stored.source ?? null,
-          destination: stored.destination ?? null,
-          delayMinutes: stored.delayMinutes ?? null,
-          etaUTC: stored.etaUTC ?? null,
-          fetchedAtMs,
-          fetchedAt: FieldValue.serverTimestamp(),
-          isValid: true,
-          invalidReason: null,
-          // Store only the upstream "data" (sanitized)
-          payload: cachedPayload?.data ?? null,
-          updatedAt: FieldValue.serverTimestamp(),
-        },
-        { merge: true }
-      );
-
-      return res.json({
-        ok: true,
-        cached: false,
-        valid: true,
-        fetchedAtMs,
-        ...stored,
-        data: raw.data,
-      });
+    const doc = await flightRef.get();
+    if (doc.exists) {
+      return res.status(200).json({ ok: true, message: 'Flight already exists', flightId: flightDocId });
     }
 
-    await cacheRef.set(
-      {
-        carrier,
-        flightNumber,
-        flightDate,
-        airline: stored.airline ?? null,
-        source: stored.source ?? null,
-        destination: stored.destination ?? null,
-        delayMinutes: stored.delayMinutes ?? null,
-        etaUTC: stored.etaUTC ?? null,
-        fetchedAtMs,
-        fetchedAt: FieldValue.serverTimestamp(),
-        isValid: false,
-        invalidReason: httpStatus === 404 ? 'not_found' : 'invalid_or_unavailable',
-        payload: null,
-        updatedAt: FieldValue.serverTimestamp(),
-      },
-      { merge: true }
-    );
+    const flightData = await fetchAndMapFlightData(carrier, fNum, y, m, d);
 
-    return res.status(404).json({
-      ok: false,
-      cached: false,
-      valid: false,
-      fetchedAtMs,
-      reason: httpStatus === 404 ? 'not_found' : 'invalid_or_unavailable',
-      ...stored,
-      data: null,
-    });
-  } catch (e: any) {
-    return res.status(500).json({ ok: false, error: 'Internal Server Error', message: `Cache write failed: ${e?.message ?? 'Unknown error'}` });
+    const newFlight: FlightDoc = {
+      flightId: `${carrier}_${fNum}`,
+      carrier,
+      flightNumber: fNum,
+      flightDate: `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
+      etaFetchedAt: FieldValue.serverTimestamp(),
+      flightData,
+      createdAt: FieldValue.serverTimestamp(),
+      updatedAt: FieldValue.serverTimestamp(),
+      status: flightData.isLanded ? 'completed' : 'active'
+    };
+
+    await flightRef.set(newFlight);
+    return res.status(201).json({ ok: true, message: 'Flight registered', flightId: flightDocId });
+
+  } catch (error: any) {
+    console.error('Create Flight Error:', error.message);
+    return res.status(404).json({ ok: false, error: 'Not Found', message: error.message });
   }
 }
 
+/**
+ * ENDPOINT 2: GET FLIGHT TRACKER
+ */
+export async function getFlightTracker(req: Request, res: Response) {
+  const { carrier: rawCarrier, flightNumber, year, month, day } = req.params;
+  
+  const carrier = String(rawCarrier ?? '').trim().toUpperCase();
+  const fNum = String(flightNumber ?? '').trim();
+  const y = Number(year);
+  const m = Number(month);
+  const d = Number(day);
+
+  if (!isDateTodayOrTomorrow(new Date(y, m - 1, d))) {
+    return res.status(400).json({ ok: false, error: 'Bad Request', message: 'Only today/tomorrow allowed' });
+  }
+
+  const flightDocId = `${carrier}_${fNum}_${y}-${m}-${d}`;
+  const db = admin.firestore();
+  const flightRef = db.collection('flightDetail').doc(flightDocId);
+  
+  try {
+    const doc = await flightRef.get();
+    if (!doc.exists) {
+      return res.status(404).json({ ok: false, error: 'Not Found', message: 'Flight not registered' });
+    }
+
+    const existing = doc.data() as FlightDoc;
+
+    if (existing.flightData && !isStale(existing.etaFetchedAt as Timestamp)) {
+      return res.json({ ok: true, valid: true, data: existing.flightData });
+    }
+
+    const flightData = await fetchAndMapFlightData(carrier, fNum, y, m, d);
+
+    await flightRef.update({
+      etaFetchedAt: FieldValue.serverTimestamp(),
+      flightData,
+      updatedAt: FieldValue.serverTimestamp(),
+      status: flightData.isLanded ? 'completed' : 'active'
+    });
+
+    return res.json({ ok: true, valid: true, data: flightData });
+  } catch (error: any) {
+    console.error('Tracker Error:', error.message);
+    return res.status(500).json({ ok: false, error: 'Internal Server Error' });
+  }
+}
+
+/**
+ * CLEANUP SCRIPT
+ */
+export async function cleanupOldFlights() {
+  const db = admin.firestore();
+  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+  try {
+    const snapshot = await db.collection('flightDetail')
+      .where('status', '==', 'completed')
+      .where('updatedAt', '<', twentyFourHoursAgo)
+      .get();
+
+    if (snapshot.empty) return { deleted: 0 };
+
+    const batch = db.batch();
+    snapshot.docs.forEach((doc) => batch.delete(doc.ref));
+    await batch.commit();
+
+    return { deleted: snapshot.size };
+  } catch (error) {
+    console.error('Cleanup Error:', error);
+    throw error;
+  }
+}

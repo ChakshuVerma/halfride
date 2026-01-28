@@ -1,246 +1,217 @@
 import { useEffect, useState } from "react"
 import { DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog"
-import { Users, Plane, User, Clock, MapPin, Navigation, Info } from "lucide-react"
+import { Plane, User, Clock, Navigation, Info, XCircle, CheckCircle2, Loader2, Heart } from "lucide-react"
 import type { Traveller } from "./types"
 import { useFlightTrackerApi, type FlightArrivalInfo } from "@/hooks/useFlightTrackerApi"
-import { formatWaitTime, formatFlightDateTime } from "./utils"
 
-type TravellerModalProps = {
-  traveller: Traveller
-}
-
-const TEXTS = {
-  LABELS: {
-    DESTINATION: "Destination",
-    FLIGHT_TIME_DATE: "Flight time & date",
-    TERMINAL: "Terminal",
-    FLIGHT_NUMBER: "Flight",
-    DISTANCE: "Distance from dest",
-    WAIT_TIME: "Wait time",
-    LAST_UPDATED: "Updated",
-    ETA: "ETA",
-    FETCHING: "Checking status...",
-    REFRESHING: "Refreshing...",
-    REFRESH: "Refresh",
-    MIN_AGO: "m ago",
-    FLIGHT_PREFIX: "Flight",
-    SEPARATOR_DOT: " • ",
-    SEPARATOR_DASH: " – ",
+const CONSTANTS = {
+  STATUS_KEYWORDS: {
+    CANCELLED: "cancelled",
+    NOT_YET_STARTED: "not yet started",
+    EARLY: "early",
+    LATE: "late",
   },
-  UNITS: {
+  MESSAGES: {
+    TRACKING_UNAVAILABLE: "Live tracking currently unavailable",
+    SYNCING: "Syncing Radar",
+    RETRY: "Retry Sync",
+    SYNCED: "Synced",
+    AGO: "ago",
+    DEP: "DEP",
+    ORIGIN: "Origin",
+    ARR: "ARR",
+    TERM_PREFIX: "T",
+    TERM_UNKNOWN: "Term --",
+    ARRIVAL: "Arrival",
+    GATE_BELT: "Gate & Belt",
+    GATE_PREFIX: "G-",
+    GATE_TBD: "Gate TBD",
+    BELT: "Belt",
+    DISTANCE: "Distance",
     KM: "km",
+    WAIT_TIME: "Wait Time",
+    LANDED: "Landed",
+    ARRIVED: "Arrived",
+    INTERESTS: "Interests & Vibes",
+    CONNECT: "Connect with",
+  },
+  COLORS: {
+    CANCELLED: { text: "text-rose-500", bg: "bg-rose-500/10", border: "border-rose-500/20" },
+    LANDED: { text: "text-blue-500", bg: "bg-blue-500/10", border: "border-blue-500/20" },
+    NOT_STARTED: { text: "text-slate-500", bg: "bg-slate-500/10", border: "border-slate-500/20" },
+    EARLY: { text: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
+    LATE: { text: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20" },
+    DEFAULT: { text: "text-indigo-500", bg: "bg-indigo-500/10", border: "border-indigo-500/20" },
   }
-}
+};
 
-export function TravellerModal({
-  traveller,
-}: TravellerModalProps) {
-  const { fetchFlightTrackerByFlightNumber } = useFlightTrackerApi()
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+type TravellerModalProps = { traveller: Traveller }
+
+const getStatusStyles = (info?: FlightArrivalInfo) => {
+  const status = info?.statusShort?.toLowerCase() || "";
+  if (status.includes(CONSTANTS.STATUS_KEYWORDS.CANCELLED)) return { ...CONSTANTS.COLORS.CANCELLED, icon: <XCircle className="w-4 h-4" /> };
+  if (info?.isLanded) return { ...CONSTANTS.COLORS.LANDED, icon: <CheckCircle2 className="w-4 h-4" /> };
+  if (status.includes(CONSTANTS.STATUS_KEYWORDS.NOT_YET_STARTED)) return { ...CONSTANTS.COLORS.NOT_STARTED, icon: <Clock className="w-4 h-4" /> };
+  if (info?.timingCategory === CONSTANTS.STATUS_KEYWORDS.EARLY) return { ...CONSTANTS.COLORS.EARLY, icon: <Plane className="w-4 h-4" /> };
+  if (info?.timingCategory === CONSTANTS.STATUS_KEYWORDS.LATE) return { ...CONSTANTS.COLORS.LATE, icon: <Clock className="w-4 h-4" /> };
+  return { ...CONSTANTS.COLORS.DEFAULT, icon: <Plane className="w-4 h-4" /> };
+};
+
+export function TravellerModal({ traveller }: TravellerModalProps) {
+  const { fetchFlightTrackerByFlightNumber, loading: apiLoading } = useFlightTrackerApi()
   const [flightInfo, setFlightInfo] = useState<FlightArrivalInfo | undefined>(undefined)
   const [flightError, setFlightError] = useState<string | null>(null)
+  const [now, setNow] = useState(Date.now())
+
+  const isLoading = apiLoading || (!flightInfo && !flightError);
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const fetchArrivalInfo = async () => {
     try {
       setFlightError(null)
-      if (!traveller?.flightDateTime || !traveller?.flightNumber) {
-        throw new Error("Traveller or flight info not found")
-      }
-
-      const info = await fetchFlightTrackerByFlightNumber(
-        traveller.flightNumber,
-        traveller.flightDateTime,
-      )
+      const info = await fetchFlightTrackerByFlightNumber(traveller.flightNumber, traveller.flightDateTime)
       setFlightInfo(info)
     } catch {
-      setFlightError("Could not refresh flight arrival time.")
+      setFlightError(CONSTANTS.MESSAGES.TRACKING_UNAVAILABLE)
     }
   }
 
-  useEffect(() => {
-    void fetchArrivalInfo()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [traveller.id])
+  useEffect(() => { void fetchArrivalInfo() }, [traveller.id])
 
-  const lastUpdatedMinutesAgo = flightInfo
-    ? Math.floor((Date.now() - flightInfo.lastUpdatedAt) / 60000)
-    : null
+  const calculateWaitTime = () => {
+    if (flightInfo?.isLanded) return CONSTANTS.MESSAGES.LANDED;
+    const diff = new Date(traveller.flightDateTime).getTime() - now;
+    if (diff <= 0) return CONSTANTS.MESSAGES.ARRIVED;
+    const h = Math.floor(diff / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
+
+  const s = getStatusStyles(flightInfo);
 
   return (
-    <div className="p-3 sm:p-6 space-y-3 sm:space-y-5">
-      {/* Header Section */}
-      <DialogHeader className="space-y-0 pb-3 sm:pb-4 border-b border-border/10">
-        <div className="flex items-start gap-3 sm:gap-4">
-          <div className="relative shrink-0">
-            <div className={`w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center shadow-lg ring-4 ring-white dark:ring-zinc-900 ${
-                traveller.gender === "Male"
-                  ? "bg-linear-to-br from-blue-500 to-indigo-600 shadow-blue-500/25 border border-blue-600/10"
-                  : "bg-linear-to-br from-pink-500 to-rose-600 shadow-pink-500/25 border border-pink-600/10"
-              }`}>
-              <User className="w-6 h-6 sm:w-8 sm:h-8 text-white" strokeWidth={2.5} />
-            </div>
+    <div className="p-4 sm:p-6 space-y-6 max-h-[90vh] overflow-y-auto selection:bg-primary/10">
+      {/* 1. Header (Static User Info) */}
+      <DialogHeader className="space-y-0 pb-4 border-b border-border/10">
+        <div className="flex items-center gap-4">
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center shadow-lg ring-4 ring-background ${traveller.gender === "Male" ? "bg-indigo-600 shadow-indigo-500/20" : "bg-rose-600 shadow-rose-500/20"}`}>
+            <User className="w-7 h-7 text-white" strokeWidth={2.5} />
           </div>
-          
-          <div className="flex-1 min-w-0 space-y-0.5 sm:space-y-1">
-            <div className="flex flex-col gap-0.5">
-              <DialogTitle className="text-lg sm:text-2xl font-bold tracking-tight text-foreground/90 truncate">
-                {traveller.name}
-              </DialogTitle>
-              <span className="text-xs sm:text-sm font-semibold text-muted-foreground/80">
-                {traveller.username}
+          <div className="flex-1 min-w-0">
+            <DialogTitle className="text-xl font-black tracking-tight">{traveller.name}</DialogTitle>
+            <DialogDescription className="flex items-center gap-2 text-xs font-bold mt-1">
+              <span className="text-primary tracking-widest uppercase">#{traveller.flightNumber}</span>
+              <span className="text-muted-foreground/30">•</span>
+              <span className="text-muted-foreground flex items-center gap-1">
+                <Navigation className="w-3 h-3" /> {traveller.destination}
               </span>
-            </div>
-            
-            <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 pt-0.5 sm:pt-1">
-                {traveller.tags?.map((tag, i) => (
-                    <span key={i} className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground/70 px-1.5 sm:px-2 py-0.5 rounded-md bg-muted/20 border border-border/20">
-                        #{tag}
-                    </span>
-                ))}
-            </div>
-
-            <DialogDescription className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground/80 font-medium pt-1">
-              <span className="inline-flex items-center gap-1 bg-muted/30 px-2 py-0.5 rounded-md border border-border/40">
-                <Plane className="w-3 h-3" />
-                {traveller.flightNumber}
-              </span>
-              <span className="text-muted-foreground/40">•</span>
-              <span className="truncate">{traveller.destination}</span>
-              <span className="text-muted-foreground/40">•</span>
-              <span>Term {traveller.terminal}</span>
             </DialogDescription>
           </div>
         </div>
       </DialogHeader>
 
-      <div className="space-y-3 sm:space-y-4">
-        {/* Key Metrics Grid */}
-        <div className="grid grid-cols-2 gap-2 sm:gap-3">
-          <div className="flex flex-col gap-0.5 sm:gap-1 p-2.5 sm:p-3 rounded-xl bg-muted/10 border border-border/10 hover:bg-muted/20 transition-colors">
-            <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
-              <MapPin className="w-3 h-3" />
-              {TEXTS.LABELS.DISTANCE}
-            </div>
-            <span className="text-base sm:text-lg font-bold text-foreground">
-              {traveller.distanceFromUserKm} <span className="text-[10px] sm:text-xs font-medium text-muted-foreground">{TEXTS.UNITS.KM}</span>
-            </span>
+      {/* 2. Dynamic Content Area */}
+      <div className="min-h-[380px] flex flex-col justify-center">
+        {isLoading ? (
+          <div className="flex flex-col items-center gap-4 py-16 animate-in fade-in duration-300">
+            <Loader2 className="w-10 h-10 animate-spin text-primary/30" />
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground/30">{CONSTANTS.MESSAGES.SYNCING}</span>
           </div>
-
-          <div className="flex flex-col gap-0.5 sm:gap-1 p-2.5 sm:p-3 rounded-xl bg-muted/10 border border-border/10 hover:bg-muted/20 transition-colors">
-            <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
-              <Clock className="w-3 h-3" />
-              {TEXTS.LABELS.WAIT_TIME}
-            </div>
-            <span className="text-base sm:text-lg font-bold text-foreground">
-              {formatWaitTime(traveller.flightDateTime)}
-            </span>
-          </div>
-        </div>
-
-        {/* Details List */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2 sm:gap-y-4 px-1">
-          <div className="space-y-0.5 sm:space-y-1">
-            <span className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest pl-0.5">
-              {TEXTS.LABELS.DESTINATION}
-            </span>
-            <div className="flex items-center gap-2 text-sm font-medium text-foreground/90">
-              <Navigation className="w-3.5 h-3.5 text-primary/70" />
-              {traveller.destination}
-            </div>
-          </div>
-
-          <div className="space-y-0.5 sm:space-y-1">
-            <span className="text-[9px] sm:text-[10px] font-semibold text-muted-foreground/50 uppercase tracking-widest pl-0.5">
-              {TEXTS.LABELS.FLIGHT_TIME_DATE}
-            </span>
-            <div className="flex items-center gap-2 text-sm font-medium text-foreground/90">
-              <Plane className="w-3.5 h-3.5 text-primary/70" />
-              {formatFlightDateTime(traveller.flightDateTime)}
-            </div>
-          </div>
-        </div>
-
-        {/* Live Status Card */}
-        <div className="relative overflow-hidden rounded-xl bg-linear-to-br from-background via-muted/10 to-muted/30 border border-border/20 p-3 sm:p-4 shadow-xs">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 relative z-10">
-            <div className="space-y-1.5 sm:space-y-2 w-full">
-              <div className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-1.5 text-[9px] sm:text-[10px] font-bold uppercase tracking-widest text-primary/80">
-                  <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary/40 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary"></span>
-                  </span>
-                  Flight Status
+        ) : (
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500">
+            
+            {/* Status Card (Handles Success/Error internally) */}
+            <div className={`relative rounded-[2rem] border overflow-hidden min-h-[160px] flex flex-col justify-center transition-colors duration-500 ${flightInfo ? `${s.bg} ${s.border}` : 'bg-muted/5 border-border/10'}`}>
+              {flightError ? (
+                <div className="flex flex-col items-center gap-2 px-8 text-center py-8">
+                  <Info className="w-6 h-6 text-muted-foreground/20" />
+                  <p className="text-[11px] font-bold text-muted-foreground/50 uppercase tracking-widest">{flightError}</p>
+                  <button onClick={fetchArrivalInfo} className="text-[9px] font-black uppercase text-primary mt-2 underline">{CONSTANTS.MESSAGES.RETRY}</button>
                 </div>
-                {flightInfo && (
-                  <div className="text-[9px] sm:text-[10px] font-medium px-2 py-0.5 rounded-full bg-background/50 border border-border/20 text-muted-foreground/60">
-                    {TEXTS.LABELS.LAST_UPDATED} {lastUpdatedMinutesAgo}{TEXTS.LABELS.MIN_AGO}
+              ) : flightInfo && (
+                <div className="p-5 sm:p-6 space-y-6">
+                  <div className="flex items-center justify-between">
+                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider ${s.bg} ${s.border} ${s.color}`}>
+                      {s.icon} {flightInfo.statusShort}
+                    </div>
+                    <div className="text-[9px] font-bold text-muted-foreground/40 uppercase">
+                      {CONSTANTS.MESSAGES.SYNCED} {Math.floor((now - (flightInfo.lastUpdatedAt || 0)) / 60000)}m {CONSTANTS.MESSAGES.AGO}
+                    </div>
                   </div>
-                )}
-              </div>
 
-              {flightInfo ? (
-                <div className="space-y-1 sm:space-y-1.5">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-lg sm:text-xl font-bold tabular-nums tracking-tight">
-                      {flightInfo.arrivalTimeLocal}
-                    </span>
-                    {(flightInfo.statusShort || flightInfo.statusDetail) && (
-                      <span className="text-[10px] sm:text-xs font-medium text-muted-foreground/80 px-1.5 py-0.5 rounded-md bg-muted/30 border border-border/20">
-                        {flightInfo.statusShort}
-                        {flightInfo.statusDetail && <span className="opacity-60"> - {flightInfo.statusDetail}</span>}
-                      </span>
-                    )}
+                  <div className="flex items-center justify-between gap-6 px-2">
+                    <div className="text-center font-black">
+                       <div className="text-lg">{CONSTANTS.MESSAGES.DEP}</div>
+                       <div className="text-[8px] text-muted-foreground/40 uppercase">{CONSTANTS.MESSAGES.ORIGIN}</div>
+                    </div>
+                    <div className="flex-1 relative h-px bg-current opacity-10">
+                       <div className={`absolute top-1/2 -translate-y-1/2 p-2 rounded-full bg-background border-2 shadow-sm transition-all duration-700 ${s.color} ${s.border} ${flightInfo.isLanded ? 'right-0' : 'left-1/2'}`}>
+                          <Plane className="w-3.5 h-3.5 fill-current" />
+                       </div>
+                    </div>
+                    <div className="text-center font-black">
+                       <div className="text-lg">{CONSTANTS.MESSAGES.ARR}</div>
+                       <div className="text-[8px] text-muted-foreground/40 uppercase">{flightInfo.terminal ? `${CONSTANTS.MESSAGES.TERM_PREFIX}${flightInfo.terminal}` : CONSTANTS.MESSAGES.TERM_UNKNOWN}</div>
+                    </div>
                   </div>
-                  
-                  {!flightInfo.isLanded && flightInfo.etaLocal && (
-                     <div className="flex items-center gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
-                        <span className="font-medium">{TEXTS.LABELS.ETA}</span>
-                        <span>{flightInfo.etaLocal}</span>
-                        {flightInfo.timingCategory && flightInfo.timingLabel && (
-                          <span className={`ml-1 text-[9px] px-1 py-0.5 rounded-md font-semibold uppercase tracking-wide border ${
-                             flightInfo.timingCategory === "early"
-                               ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-                               : flightInfo.timingCategory === "late"
-                                 ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                                 : "bg-primary/10 text-primary border-primary/20"
-                          }`}>
-                            {flightInfo.timingLabel}
-                          </span>
-                        )}
-                     </div>
-                  )}
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground/70 py-1">
-                   <Info className="w-3.5 h-3.5" />
-                   {TEXTS.LABELS.FETCHING}
+
+                  <div className="grid grid-cols-2 gap-6 pt-4 border-t border-current/5">
+                    <div>
+                      <div className="text-[9px] font-black text-muted-foreground/40 uppercase">{CONSTANTS.MESSAGES.ARRIVAL}</div>
+                      <div className={`text-lg font-black tabular-nums ${s.color}`}>{flightInfo.arrivalTimeLocal}</div>
+                      {flightInfo.timingLabel && <div className="text-[9px] font-bold opacity-60 uppercase">{flightInfo.timingLabel}</div>}
+                    </div>
+                    <div className="text-right">
+                      <div className="text-[9px] font-black text-muted-foreground/40 uppercase tracking-tighter">{CONSTANTS.MESSAGES.GATE_BELT}</div>
+                      <div className="text-sm font-black">{flightInfo.gate ? `${CONSTANTS.MESSAGES.GATE_PREFIX}${flightInfo.gate}` : CONSTANTS.MESSAGES.GATE_TBD}</div>
+                      {flightInfo.baggage && <div className="text-[10px] font-bold text-muted-foreground/60 uppercase">{CONSTANTS.MESSAGES.BELT} {flightInfo.baggage}</div>}
+                    </div>
+                  </div>
                 </div>
               )}
-               {flightError && (
-                  <div className="text-[10px] text-destructive/80 font-medium bg-destructive/5 p-1.5 rounded-md border border-destructive/10">
-                    {flightError}
-                  </div>
-                )}
             </div>
-          </div>
-        </div>
 
-        {/* Action Button */}
-        <div className="pt-0 sm:pt-1">
-          <button
-            className="w-full group relative overflow-hidden rounded-xl bg-primary px-4 py-2.5 transition-all hover:shadow-lg hover:shadow-primary/25 active:scale-[0.99] active:shadow-sm"
-            onClick={() => {
-              console.log("Connect clicked for", traveller.name)
-            }}
-          >
-            <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-            <span className="relative flex items-center justify-center gap-2 text-primary-foreground font-bold text-sm tracking-wide">
-              Connect with {traveller.name.split(' ')[0]}
-              <Navigation className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-            </span>
-          </button>
-        </div>
+            {/* Metrics Grid */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-4 rounded-3xl bg-muted/10 border border-border/10">
+                <div className="text-[9px] font-black text-muted-foreground/40 uppercase mb-1 tracking-widest">{CONSTANTS.MESSAGES.DISTANCE}</div>
+                <span className="text-xl font-black tracking-tight">{traveller.distanceFromUserKm} <span className="text-xs font-normal">{CONSTANTS.MESSAGES.KM}</span></span>
+              </div>
+              <div className="p-4 rounded-3xl bg-muted/10 border border-border/10">
+                <div className="text-[9px] font-black text-muted-foreground/40 uppercase mb-1 tracking-widest">{CONSTANTS.MESSAGES.WAIT_TIME}</div>
+                <span className={`text-xl font-black tracking-tight ${calculateWaitTime() === CONSTANTS.MESSAGES.LANDED ? 'text-blue-500' : ''}`}>
+                  {calculateWaitTime()}
+                </span>
+              </div>
+            </div>
+
+            {/* Interests Section */}
+            {traveller.tags && traveller.tags.length > 0 && (
+              <div className="space-y-3 px-1">
+                <div className="flex items-center gap-2 text-[9px] font-black text-muted-foreground/40 uppercase tracking-[0.2em]">
+                  <Heart className="w-3 h-3" /> {CONSTANTS.MESSAGES.INTERESTS}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {traveller.tags.map((tag, i) => (
+                    <span key={i} className="text-[10px] font-bold px-3 py-1 rounded-full bg-muted/20 border border-border/10 text-muted-foreground/80">
+                      #{tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Action Button */}
+            <button className="w-full py-4.5 bg-primary text-primary-foreground rounded-2xl font-black text-xs uppercase tracking-[0.2em] shadow-xl shadow-primary/20 hover:brightness-105 active:scale-[0.98] transition-all">
+              {CONSTANTS.MESSAGES.CONNECT} {traveller.name.split(' ')[0]}
+            </button>
+
+          </div>
+        )}
       </div>
     </div>
   )

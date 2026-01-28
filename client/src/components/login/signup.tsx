@@ -21,21 +21,70 @@ import {
 } from "./utils"
 import { useAuthApi } from "../../hooks/useAuthApi"
 
-// Constants
-const OTP_LENGTH = 6
-
-// Error messages
-const ERROR_USERNAME_REQUIRED = "Username is required"
-const ERROR_PHONE_REQUIRED = "Phone number is required"
-const ERROR_GENDER_REQUIRED = "Please select a gender"
-const ERROR_FILL_REQUIRED_FIELDS = "Fill all required fields"
-const ERROR_RECAPTCHA_NOT_READY = "reCAPTCHA not ready"
-const ERROR_SEND_OTP_FAILED = "Failed to send OTP"
-const ERROR_SIGNUP_FAILED = "Signup failed"
-
-// Success messages
-const TOAST_OTP_SENT = "OTP sent"
-const TOAST_ACCOUNT_CREATED = "Account created"
+const CONSTANTS = {
+  OTP_LENGTH: 6,
+  ERRORS: {
+    USERNAME_REQUIRED: "Username is required",
+    PHONE_REQUIRED: "Phone number is required",
+    GENDER_REQUIRED: "Please select a gender",
+    FILL_REQUIRED_FIELDS: "Fill all required fields",
+    RECAPTCHA_NOT_READY: "reCAPTCHA not ready",
+    SEND_OTP_FAILED: "Failed to send OTP",
+    SIGNUP_FAILED: "Signup failed",
+    MIN_AGE: "You must be at least 15 years old",
+    MAX_AGE: "Age must be 100 or less",
+    MIN_CHARS: "Must be at least 3 characters",
+  },
+  TOASTS: {
+     OTP_SENT: "OTP sent",
+     ACCOUNT_CREATED: "Account created",
+  },
+  LABELS: {
+     USERNAME: "Username",
+     PASSWORD: "Password",
+     FIRST_NAME: "First Name",
+     LAST_NAME: "Last Name",
+     DOB: "Date of Birth (DD - MM - YYYY)",
+     DAY: "Day",
+     MONTH: "Month",
+     YEAR: "Year",
+     GENDER: "Gender",
+     MALE: "Male",
+     FEMALE: "Female",
+     PHONE: "Phone Number",
+     OTP: "OTP",
+     CREATE_ACCOUNT: "Create account",
+     VERIFY_PHONE: "Verify your phone",
+     CREATE_ACCOUNT_DESC: "Enter your account details to get started.",
+     VERIFY_PHONE_DESC: "Enter your phone and OTP to finish signing up.",
+     STEP: "Step",
+     OF: "of",
+     ALREADY_HAVE_ACCOUNT: "Already have an account? Login",
+     AGE_PREFIX: "Age:",
+     AGE_SUFFIX: "years",
+  },
+  BUTTONS: {
+     CONTINUE: "Continue",
+     SEND_OTP: "Send OTP",
+     SENDING_OTP: "Sending OTP...",
+     VERIFY_CREATE: "Verify OTP & Create account",
+     VERIFYING: "Verifying...",
+  },
+  PLACEHOLDERS: {
+     USERNAME: "your_username",
+     PASSWORD: "••••••••",
+     DAY: "DD",
+     MONTH: "MM",
+     YEAR: "YYYY",
+     PHONE: "9876543210",
+  },
+  PASSWORD_STRENGTH: {
+     WEAK: "Weak password",
+     MEDIUM: "Medium strength",
+     STRONG: "Strong password",
+     HINT: "Use 8+ characters with uppercase, lowercase, numbers, and symbols",
+  }
+}
 
 export function Signup() {
   const navigate = useNavigate()
@@ -102,7 +151,7 @@ export function Signup() {
 
     // Validate username
     if (!username.trim()) {
-      toast.error(ERROR_USERNAME_REQUIRED)
+      toast.error(CONSTANTS.ERRORS.USERNAME_REQUIRED)
       return
     }
 
@@ -135,7 +184,7 @@ export function Signup() {
 
     // Validate gender
     if (typeof isFemale !== "boolean") {
-      toast.error(ERROR_GENDER_REQUIRED)
+      toast.error(CONSTANTS.ERRORS.GENDER_REQUIRED)
       return
     }
 
@@ -143,7 +192,7 @@ export function Signup() {
   }
 
   const sendOtp = async () => {
-    if (!phoneNumber.trim()) return toast.error(ERROR_PHONE_REQUIRED)
+    if (!phoneNumber.trim()) return toast.error(CONSTANTS.ERRORS.PHONE_REQUIRED)
     if (isSendingOtp) return
 
     setIsSendingOtp(true)
@@ -155,7 +204,7 @@ export function Signup() {
         const containerId = `recaptcha-container-${resetKey}`
         const el = document.getElementById(containerId)
         if (!el) {
-          throw new Error(ERROR_RECAPTCHA_NOT_READY)
+          throw new Error(CONSTANTS.ERRORS.RECAPTCHA_NOT_READY)
         }
         verifier = new RecaptchaVerifier(auth, containerId, { size: "invisible" })
         await verifier.render()
@@ -171,10 +220,10 @@ export function Signup() {
       verifier.clear()
       recaptchaRef.current = null
       setResetKey((x) => x + 1)
-      toast.success(TOAST_OTP_SENT)
+      toast.success(CONSTANTS.TOASTS.OTP_SENT)
     } catch (e) {
       console.error(e)
-      const message = e instanceof Error ? e.message : ERROR_SEND_OTP_FAILED
+      const message = e instanceof Error ? e.message : CONSTANTS.ERRORS.SEND_OTP_FAILED
       toast.error(message)
     } finally {
       setIsSendingOtp(false)
@@ -185,7 +234,7 @@ export function Signup() {
     e.preventDefault()
     if (!confirmation) return
     if (!dob || !firstName || !lastName || typeof isFemale !== "boolean") {
-      return toast.error(ERROR_FILL_REQUIRED_FIELDS)
+      return toast.error(CONSTANTS.ERRORS.FILL_REQUIRED_FIELDS)
     }
     if (isCompletingSignup) return
 
@@ -204,12 +253,12 @@ export function Signup() {
         isFemale,
       })
 
-      toast.success(TOAST_ACCOUNT_CREATED)
+      toast.success(CONSTANTS.TOASTS.ACCOUNT_CREATED)
       navigate("/dashboard")
       window.location.reload()
     } catch (e) {
       console.error(e)
-      const message = e instanceof Error ? e.message : ERROR_SIGNUP_FAILED
+      const message = e instanceof Error ? e.message : CONSTANTS.ERRORS.SIGNUP_FAILED
       toast.error(message)
     } finally {
       setIsCompletingSignup(false)
@@ -221,18 +270,18 @@ export function Signup() {
       <Card className="w-full max-w-[420px] border-border/60 shadow-xl shadow-primary/5 rounded-3xl bg-card overflow-hidden ring-1 ring-border/60 animate-in fade-in slide-in-from-bottom-6 duration-700">
         <CardHeader className="space-y-3 text-center pt-8 pb-6 bg-linear-to-b from-primary/5 to-transparent">
           <div className="text-[11px] font-semibold uppercase tracking-[0.2em] text-primary/80">
-            Step {step} of 2
+            {CONSTANTS.LABELS.STEP} {step} {CONSTANTS.LABELS.OF} 2
           </div>
           <div className="mx-auto bg-linear-to-tr from-primary/20 to-primary/10 w-16 h-16 rounded-2xl rotate-3 flex items-center justify-center mb-2 text-primary ring-4 ring-background shadow-lg">
             <UserPlus className="w-8 h-8" />
           </div>
           <CardTitle className="text-3xl font-bold tracking-tight text-foreground">
-            {step === 1 ? "Create account" : "Verify your phone"}
+            {step === 1 ? CONSTANTS.LABELS.CREATE_ACCOUNT : CONSTANTS.LABELS.VERIFY_PHONE}
           </CardTitle>
           <CardDescription className="text-base text-muted-foreground/80 font-medium">
             {step === 1
-              ? "Enter your account details to get started."
-              : "Enter your phone and OTP to finish signing up."}
+              ? CONSTANTS.LABELS.CREATE_ACCOUNT_DESC
+              : CONSTANTS.LABELS.VERIFY_PHONE_DESC}
           </CardDescription>
         </CardHeader>
 
@@ -244,13 +293,13 @@ export function Signup() {
                   htmlFor="username"
                   className="text-xs font-semibold text-muted-foreground uppercase tracking-wide ml-1"
                 >
-                  Username
+                  {CONSTANTS.LABELS.USERNAME}
                 </Label>
                 <Input
                   id="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="your_username"
+                  placeholder={CONSTANTS.PLACEHOLDERS.USERNAME}
                   className="h-12 bg-background rounded-xl border-border/60 focus:ring-4 focus:ring-primary/10 transition-all"
                   required
                 />
@@ -260,7 +309,7 @@ export function Signup() {
                   htmlFor="password"
                   className="text-xs font-semibold text-muted-foreground uppercase tracking-wide ml-1"
                 >
-                  Password
+                  {CONSTANTS.LABELS.PASSWORD}
                 </Label>
                 <div className="relative">
                   <Input
@@ -271,7 +320,7 @@ export function Signup() {
                       setPassword(e.target.value)
                       setPasswordStrength(calculatePasswordStrength(e.target.value))
                     }}
-                    placeholder="••••••••"
+                    placeholder={CONSTANTS.PLACEHOLDERS.PASSWORD}
                     className="h-12 bg-background rounded-xl border-border/60 focus:ring-4 focus:ring-primary/10 transition-all pr-10"
                     required
                   />
@@ -312,10 +361,10 @@ export function Signup() {
                       />
                     </div>
                     <p className="text-xs text-muted-foreground">
-                      {passwordStrength === "weak" && "Weak password"}
-                      {passwordStrength === "medium" && "Medium strength"}
-                      {passwordStrength === "strong" && "Strong password"}
-                      {!passwordStrength && "Use 8+ characters with uppercase, lowercase, numbers, and symbols"}
+                      {passwordStrength === "weak" && CONSTANTS.PASSWORD_STRENGTH.WEAK}
+                      {passwordStrength === "medium" && CONSTANTS.PASSWORD_STRENGTH.MEDIUM}
+                      {passwordStrength === "strong" && CONSTANTS.PASSWORD_STRENGTH.STRONG}
+                      {!passwordStrength && CONSTANTS.PASSWORD_STRENGTH.HINT}
                     </p>
                   </div>
                 )}
@@ -327,7 +376,7 @@ export function Signup() {
                     htmlFor="firstName"
                     className="text-xs font-semibold text-muted-foreground uppercase tracking-wide ml-1"
                   >
-                    First Name
+                    {CONSTANTS.LABELS.FIRST_NAME}
                   </Label>
                   <Input
                     id="firstName"
@@ -340,7 +389,7 @@ export function Signup() {
                     required
                   />
                   {firstName && firstName.trim().length > 0 && firstName.trim().length < 3 && (
-                    <p className="text-xs text-destructive">Must be at least 3 characters</p>
+                    <p className="text-xs text-destructive">{CONSTANTS.ERRORS.MIN_CHARS}</p>
                   )}
                 </div>
                 <div className="space-y-2">
@@ -348,7 +397,7 @@ export function Signup() {
                     htmlFor="lastName"
                     className="text-xs font-semibold text-muted-foreground uppercase tracking-wide ml-1"
                   >
-                    Last Name
+                    {CONSTANTS.LABELS.LAST_NAME}
                   </Label>
                   <Input
                     id="lastName"
@@ -361,7 +410,7 @@ export function Signup() {
                     required
                   />
                   {lastName && lastName.trim().length > 0 && lastName.trim().length < 3 && (
-                    <p className="text-xs text-destructive">Must be at least 3 characters</p>
+                    <p className="text-xs text-destructive">{CONSTANTS.ERRORS.MIN_CHARS}</p>
                   )}
                 </div>
               </div>
@@ -371,12 +420,12 @@ export function Signup() {
                   htmlFor="dob-day"
                   className="text-xs font-semibold text-muted-foreground uppercase tracking-wide ml-1"
                 >
-                  Date of Birth (DD - MM - YYYY)
+                  {CONSTANTS.LABELS.DOB}
                 </Label>
                 <div className="grid grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label htmlFor="dob-day" className="text-[11px] text-muted-foreground/80 ml-1">
-                      Day
+                      {CONSTANTS.LABELS.DAY}
                     </Label>
                     <Input
                       id="dob-day"
@@ -392,14 +441,14 @@ export function Signup() {
                           setDobDay(raw)
                         }
                       }}
-                      placeholder="DD"
+                      placeholder={CONSTANTS.PLACEHOLDERS.DAY}
                       className="h-12 bg-background rounded-xl border-border/60 focus:ring-4 focus:ring-primary/10 transition-all text-center font-mono"
                       required
                     />
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="dob-month" className="text-[11px] text-muted-foreground/80 ml-1">
-                      Month
+                      {CONSTANTS.LABELS.MONTH}
                     </Label>
                     <Input
                       id="dob-month"
@@ -415,14 +464,14 @@ export function Signup() {
                           setDobMonth(raw)
                         }
                       }}
-                      placeholder="MM"
+                      placeholder={CONSTANTS.PLACEHOLDERS.MONTH}
                       className="h-12 bg-background rounded-xl border-border/60 focus:ring-4 focus:ring-primary/10 transition-all text-center font-mono"
                       required
                     />
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="dob-year" className="text-[11px] text-muted-foreground/80 ml-1">
-                      Year
+                      {CONSTANTS.LABELS.YEAR}
                     </Label>
                     <Input
                       id="dob-year"
@@ -435,7 +484,7 @@ export function Signup() {
                         if (raw.length > 4) return
                         setDobYear(raw)
                       }}
-                      placeholder="YYYY"
+                      placeholder={CONSTANTS.PLACEHOLDERS.YEAR}
                       className="h-12 bg-background rounded-xl border-border/60 focus:ring-4 focus:ring-primary/10 transition-all text-center font-mono"
                       required
                     />
@@ -444,15 +493,15 @@ export function Signup() {
                 {dob && (() => {
                   const age = calculateAge(dob)
                   if (age === null) return null
-                  if (age < 15) return <p className="text-xs text-destructive">You must be at least 15 years old</p>
-                  if (age > 100) return <p className="text-xs text-destructive">Age must be 100 or less</p>
-                  return <p className="text-xs text-muted-foreground">Age: {age} years</p>
+                  if (age < 15) return <p className="text-xs text-destructive">{CONSTANTS.ERRORS.MIN_AGE}</p>
+                  if (age > 100) return <p className="text-xs text-destructive">{CONSTANTS.ERRORS.MAX_AGE}</p>
+                  return <p className="text-xs text-muted-foreground">{CONSTANTS.LABELS.AGE_PREFIX} {age} {CONSTANTS.LABELS.AGE_SUFFIX}</p>
                 })()}
               </div>
 
               <div className="space-y-2">
                 <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide ml-1">
-                  Gender
+                  {CONSTANTS.LABELS.GENDER}
                 </Label>
                 <div className="flex gap-3">
                   <Button
@@ -461,7 +510,7 @@ export function Signup() {
                     className="flex-1 h-10 rounded-xl"
                     onClick={() => setIsFemale(false)}
                   >
-                    Male
+                    {CONSTANTS.LABELS.MALE}
                   </Button>
                   <Button
                     type="button"
@@ -469,7 +518,7 @@ export function Signup() {
                     className="flex-1 h-10 rounded-xl"
                     onClick={() => setIsFemale(true)}
                   >
-                    Female
+                    {CONSTANTS.LABELS.FEMALE}
                   </Button>
                 </div>
               </div>
@@ -478,7 +527,7 @@ export function Signup() {
                 type="submit"
                 className="w-full h-12 text-base font-bold shadow-lg shadow-primary/25 bg-linear-to-r from-primary to-primary/90 rounded-xl active:scale-[0.98] transition-transform"
               >
-                Continue
+                {CONSTANTS.BUTTONS.CONTINUE}
               </Button>
             </form>
           ) : (
@@ -488,7 +537,7 @@ export function Signup() {
                   htmlFor="phone"
                   className="text-xs font-semibold text-muted-foreground uppercase tracking-wide ml-1"
                 >
-                  Phone Number
+                  {CONSTANTS.LABELS.PHONE}
                 </Label>
                 <div className="flex w-full items-center rounded-xl border-2 border-border/50 bg-background/50 focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary">
                   <CountrySelect
@@ -498,7 +547,7 @@ export function Signup() {
                   />
                   <Input
                     id="phone"
-                    placeholder="9876543210"
+                    placeholder={CONSTANTS.PLACEHOLDERS.PHONE}
                     type="tel"
                     className="flex-1 h-12 border-none bg-transparent shadow-none focus-visible:ring-0 rounded-l-none rounded-r-xl"
                     value={phoneNumber}
@@ -512,11 +561,11 @@ export function Signup() {
               {confirmation ? (
                 <div className="space-y-3 flex flex-col items-center">
                   <Label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    OTP
+                    {CONSTANTS.LABELS.OTP}
                   </Label>
-                  <InputOTP maxLength={OTP_LENGTH} value={otp} onChange={setOtp} disabled={isCompletingSignup}>
+                  <InputOTP maxLength={CONSTANTS.OTP_LENGTH} value={otp} onChange={setOtp} disabled={isCompletingSignup}>
                     <InputOTPGroup className="gap-2">
-                      {[...Array(OTP_LENGTH)].map((_, i) => (
+                      {[...Array(CONSTANTS.OTP_LENGTH)].map((_, i) => (
                         <InputOTPSlot
                           key={i}
                           index={i}
@@ -533,7 +582,7 @@ export function Signup() {
                   disabled={isSendingOtp || isCompletingSignup}
                   onClick={sendOtp}
                 >
-                  {isSendingOtp ? "Sending OTP..." : "Send OTP"}
+                  {isSendingOtp ? CONSTANTS.BUTTONS.SENDING_OTP : CONSTANTS.BUTTONS.SEND_OTP}
                 </Button>
               )}
 
@@ -543,9 +592,9 @@ export function Signup() {
                 <Button
                   type="submit"
                   className="w-full h-12 text-base font-bold shadow-lg shadow-primary/25 bg-linear-to-r from-primary to-primary/90 rounded-xl active:scale-[0.98] transition-transform"
-                  disabled={isCompletingSignup || otp.length !== OTP_LENGTH}
+                  disabled={isCompletingSignup || otp.length !== CONSTANTS.OTP_LENGTH}
                 >
-                  {isCompletingSignup ? "Verifying..." : "Verify OTP & Create account"}
+                  {isCompletingSignup ? CONSTANTS.BUTTONS.VERIFYING : CONSTANTS.BUTTONS.VERIFY_CREATE}
                 </Button>
               ) : null}
             </form>
@@ -560,7 +609,7 @@ export function Signup() {
             disabled={isSendingOtp || isCompletingSignup}
             onClick={() => navigate("/login")}
           >
-            Already have an account? Login
+            {CONSTANTS.LABELS.ALREADY_HAVE_ACCOUNT}
           </Button>
         </CardFooter>
       </Card>

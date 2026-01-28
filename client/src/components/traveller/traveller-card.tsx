@@ -2,27 +2,34 @@ import { User, MapPin, Clock, CalendarRange, ChevronRight } from "lucide-react"
 import type { Traveller } from "./types"
 import { formatWaitTime, formatFlightDateTime } from "./utils"
 
-type TravellerCardProps = {
-  traveller: Traveller
-  onClick: () => void
-}
-
-const TEXTS = {
+const CONSTANTS = {
   LABELS: {
     DESTINATION: "Dest",
     FLIGHT: "Flight",
     WAIT: "Wait",
+    AWAY: "away",
   },
   UNITS: {
     KM: "km",
+  },
+  BUTTONS: {
+    VIEW_MORE: "View More",
+  },
+  GENDER: {
+    MALE: "Male",
   }
+}
+
+type TravellerCardProps = {
+  traveller: Traveller
+  onClick: () => void
 }
 
 export function TravellerCard({
   traveller,
   onClick,
 }: TravellerCardProps) {
-  const isMale = traveller.gender === "Male"
+  const isMale = traveller.gender === CONSTANTS.GENDER.MALE
   
   // Subtle gradients and accents
   const cardBorder = isMale 
@@ -90,7 +97,7 @@ export function TravellerCard({
          {/* Destination */}
          <div className="flex flex-col gap-1">
             <span className="text-[10px] uppercase tracking-wider font-semibold text-zinc-400 flex items-center gap-1">
-                <MapPin className="w-3 h-3" /> {TEXTS.LABELS.DESTINATION}
+                <MapPin className="w-3 h-3" /> {CONSTANTS.LABELS.DESTINATION}
             </span>
             <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200 truncate pr-1" title={traveller.destination}>
                 {traveller.destination}
@@ -100,7 +107,7 @@ export function TravellerCard({
          {/* Flight Time */}
          <div className="flex flex-col gap-1 pl-2 border-l border-black/5 dark:border-white/5">
             <span className="text-[10px] uppercase tracking-wider font-semibold text-zinc-400 flex items-center gap-1">
-                <Clock className="w-3 h-3" /> {TEXTS.LABELS.FLIGHT}
+                <Clock className="w-3 h-3" /> {CONSTANTS.LABELS.FLIGHT}
             </span>
             <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
                 {flightTime}
@@ -110,7 +117,7 @@ export function TravellerCard({
          {/* Wait Time */}
          <div className="flex flex-col gap-1 pl-2 border-l border-black/5 dark:border-white/5">
             <span className="text-[10px] uppercase tracking-wider font-semibold text-zinc-400 flex items-center gap-1">
-                <CalendarRange className="w-3 h-3" /> {TEXTS.LABELS.WAIT}
+                <CalendarRange className="w-3 h-3" /> {CONSTANTS.LABELS.WAIT}
             </span>
             <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
                 {waitTime}
@@ -123,14 +130,14 @@ export function TravellerCard({
          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
             <MapPin className="w-3 h-3 text-zinc-400" />
             <span className="text-[10px] font-semibold text-zinc-600 dark:text-zinc-300">
-                {traveller.distanceFromUserKm} {TEXTS.UNITS.KM} away
+                {traveller.distanceFromUserKm} {CONSTANTS.UNITS.KM} {CONSTANTS.LABELS.AWAY}
             </span>
          </div>
          <button 
             onClick={onClick}
             className="text-xs font-bold bg-zinc-900 text-white dark:bg-white dark:text-black px-4 py-2 rounded-xl shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-1"
           >
-              View More <ChevronRight className="w-3 h-3" />
+              {CONSTANTS.BUTTONS.VIEW_MORE} <ChevronRight className="w-3 h-3" />
           </button>
       </div>
     </div>

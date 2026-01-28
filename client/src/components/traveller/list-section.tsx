@@ -14,10 +14,11 @@ interface ListSectionProps {
   icon?: ReactNode
 }
 
-const TEXTS = {
+const CONSTANTS = {
   RESULT: "result",
   SUFFIX_S: "s",
   LOADING: "Fetching your co-travellers...",
+  EMPTY_TITLE: "It's a bit quiet here",
 }
 
 function ListSection({ title, subtitle, count, emptyMessage, animation, children, loading, icon }: ListSectionProps) {
@@ -28,9 +29,11 @@ function ListSection({ title, subtitle, count, emptyMessage, animation, children
       <div className="flex flex-col items-center justify-center min-h-[400px] py-12 text-muted-foreground/60 gap-4 border rounded-2xl bg-white/5 border-dashed border-border/30">
         <div className="relative">
              <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full" />
-             <Loader2 className="relative w-10 h-10 animate-spin text-primary" />
+             <div className="relative">
+                <Loader2 className="w-10 h-10 animate-spin text-primary" />
+             </div>
         </div>
-        <span className="text-sm font-medium animate-pulse tracking-wide">{TEXTS.LOADING}</span>
+        <span className="text-sm font-medium animate-pulse tracking-wide">{CONSTANTS.LOADING}</span>
       </div>
     )
   }
@@ -65,7 +68,7 @@ function ListSection({ title, subtitle, count, emptyMessage, animation, children
         {/* Dynamic Badge */}
         <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-white/50 dark:bg-black/50 border border-primary/10 text-xs font-bold text-foreground shadow-sm backdrop-blur-md whitespace-nowrap self-start xs:self-center group-hover:border-primary/20 transition-colors">
           <span className="text-primary mr-1.5">•</span>
-          {count} {TEXTS.RESULT}{count === 1 ? "" : TEXTS.SUFFIX_S}
+          {count} {CONSTANTS.RESULT}{count === 1 ? "" : CONSTANTS.SUFFIX_S}
         </div>
       </div>
 
@@ -86,7 +89,7 @@ function ListSection({ title, subtitle, count, emptyMessage, animation, children
                     <Sparkles className="absolute -top-2 -right-2 w-5 h-5 text-primary animate-pulse duration-1000" />
                 </div>
                 
-                <h4 className="text-lg font-semibold text-foreground mb-2">It's a bit quiet here</h4>
+                <h4 className="text-lg font-semibold text-foreground mb-2">{CONSTANTS.EMPTY_TITLE}</h4>
                 <p className="text-sm text-muted-foreground max-w-[280px] leading-relaxed">
                   {emptyMessage}
                 </p>

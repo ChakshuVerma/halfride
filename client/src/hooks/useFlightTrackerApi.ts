@@ -12,24 +12,46 @@ export type FlightArrivalInfo = {
   timingLabel?: string
   timingCategory?: "early" | "on_time" | "late"
   timingDeltaMinutes?: number
+  terminal?: string | null
+  gate?: string | null
+  baggage?: string | null
+  airlineName?: string | null
+  originCode?: string | null
+  destCode?: string | null
 }
 
 type FlightTrackerResponse = {
   ok?: boolean
   valid?: boolean
   data?: {
+    airlineName?: string | null
+    departure?: {
+      airportCode: string | null
+      terminal: string | null
+      gate: string | null
+      scheduledTime: string | null
+    }
+    arrival?: {
+      airportCode: string | null
+      terminal: string | null
+      gate: string | null
+      baggage: string | null
+      scheduledTime: string | null
+      estimatedActualTime: string | null
+    }
     schedule?: {
-      scheduledArrival?: string
-      estimatedActualArrival?: string
+      scheduledArrival?: string | null
+      estimatedActualArrival?: string | null
     }
     status?: {
-      status?: string
-      statusDescription?: string
-      statusCode?: string
+      status?: string | null
+      statusDescription?: string | null
+      statusCode?: string | null
+      delayMinutes?: number
     }
     flightNote?: {
-      phase?: string
-      message?: string
+      phase?: string | null
+      message?: string | null
       landed?: boolean
     }
     isLanded?: boolean
@@ -57,11 +79,9 @@ function parseFlightArrivalInfo(json: FlightTrackerResponse): FlightArrivalInfo 
   const statusInfo = inner?.status
   const flightNote = inner?.flightNote
 
-  const scheduledIso: string | undefined = schedule?.scheduledArrival
-  const estimatedIso: string | undefined = schedule?.estimatedActualArrival
-
-  // Try to read an ISO arrival time from the API response; fall back to scheduled arrival
-  const isoArrival: string | undefined = estimatedIso || scheduledIso
+  const scheduledIso = schedule?.scheduledArrival
+  const estimatedIso = schedule?.estimatedActualArrival
+  const isoArrival = estimatedIso || scheduledIso
 
   if (!isoArrival) {
     throw new Error("Arrival time not available")
@@ -74,46 +94,61 @@ function parseFlightArrivalInfo(json: FlightTrackerResponse): FlightArrivalInfo 
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    hour12: true
   })
 
-  const etaLocal = arrivalTimeLocal
-  const statusShort: string | undefined =
-    statusInfo?.status || flightNote?.phase || flightNote?.message
-  const statusDetail: string | undefined = statusInfo?.statusDescription || undefined
-
-  const isLanded = Boolean(
-    inner?.isLanded || flightNote?.landed || statusInfo?.statusCode === "L",
-  )
+  // Basic Status Flags
+  const statusCode = statusInfo?.statusCode || ""
+  const isLanded = inner?.isLanded || flightNote?.landed || statusCode === "L" || statusCode === "A"
+  const isCancelled = statusCode === "C"
 
   let timingCategory: "early" | "on_time" | "late" | undefined
-  let timingLabel: string | undefined
+  let timingLabel = "Scheduled"
   let timingDeltaMinutes: number | undefined
 
-  if (!isLanded && scheduledIso && estimatedIso) {
+  /**
+   * 6-STAGE STATUS LOGIC
+   */
+  if (isCancelled) {
+    // 1. CANCELLED
+    timingLabel = "Cancelled"
+    timingCategory = "late" // Highlighted as a negative status
+  } else if (isLanded) {
+    // 2. LANDED
+    timingLabel = "Landed"
+    timingCategory = "on_time"
+  } else if (statusCode === "S" || statusCode === "" ) {
+     // 3. NOT YET STARTED (Scheduled but not active)
+     // Use this if flight hasn't departed yet
+     timingLabel = "Not yet started"
+  } else if (scheduledIso && estimatedIso) {
     const sched = new Date(scheduledIso)
     const est = new Date(estimatedIso)
-    const diffMinutes = Math.round((est.getTime() - sched.getTime()) / 60000)
-    timingDeltaMinutes = diffMinutes
+    const diff = Math.round((est.getTime() - sched.getTime()) / 60000)
+    timingDeltaMinutes = diff
+    const abs = Math.abs(diff)
 
-    const abs = Math.abs(diffMinutes)
-    if (abs <= 5) {
-      timingCategory = "on_time"
-      timingLabel = "On time"
-    } else if (diffMinutes > 5) {
+    if (diff > 5) {
+      // 4. DELAYED
       timingCategory = "late"
       timingLabel = `Delayed by ${abs} min`
-    } else if (diffMinutes < -5) {
+    } else if (diff < -5) {
+      // 5. EARLY
       timingCategory = "early"
       timingLabel = `Arriving ${abs} min early`
+    } else {
+      // 6. ON TIME
+      timingCategory = "on_time"
+      timingLabel = "On time"
     }
   }
 
   return {
     arrivalTimeLocal,
     lastUpdatedAt: Date.now(),
-    etaLocal,
-    statusShort,
-    statusDetail,
+    etaLocal: arrivalTimeLocal,
+    statusShort: timingLabel,
+    statusDetail: statusInfo?.statusDescription || undefined,
     isLanded,
     timingCategory,
     timingLabel,
@@ -141,8 +176,6 @@ export function useFlightTrackerApi() {
       const year = flightDate.getFullYear()
       const month = flightDate.getMonth() + 1
       const day = flightDate.getDate()
-      // Add a fake delay of 500ms
-      await new Promise((resolve) => setTimeout(resolve, 500))
       return fetchFlightTracker({ carrier, flightNum, year, month, day })
     },
     [fetchFlightTracker]
