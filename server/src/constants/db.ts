@@ -50,8 +50,10 @@ export interface TravellerDataSchema {
   destination: string; // User defined destination
   flightRef: any; // DocumentReference to flightDetail
   userRef: any; // DocumentReference to users
+  createdAt: any;
   updatedAt: any;
 }
+
 
 /**
  * Field Name Constants
@@ -97,7 +99,9 @@ export const TRAVELLER_FIELDS = {
   DESTINATION: 'destination',
   FLIGHT_REF: 'flightRef',
   USER_REF: 'userRef',
+  CREATED_AT: 'createdAt',
   UPDATED_AT: 'updatedAt'
 } as const;
+
 
 

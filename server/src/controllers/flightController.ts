@@ -2,7 +2,8 @@ import type { Request, Response } from 'express';
 import { admin } from '../firebase/admin';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { checkUserExists } from './userController';
-import { COLLECTIONS, FLIGHT_FIELDS, USER_FIELDS } from '../constants/db';
+import { COLLECTIONS, FLIGHT_FIELDS, USER_FIELDS, TRAVELLER_FIELDS } from '../constants/db';
+
 
 
 /**
@@ -201,16 +202,26 @@ export async function createFlightTracker(req: Request, res: Response) {
     const travellerRef = db.collection(COLLECTIONS.TRAVELLER_DATA).doc(travellerDocId);
 
 
-    await travellerRef.set({
-      date: flightDateStr,
-      flightArrival: flightData.arrival?.airportCode || 'N/A',
-      flightDeparture: flightData.departure?.airportCode || 'N/A',
-      terminal: flightData.departure?.terminal || 'N/A',
-      destination: destination,
-      flightRef: flightRef,
-      userRef: userRef,
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+    const travellerSnap = await travellerRef.get();
+    const isNewTraveller = !travellerSnap.exists;
+
+    const travellerPayload: any = {
+      [TRAVELLER_FIELDS.DATE]: flightDateStr,
+      [TRAVELLER_FIELDS.FLIGHT_ARRIVAL]: flightData.arrival?.airportCode || 'N/A',
+      [TRAVELLER_FIELDS.FLIGHT_DEPARTURE]: flightData.departure?.airportCode || 'N/A',
+      [TRAVELLER_FIELDS.TERMINAL]: flightData.departure?.terminal || 'N/A',
+      [TRAVELLER_FIELDS.DESTINATION]: destination,
+      [TRAVELLER_FIELDS.FLIGHT_REF]: flightRef,
+      [TRAVELLER_FIELDS.USER_REF]: userRef,
+      [TRAVELLER_FIELDS.UPDATED_AT]: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    if (isNewTraveller) {
+      travellerPayload[TRAVELLER_FIELDS.CREATED_AT] = admin.firestore.FieldValue.serverTimestamp();
+    }
+
+    await travellerRef.set(travellerPayload, { merge: true });
+
 
     return res.status(201).json({ 
       ok: true, 
