@@ -1,5 +1,7 @@
 import type { Request, Response } from 'express';
 import { admin } from '../firebase/admin';
+import { COLLECTIONS, TRAVELLER_FIELDS } from '../constants/db';
+
 
 export async function getTravellersByAirport(req: Request, res: Response) {
   const { airportCode } = req.params; // e.g., "DEL"
@@ -12,9 +14,10 @@ export async function getTravellersByAirport(req: Request, res: Response) {
 
   try {
     // 1. Fetch all travellers associated with this airport (as the origin)
-    const snapshot = await db.collection('traveller_data')
-      .where('flightArrival', '==', String(airportCode).toUpperCase())
+    const snapshot = await db.collection(COLLECTIONS.TRAVELLER_DATA)
+      .where(TRAVELLER_FIELDS.FLIGHT_ARRIVAL, '==', String(airportCode).toUpperCase())
       .get();
+
 
     if (snapshot.empty) {
       return res.json({ ok: true, data: [] });

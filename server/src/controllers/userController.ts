@@ -1,12 +1,15 @@
 import type { Request, Response } from 'express';
 import { FieldValue } from 'firebase-admin/firestore';
 import { admin } from '../firebase/admin';
+import { COLLECTIONS, USER_FIELDS } from '../constants/db';
+
 
 export async function profile(req: Request, res: Response) {
   const uid = req.auth?.uid;
   if (!uid) return res.status(401).json({ ok: false, error: 'Unauthorized' });
 
-  const snap = await admin.firestore().collection('users').doc(uid).get();
+  const snap = await admin.firestore().collection(COLLECTIONS.USERS).doc(uid).get();
+
   return res.json({ ok: true, user: snap.exists ? snap.data() : null });
 }
 
@@ -37,19 +40,21 @@ export async function createMe(req: Request, res: Response) {
     return res.status(400).json({ ok: false, error: 'Phone must match authenticated phone_number' });
   }
 
-  const users = admin.firestore().collection('users');
+  const users = admin.firestore().collection(COLLECTIONS.USERS);
+
   const docRef = users.doc(uid);
 
   const payload = {
-    userID: uid,
-    DOB: body.DOB,
-    FirstName: body.FirstName,
-    LastName: body.LastName,
-    Phone: phoneFromToken ?? body.Phone ?? null,
-    isFemale: body.isFemale,
-    createdAt: FieldValue.serverTimestamp(),
-    updatedAt: FieldValue.serverTimestamp(),
+    [USER_FIELDS.USER_ID]: uid,
+    [USER_FIELDS.DOB]: body.DOB,
+    [USER_FIELDS.FIRST_NAME]: body.FirstName,
+    [USER_FIELDS.LAST_NAME]: body.LastName,
+    [USER_FIELDS.PHONE]: phoneFromToken ?? body.Phone ?? null,
+    [USER_FIELDS.IS_FEMALE]: body.isFemale,
+    [USER_FIELDS.CREATED_AT]: FieldValue.serverTimestamp(),
+    [USER_FIELDS.UPDATED_AT]: FieldValue.serverTimestamp(),
   };
+
 
   try {
     // create() guarantees uniqueness: fails if doc already exists
@@ -66,7 +71,8 @@ export async function createMe(req: Request, res: Response) {
 
 export async function checkUserExists(uid: string) {
   try {
-    const snap = await admin.firestore().collection('users').doc(uid).get();
+    const snap = await admin.firestore().collection(COLLECTIONS.USERS).doc(uid).get();
+
     return { ok: true, exists: snap.exists, data: snap.exists ? snap.data() : null };
   } catch (error: any) {
     return { ok: false, error: error.message };

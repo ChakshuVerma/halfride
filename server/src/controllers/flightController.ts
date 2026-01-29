@@ -2,6 +2,8 @@ import type { Request, Response } from 'express';
 import { admin } from '../firebase/admin';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
 import { checkUserExists } from './userController';
+import { COLLECTIONS, FLIGHT_FIELDS, USER_FIELDS } from '../constants/db';
+
 
 /**
  * TYPES & INTERFACES
@@ -159,8 +161,9 @@ export async function createFlightTracker(req: Request, res: Response) {
   
   const db = admin.firestore();
   const flightDocId = `${carrier}_${fNum}_${flightDateStr}`;
-  const flightRef = db.collection('flightDetail').doc(flightDocId);
-  const userRef = db.collection('users').doc(uid);
+  const flightRef = db.collection(COLLECTIONS.FLIGHT_DETAIL).doc(flightDocId);
+  const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
+
 
   try {
     let flightData;
@@ -194,7 +197,9 @@ export async function createFlightTracker(req: Request, res: Response) {
     // 3. Create/Update the traveller_data record
     // We use a composite ID (uid_flightId) so a user can't track the same flight twice
     const travellerDocId = `${uid}_${flightDocId}`;
-    const travellerRef = db.collection('traveller_data').doc(travellerDocId);
+
+    const travellerRef = db.collection(COLLECTIONS.TRAVELLER_DATA).doc(travellerDocId);
+
 
     await travellerRef.set({
       date: flightDateStr,
@@ -234,7 +239,9 @@ export async function getFlightTracker(req: Request, res: Response) {
 
   const flightDocId = `${carrier}_${fNum}_${y}-${m}-${d}`;
   const db = admin.firestore();
-  const flightRef = db.collection('flightDetail').doc(flightDocId);
+
+  const flightRef = db.collection(COLLECTIONS.FLIGHT_DETAIL).doc(flightDocId);
+
   
   try {
     const doc = await flightRef.get();
