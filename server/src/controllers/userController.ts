@@ -64,20 +64,27 @@ export async function createMe(req: Request, res: Response) {
   }
 }
 
+export async function checkUserExists(uid: string) {
+  try {
+    const snap = await admin.firestore().collection('users').doc(uid).get();
+    return { ok: true, exists: snap.exists, data: snap.exists ? snap.data() : null };
+  } catch (error: any) {
+    return { ok: false, error: error.message };
+  }
+}
+
 export async function meExists(req: Request, res: Response) {
   const uid = req.auth?.uid;
   if (!uid) return res.status(401).json({ ok: false, error: 'Missing user context' });
 
-  try {
-    const docRef = admin.firestore().collection('users').doc(uid);
-    const snap = await docRef.get();
-
-    return res.json({
-      ok: true,
-      exists: snap.exists,
-      user: snap.exists ? snap.data() : null,
-    });
-  } catch (e: any) {
-    return res.status(500).json({ ok: false, error: 'Failed to check user', detail: e?.message });
+  const result = await checkUserExists(uid);
+  if (!result.ok) {
+    return res.status(500).json({ ok: false, error: 'Failed to check user', detail: result.error });
   }
+
+  return res.json({
+    ok: true,
+    exists: result.exists,
+    user: result.data,
+  });
 }

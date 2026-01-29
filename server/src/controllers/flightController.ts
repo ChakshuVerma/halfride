@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { admin } from '../firebase/admin';
 import { Timestamp, FieldValue } from 'firebase-admin/firestore';
+import { checkUserExists } from './userController';
 
 /**
  * TYPES & INTERFACES
@@ -134,8 +135,15 @@ async function fetchAndMapFlightData(carrier: string, fNum: string, y: number, m
 /**
  * ENDPOINT 1: CREATE FLIGHT ENTRY
  */
-export async function createFlightEntry(req: Request, res: Response) {
-  const { carrier: rawCarrier, flightNumber: rawFlightNumber, year, month, day } = req.body;
+export async function createFlightTracker(req: Request, res: Response) {
+  const { carrier: rawCarrier, flightNumber: rawFlightNumber, year, month, day, destination } = req.body;
+  const uid = req.auth!.uid;
+
+  // 1. Verify User record actually exists in Firestore
+  const userCheck = await checkUserExists(uid);
+  if (!userCheck.ok || !userCheck.exists) {
+    return res.status(400).json({ ok: false, error: 'Bad Request', message: 'User record not found' });
+  }
 
   const carrier = String(rawCarrier ?? '').trim().toUpperCase();
   const fNum = String(rawFlightNumber ?? '').trim();
@@ -143,47 +151,75 @@ export async function createFlightEntry(req: Request, res: Response) {
   const m = Number(month);
   const d = Number(day);
 
-  if (!carrier || !fNum || isNaN(y) || isNaN(m) || isNaN(d)) {
+  if (!carrier || !fNum || isNaN(y) || isNaN(m) || isNaN(d) || !isDateTodayOrTomorrow(new Date(y, m - 1, d))) {
     return res.status(400).json({ ok: false, error: 'Bad Request', message: 'Invalid params' });
   }
 
-  if (!isDateTodayOrTomorrow(new Date(y, m - 1, d))) {
-    return res.status(400).json({ ok: false, error: 'Bad Request', message: 'Only today/tomorrow allowed' });
-  }
-
-  const flightDocId = `${carrier}_${fNum}_${y}-${m}-${d}`;
+  const flightDateStr = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  
   const db = admin.firestore();
+  const flightDocId = `${carrier}_${fNum}_${flightDateStr}`;
   const flightRef = db.collection('flightDetail').doc(flightDocId);
+  const userRef = db.collection('users').doc(uid);
 
   try {
-    const doc = await flightRef.get();
-    if (doc.exists) {
-      return res.status(200).json({ ok: true, message: 'Flight already exists', flightId: flightDocId });
+    let flightData;
+
+    // 2. Fetch or Retrieve Flight Details
+    const flightSnap = await flightRef.get();
+    
+    if (flightSnap.exists) {
+      // If it exists, pull the existing data
+      const existingDoc = flightSnap.data();
+      flightData = existingDoc?.flightData;
+    } else {
+      // If it doesn't, fetch from external API and save it
+      flightData = await fetchAndMapFlightData(carrier, fNum, y, m, d);
+      
+      const newFlight = {
+        flightId: `${carrier}_${fNum}`,
+        carrier,
+        flightNumber: fNum,
+        flightDate: flightDateStr,
+        etaFetchedAt: admin.firestore.FieldValue.serverTimestamp(),
+        flightData,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        status: flightData.isLanded ? 'completed' : 'active'
+      };
+      
+      await flightRef.set(newFlight);
     }
 
-    const flightData = await fetchAndMapFlightData(carrier, fNum, y, m, d);
+    // 3. Create/Update the traveller_data record
+    // We use a composite ID (uid_flightId) so a user can't track the same flight twice
+    const travellerDocId = `${uid}_${flightDocId}`;
+    const travellerRef = db.collection('traveller_data').doc(travellerDocId);
 
-    const newFlight: FlightDoc = {
-      flightId: `${carrier}_${fNum}`,
-      carrier,
-      flightNumber: fNum,
-      flightDate: `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`,
-      etaFetchedAt: FieldValue.serverTimestamp(),
-      flightData,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-      status: flightData.isLanded ? 'completed' : 'active'
-    };
+    await travellerRef.set({
+      date: flightDateStr,
+      flightArrival: flightData.arrival?.airportCode || 'N/A',
+      flightDeparture: flightData.departure?.airportCode || 'N/A',
+      terminal: flightData.departure?.terminal || 'N/A',
+      destination: destination,
+      flightRef: flightRef,
+      userRef: userRef,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
 
-    await flightRef.set(newFlight);
-    return res.status(201).json({ ok: true, message: 'Flight registered', flightId: flightDocId });
+    return res.status(201).json({ 
+      ok: true, 
+      message: 'Flight tracking initialized', 
+      flightId: flightDocId,
+      travellerId: travellerDocId 
+    });
 
   } catch (error: any) {
     console.error('Create Flight Error:', error.message);
-    return res.status(404).json({ ok: false, error: 'Not Found', message: error.message });
+    const code = error.message.includes('not found') ? 404 : 500;
+    return res.status(code).json({ ok: false, error: 'Internal Error', message: error.message });
   }
 }
-
 /**
  * ENDPOINT 2: GET FLIGHT TRACKER
  */
@@ -195,10 +231,6 @@ export async function getFlightTracker(req: Request, res: Response) {
   const y = Number(year);
   const m = Number(month);
   const d = Number(day);
-
-  if (!isDateTodayOrTomorrow(new Date(y, m - 1, d))) {
-    return res.status(400).json({ ok: false, error: 'Bad Request', message: 'Only today/tomorrow allowed' });
-  }
 
   const flightDocId = `${carrier}_${fNum}_${y}-${m}-${d}`;
   const db = admin.firestore();
@@ -229,31 +261,5 @@ export async function getFlightTracker(req: Request, res: Response) {
   } catch (error: any) {
     console.error('Tracker Error:', error.message);
     return res.status(500).json({ ok: false, error: 'Internal Server Error' });
-  }
-}
-
-/**
- * CLEANUP SCRIPT
- */
-export async function cleanupOldFlights() {
-  const db = admin.firestore();
-  const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-  try {
-    const snapshot = await db.collection('flightDetail')
-      .where('status', '==', 'completed')
-      .where('updatedAt', '<', twentyFourHoursAgo)
-      .get();
-
-    if (snapshot.empty) return { deleted: 0 };
-
-    const batch = db.batch();
-    snapshot.docs.forEach((doc) => batch.delete(doc.ref));
-    await batch.commit();
-
-    return { deleted: snapshot.size };
-  } catch (error) {
-    console.error('Cleanup Error:', error);
-    throw error;
   }
 }
