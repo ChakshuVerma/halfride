@@ -164,7 +164,7 @@ export function useFlightTrackerApi() {
       const { carrier, flightNum, year, month, day } = params
       const url = API_ROUTES.FLIGHT_TRACKER
       const json = await sessionRequest<FlightTrackerResponse>(url, {
-        method: "POST",
+        method: "PUT",
         body: JSON.stringify({
           carrier,
           flightNumber: flightNum,
