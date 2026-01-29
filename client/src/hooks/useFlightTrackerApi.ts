@@ -162,9 +162,17 @@ export function useFlightTrackerApi() {
   const fetchFlightTracker = useCallback(
     async (params: FlightParams): Promise<FlightArrivalInfo> => {
       const { carrier, flightNum, year, month, day } = params
-      const url = `${API_ROUTES.FLIGHT_TRACKER}/${encodeURIComponent(carrier)}/${encodeURIComponent(flightNum)}/${year}/${month}/${day}`
-
-      const json = await sessionRequest<FlightTrackerResponse>(url)
+      const url = API_ROUTES.FLIGHT_TRACKER
+      const json = await sessionRequest<FlightTrackerResponse>(url, {
+        method: "POST",
+        body: JSON.stringify({
+          carrier,
+          flightNumber: flightNum,
+          year,
+          month,
+          day,
+        }),
+      })
       return parseFlightArrivalInfo(json)
     },
     [sessionRequest]

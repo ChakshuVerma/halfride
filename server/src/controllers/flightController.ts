@@ -135,7 +135,7 @@ async function fetchAndMapFlightData(carrier: string, fNum: string, y: number, m
  * ENDPOINT 1: CREATE FLIGHT ENTRY
  */
 export async function createFlightEntry(req: Request, res: Response) {
-  const { carrier: rawCarrier, flightNumber: rawFlightNumber, year, month, day } = req.params;
+  const { carrier: rawCarrier, flightNumber: rawFlightNumber, year, month, day } = req.body;
 
   const carrier = String(rawCarrier ?? '').trim().toUpperCase();
   const fNum = String(rawFlightNumber ?? '').trim();
@@ -188,7 +188,7 @@ export async function createFlightEntry(req: Request, res: Response) {
  * ENDPOINT 2: GET FLIGHT TRACKER
  */
 export async function getFlightTracker(req: Request, res: Response) {
-  const { carrier: rawCarrier, flightNumber, year, month, day } = req.params;
+  const { carrier: rawCarrier, flightNumber, year, month, day } = req.body;
   
   const carrier = String(rawCarrier ?? '').trim().toUpperCase();
   const fNum = String(flightNumber ?? '').trim();
