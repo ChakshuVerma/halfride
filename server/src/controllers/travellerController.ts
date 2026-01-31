@@ -46,6 +46,9 @@ export async function getTravellersByAirport(req: Request, res: Response) {
         flightDateTime: fData?.arrival?.estimatedActualTime 
             ? new Date(fData.arrival.estimatedActualTime) 
             : (fData?.arrival?.scheduledTime ? new Date(fData.arrival.scheduledTime) : null),
+        flightDepartureTime: fData?.departure?.scheduledTime 
+            ? new Date(fData.departure.scheduledTime) 
+            : null,
 
         terminal: trav.terminal || "N/A",
         flightNumber: `${flight?.carrier || ''} ${flight?.flightNumber || ''}`.trim(),

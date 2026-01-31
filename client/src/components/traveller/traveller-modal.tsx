@@ -74,7 +74,8 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
   const fetchArrivalInfo = async () => {
     try {
       setFlightError(null)
-      const info = await fetchFlightTrackerByFlightNumber(traveller.flightNumber, traveller.flightDateTime)
+      const dateToUse = traveller.flightDepartureTime || traveller.flightDateTime
+      const info = await fetchFlightTrackerByFlightNumber(traveller.flightNumber, dateToUse)
       setFlightInfo(info)
     } catch {
       setFlightError(CONSTANTS.MESSAGES.TRACKING_UNAVAILABLE)

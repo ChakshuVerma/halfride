@@ -5,6 +5,7 @@ export type Traveller = {
   destination: string
   airportName: string
   flightDateTime: Date
+  flightDepartureTime?: Date | string
   terminal: string
   flightNumber: string
   distanceFromUserKm: number

@@ -4,6 +4,7 @@ import { API_ROUTES } from "@/lib/apiRoutes"
 
 export type FlightArrivalInfo = {
   arrivalTimeLocal: string
+  arrivalDateObj?: Date
   lastUpdatedAt: number
   etaLocal: string
   statusShort?: string
@@ -145,6 +146,7 @@ function parseFlightArrivalInfo(json: FlightTrackerResponse): FlightArrivalInfo 
 
   return {
     arrivalTimeLocal,
+    arrivalDateObj: isoArrival ? new Date(isoArrival) : undefined,
     lastUpdatedAt: Date.now(),
     etaLocal: arrivalTimeLocal,
     statusShort: timingLabel,
