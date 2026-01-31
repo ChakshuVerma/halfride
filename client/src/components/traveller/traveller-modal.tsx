@@ -3,6 +3,7 @@ import { DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Plane, User, Clock, Navigation, Info, XCircle, CheckCircle2, Loader2, Heart } from "lucide-react"
 import type { Traveller } from "./types"
 import { useFlightTrackerApi, type FlightArrivalInfo } from "@/hooks/useFlightTrackerApi"
+import { calculateWaitText } from "./utils"
 
 const CONSTANTS = {
   STATUS_KEYWORDS: {
@@ -82,14 +83,7 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
 
   useEffect(() => { void fetchArrivalInfo() }, [traveller.id])
 
-  const calculateWaitTime = () => {
-    if (flightInfo?.isLanded) return CONSTANTS.MESSAGES.LANDED;
-    const diff = new Date(traveller.flightDateTime).getTime() - now;
-    if (diff <= 0) return CONSTANTS.MESSAGES.ARRIVED;
-    const h = Math.floor(diff / 3600000);
-    const m = Math.floor((diff % 3600000) / 60000);
-    return h > 0 ? `${h}h ${m}m` : `${m}m`;
-  };
+
 
   const s = getStatusStyles(flightInfo);
 
@@ -183,8 +177,8 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
               </div>
               <div className="p-4 rounded-3xl bg-muted/10 border border-border/10">
                 <div className="text-[9px] font-black text-muted-foreground/40 uppercase mb-1 tracking-widest">{CONSTANTS.MESSAGES.WAIT_TIME}</div>
-                <span className={`text-xl font-black tracking-tight ${calculateWaitTime() === CONSTANTS.MESSAGES.LANDED ? 'text-blue-500' : ''}`}>
-                  {calculateWaitTime()}
+                <span className={`text-xl font-black tracking-tight ${calculateWaitText(traveller.flightDateTime) === CONSTANTS.MESSAGES.LANDED ? 'text-blue-500' : ''}`}>
+                  {calculateWaitText(traveller.flightDateTime)}
                 </span>
               </div>
             </div>

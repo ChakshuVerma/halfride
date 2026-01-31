@@ -1,4 +1,6 @@
 import { useCallback, useState } from "react"
+import { sessionRequest } from "@/lib/api"
+import { API_ROUTES } from "@/lib/apiRoutes"
 import type { Traveller, Group } from "@/components/traveller/types"
 
 // Dummy data – this will eventually come from the backend
@@ -169,37 +171,33 @@ const dummyGroups: Group[] = [
 export function useGetTravellerApi() {
   const [loading, setLoading] = useState(false)
 
-  const fetchTravellers = useCallback(async (airportName?: string, terminal?: string): Promise<Traveller[]> => {
+  const fetchTravellers = useCallback(async (airportCode?: string): Promise<Traveller[]> => {
+    if (!airportCode) return []
+
     setLoading(true)
     try {
-      // TODO: Replace with actual API call
-      // return sessionRequest<Traveller[]>(API_ROUTES.TRAVELLERS, { params: { airportName, terminal } })
-      await new Promise((resolve) => setTimeout(resolve, 800)) // Fake delay
-      let data = dummyTravellers
-      if (airportName) {
-        data = data.filter((t) => t.airportName === airportName)
-      }
-      if (terminal) {
-        data = data.filter((t) => t.terminal === terminal)
-      }
+      const url = `${API_ROUTES.TRAVELLERS_BY_AIRPORT}/${airportCode}`
+      const response = await sessionRequest<{ ok: boolean; data: Traveller[] }>(url)
+      
+      const data = response.data || []
       return data
+    } catch (error) {
+      console.error("Failed to fetch travellers:", error)
+      return []
     } finally {
       setLoading(false)
     }
   }, [])
 
-  const fetchGroups = useCallback(async (airportName?: string, terminal?: string): Promise<Group[]> => {
+  const fetchGroups = useCallback(async (airportName?: string): Promise<Group[]> => {
     setLoading(true)
     try {
       // TODO: Replace with actual API call
-      // return sessionRequest<Group[]>(API_ROUTES.GROUPS, { params: { airportName, terminal } })
+      // return sessionRequest<Group[]>(API_ROUTES.GROUPS, { params: { airportName } })
       await new Promise((resolve) => setTimeout(resolve, 600)) // Fake delay
       let data = dummyGroups
       if (airportName) {
         data = data.filter((g) => g.airportName === airportName)
-      }
-      if (terminal) {
-        data = data.filter((g) => g.terminal === terminal)
       }
       return data
     } finally {

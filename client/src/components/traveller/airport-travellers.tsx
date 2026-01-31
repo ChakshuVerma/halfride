@@ -4,7 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { Dialog, DialogContent } from "../ui/dialog"
 import { UsersRound, Loader2, Filter, ArrowUpDown, User, MapPin } from "lucide-react"
 import { useGetTravellerApi } from "@/hooks/useGetTravellerApi"
-import { useGetAirportTerminalApi, type AirportTerminalCombo } from "@/hooks/useGetAirportTerminalApi"
+import { useGetAirportsApi, type Airport } from "@/hooks/useGetAirportApi"
 import { TravellerCard } from "./traveller-card"
 import { GroupCard } from "./group-card"
 import { TravellerModal } from "./traveller-modal"
@@ -19,21 +19,20 @@ const CONSTANTS = {
   },
   LABELS: {
     DUMMY_DATA: "Dummy data",
-    AIRPORT_AND_TERMINAL: "Airport & terminal",
-    SELECT_PLACEHOLDER: "Select airport & terminal",
+    AIRPORT: "Airport",
+    SELECT_PLACEHOLDER: "Select airport",
     VIEW: "View",
     INDIVIDUAL: "Individual",
     GROUP: "Group",
     TRAVELLERS_TITLE: "Travellers",
     GROUPS_TITLE: "Groups",
-    HEADER: "Terminal travellers & groups",
+    HEADER: "Airport travellers & groups",
     DEPARTING_FROM: "Departing from",
-    TERMINAL_LOWER: "terminal",
     ALL_GENDERS: "All Genders",
     MIN_DISTANCE: "Min Distance",
     WAIT_TIME: "Wait Time",
-    SELECT_TERMINAL_TITLE: "Select a Terminal",
-    SELECT_TERMINAL_MSG: "Please select an airport and terminal above to view available travellers and groups.",
+    SELECT_AIRPORT_TITLE: "Select an Airport",
+    SELECT_AIRPORT_MSG: "Please select an airport above to view available travellers and groups.",
   },
   MESSAGES: {
     NO_TRAVELLERS: "No travellers found. Try changing the filter.",
@@ -75,15 +74,14 @@ function ToggleButton({ label, isActive, onClick }: ToggleButtonProps) {
   )
 }
 
-const TerminalTravellers = () => {
+const AirportTravellers = () => {
   // States
   const [selectedAirport, setSelectedAirport] = useState<string | undefined>(undefined)
-  const [selectedTerminal, setSelectedTerminal] = useState<string | undefined>(undefined)
   const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODE.INDIVIDUAL)
   const [selectedEntity, setSelectedEntity] = useState<SelectedEntity>(null)
   const [travellers, setTravellers] = useState<Traveller[]>([])
   const [groups, setGroups] = useState<Group[]>([])
-  const [airportTerminalCombos, setAirportTerminalCombos] = useState<AirportTerminalCombo[]>([])
+  const [airports, setAirports] = useState<Airport[]>([])
 
   type SortOption = "distance" | "wait_time"
   type FilterGender = "all" | "Male" | "Female"
@@ -93,38 +91,42 @@ const TerminalTravellers = () => {
 
   // Hooks
   const { fetchTravellers, fetchGroups, loading: isFetchingList } = useGetTravellerApi()
-  const { fetchAirportTerminalCombos, loading: isFetchingCombos } = useGetAirportTerminalApi()
+  const { fetchAirports, loading: isFetchingCombos } = useGetAirportsApi()
 
   useEffect(() => {
-    const loadCombos = async () => {
-      const fetchedCombos = await fetchAirportTerminalCombos()
-      setAirportTerminalCombos(fetchedCombos)
+    const loadAirports = async () => {
+      const fetched = await fetchAirports()
+      setAirports(fetched)
     }
-    void loadCombos()
+    void loadAirports()
   }, [])
 
   useEffect(() => {
-    if (!selectedAirport || !selectedTerminal) return
+    if (!selectedAirport) return
 
     const loadData = async () => {
-      if (viewMode === VIEW_MODE.INDIVIDUAL) {
-        const fetchedTravellers = await fetchTravellers(selectedAirport, selectedTerminal)
+      // Find code for selected airport name
+      const airportObj = airports.find(a => a.airportName === selectedAirport)
+      const code = airportObj?.airportCode
+
+      if (viewMode === VIEW_MODE.INDIVIDUAL && code) {
+        const fetchedTravellers = await fetchTravellers(code)
         setTravellers(fetchedTravellers)
       } else if (viewMode === VIEW_MODE.GROUP) {
-        const fetchedGroups = await fetchGroups(selectedAirport, selectedTerminal)
+        const fetchedGroups = await fetchGroups(selectedAirport)
         setGroups(fetchedGroups)
       }
     }
     void loadData()
-  }, [viewMode, fetchTravellers, fetchGroups, selectedAirport, selectedTerminal])
+  }, [viewMode, fetchTravellers, fetchGroups, selectedAirport, airports])
 
   const ListSectionWrapper = useCallback(() => {
-    if (!selectedAirport || !selectedTerminal) return null
+    if (!selectedAirport) return null
     const title = viewMode === VIEW_MODE.INDIVIDUAL ? CONSTANTS.LABELS.TRAVELLERS_TITLE : CONSTANTS.LABELS.GROUPS_TITLE
 
     const emptyMessage = viewMode === VIEW_MODE.INDIVIDUAL ? CONSTANTS.MESSAGES.NO_TRAVELLERS : CONSTANTS.MESSAGES.NO_GROUPS
     const animation = viewMode === VIEW_MODE.INDIVIDUAL ? "left" : "right"
-    const terminalSubtitle = `${CONSTANTS.LABELS.DEPARTING_FROM} ${selectedAirport}, ${CONSTANTS.LABELS.TERMINAL_LOWER} ${selectedTerminal}.`
+    const airportSubtitle = `${CONSTANTS.LABELS.DEPARTING_FROM} ${selectedAirport}`
 
     // --- Filtering & Sorting Logic ---
     let processedTravellers = [...travellers]
@@ -180,7 +182,7 @@ const TerminalTravellers = () => {
     return (
       <ListSection
         title={title}
-        subtitle={terminalSubtitle}
+        subtitle={airportSubtitle}
         count={count}
         emptyMessage={emptyMessage}
         animation={animation}
@@ -195,7 +197,6 @@ const TerminalTravellers = () => {
     )
   }, [
       selectedAirport, 
-      selectedTerminal, 
       viewMode, 
       travellers, 
       groups, 
@@ -273,27 +274,25 @@ const TerminalTravellers = () => {
               <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
                 <div className="flex flex-col gap-3 flex-1 w-full">
                   <label className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-widest">
-                    {CONSTANTS.LABELS.AIRPORT_AND_TERMINAL}
+                    {CONSTANTS.LABELS.AIRPORT}
                   </label>
                   <Select
-                    value={`${selectedAirport}__${selectedTerminal}`}
+                    value={selectedAirport || ""}
                     onValueChange={(value) => {
-                      const [airportName, terminal] = value.split("__")
-                      setSelectedAirport(airportName)
-                      setSelectedTerminal(terminal)
+                      setSelectedAirport(value)
                     }}
                   >
                     <SelectTrigger className="h-13 bg-background rounded-2xl border border-border/30 hover:border-border/50 focus:ring-2 focus:ring-primary/20 transition-all duration-200 shadow-sm hover:shadow-md w-full">
                       <SelectValue placeholder={CONSTANTS.LABELS.SELECT_PLACEHOLDER} />
                     </SelectTrigger>
                     <SelectContent className="rounded-2xl border border-border/20 shadow-xl">
-                      {airportTerminalCombos.map((combo) => (
+                      {airports.map((airport) => (
                         <SelectItem
-                          key={`${combo.airportName}__${combo.terminal}`}
-                          value={`${combo.airportName}__${combo.terminal}`}
+                          key={airport.airportCode}
+                          value={airport.airportName}
                           className="rounded-xl"
                         >
-                          {combo.airportName} — {combo.terminal}
+                          {airport.airportName}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -301,7 +300,7 @@ const TerminalTravellers = () => {
                 </div>
                 </div>
                 {
-                  selectedAirport && selectedTerminal && (
+                  selectedAirport && (
                     <div className="flex flex-col gap-6 w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
                        <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6">
                         {/* Toggle */}
@@ -379,18 +378,18 @@ const TerminalTravellers = () => {
                     </div>
                   )
                 }
-
-                {!selectedAirport && !selectedTerminal && (
+ 
+                {!selectedAirport && (
                    <div className="flex flex-col items-center justify-center py-16 sm:py-20 text-center space-y-4 rounded-3xl border border-dashed border-border/40 bg-muted/5">
                       <div className="p-4 rounded-full bg-primary/5 text-primary mb-2">
                          <MapPin className="w-8 h-8 sm:w-10 sm:h-10 opacity-50" />
                       </div>
-                      <div className="space-y-1 max-w-sm px-4">
-                        <h3 className="text-lg font-semibold text-foreground">{CONSTANTS.LABELS.SELECT_TERMINAL_TITLE}</h3>
-                        <p className="text-sm text-muted-foreground/70">
-                          {CONSTANTS.LABELS.SELECT_TERMINAL_MSG}
-                        </p>
-                      </div>
+                       <div className="space-y-1 max-w-sm px-4">
+                         <h3 className="text-lg font-semibold text-foreground">{CONSTANTS.LABELS.SELECT_AIRPORT_TITLE}</h3>
+                         <p className="text-sm text-muted-foreground/70">
+                           {CONSTANTS.LABELS.SELECT_AIRPORT_MSG}
+                         </p>
+                       </div>
                    </div>
                 )}
               </div>
@@ -417,5 +416,5 @@ const TerminalTravellers = () => {
   )
 }
 
-export default TerminalTravellers
+export default AirportTravellers
 

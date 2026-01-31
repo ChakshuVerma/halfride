@@ -80,7 +80,6 @@ const isStale = (etaFetchedAt: Timestamp | undefined | null): boolean => {
  */
 async function fetchAndMapFlightData(carrier: string, fNum: string, y: number, m: number, d: number) {
   const upstreamUrl = `https://www.flightstats.com/v2/api-next/flight-tracker/${carrier}/${fNum}/${y}/${m}/${d}`;
-  console.log(upstreamUrl);
   
   const apiResponse = await fetch(upstreamUrl, {
     headers: { 'accept': 'application/json', 'user-agent': 'halfride-server/1.0' }
@@ -248,7 +247,8 @@ export async function getFlightTracker(req: Request, res: Response) {
   const m = Number(month);
   const d = Number(day);
 
-  const flightDocId = `${carrier}_${fNum}_${y}-${m}-${d}`;
+  const flightDocId = `${carrier}_${fNum}_${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  console.log(flightDocId)
   const db = admin.firestore();
 
   const flightRef = db.collection(COLLECTIONS.FLIGHT_DETAIL).doc(flightDocId);

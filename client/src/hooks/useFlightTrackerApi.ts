@@ -179,11 +179,12 @@ export function useFlightTrackerApi() {
   )
 
   const fetchFlightTrackerByFlightNumber = useCallback(
-    async (flightNumber: string, flightDate: Date): Promise<FlightArrivalInfo> => {
+    async (flightNumber: string, flightDate: Date | string): Promise<FlightArrivalInfo> => {
+      const dateObj = new Date(flightDate)
       const { carrier, flightNum } = parseFlightNumber(flightNumber)
-      const year = flightDate.getFullYear()
-      const month = flightDate.getMonth() + 1
-      const day = flightDate.getDate()
+      const year = dateObj.getFullYear()
+      const month = dateObj.getMonth() + 1
+      const day = dateObj.getDate()
       return fetchFlightTracker({ carrier, flightNum, year, month, day })
     },
     [fetchFlightTracker]

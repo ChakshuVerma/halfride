@@ -124,9 +124,9 @@ const Dashboard = () => {
           </div>
           <Button
             size="sm"
-            onClick={() => navigate("/terminal")}
+            onClick={() => navigate("/airport")}
           >
-            View terminal travellers &amp; groups
+            View airport travellers &amp; groups
           </Button>
         </div>
 

@@ -1,6 +1,7 @@
-function formatWaitTime(flightDateTime: Date) {
+function formatWaitTime(flightDateTime: Date | string) {
+  const date = new Date(flightDateTime)
   const now = new Date()
-  const diffMs = flightDateTime.getTime() - now.getTime()
+  const diffMs = date.getTime() - now.getTime()
 
   if (diffMs <= 0) return "Departed"
 
@@ -14,8 +15,9 @@ function formatWaitTime(flightDateTime: Date) {
   return `${hours}h ${minutes}m`
 }
 
-function formatFlightDateTime(flightDateTime: Date) {
-  return flightDateTime.toLocaleString(undefined, {
+function formatFlightDateTime(flightDateTime: Date | string) {
+  const date = new Date(flightDateTime)
+  return date.toLocaleString("en-US", {
     day: "2-digit",
     month: "short",
     year: "numeric",
@@ -24,4 +26,37 @@ function formatFlightDateTime(flightDateTime: Date) {
   })
 }
 
-export { formatWaitTime, formatFlightDateTime }
+const formatTime = (dateInput: Date | string) => {
+  const date = new Date(dateInput)
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+const formatDateAndTime = (dateInput: Date | string) => {
+  const date = new Date(dateInput)
+  return date.toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+}
+
+const calculateWaitText = (flightDateTime: Date | string | undefined) => {
+  if (!flightDateTime) return "--"
+  
+  const date = new Date(flightDateTime)
+  const now = new Date()
+  const diff = date.getTime() - now.getTime()
+  
+  if (diff <= 0) return "Arrived"
+  
+  const h = Math.floor(diff / 3600000)
+  const m = Math.floor((diff % 3600000) / 60000)
+  
+  return h > 0 ? `${h}h ${m}m` : `${m}m`
+}
+
+export { formatWaitTime, formatFlightDateTime, formatTime, formatDateAndTime, calculateWaitText }

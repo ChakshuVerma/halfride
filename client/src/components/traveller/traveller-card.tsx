@@ -1,6 +1,6 @@
 import { User, MapPin, Clock, CalendarRange, ChevronRight } from "lucide-react"
 import type { Traveller } from "./types"
-import { formatWaitTime, formatFlightDateTime } from "./utils"
+import { formatDateAndTime, calculateWaitText } from "./utils"
 
 const CONSTANTS = {
   LABELS: {
@@ -40,8 +40,8 @@ export function TravellerCard({
     ? "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400"
     : "bg-pink-50 dark:bg-pink-950/30 text-pink-600 dark:text-pink-400"
 
-  const flightTime = formatFlightDateTime(traveller.flightDateTime).split(',')[1].trim()
-  const waitTime = formatWaitTime(traveller.flightDateTime)
+  const flightTime = formatDateAndTime(traveller.flightDateTime)
+  const waitTime = calculateWaitText(traveller.flightDateTime)
 
   return (
     <div
