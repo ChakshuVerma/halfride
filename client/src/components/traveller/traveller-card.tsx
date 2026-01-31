@@ -1,3 +1,4 @@
+import { memo } from "react"
 import { User, MapPin, Clock, CalendarRange, ChevronRight } from "lucide-react"
 import type { Traveller } from "./types"
 import { formatDateAndTime, calculateWaitText } from "./utils"
@@ -25,11 +26,12 @@ type TravellerCardProps = {
   onClick: () => void
 }
 
-export function TravellerCard({
+export const TravellerCard = memo(function TravellerCard({
   traveller,
   onClick,
 }: TravellerCardProps) {
   const isMale = traveller.gender === CONSTANTS.GENDER.MALE
+  console.log(traveller)
   
   // Subtle gradients and accents
   const cardBorder = isMale 
@@ -142,5 +144,5 @@ export function TravellerCard({
       </div>
     </div>
   )
-}
+})
 

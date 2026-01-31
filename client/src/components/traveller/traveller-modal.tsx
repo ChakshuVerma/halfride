@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Plane, User, Clock, Navigation, Info, XCircle, CheckCircle2, Loader2, Heart } from "lucide-react"
 import type { Traveller } from "./types"
@@ -85,7 +85,7 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
 
 
 
-  const s = getStatusStyles(flightInfo);
+  const s = useMemo(() => getStatusStyles(flightInfo), [flightInfo])
 
   return (
     <div className="p-4 sm:p-6 space-y-6 max-h-[90vh] overflow-y-auto selection:bg-primary/10">
@@ -129,7 +129,7 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
               ) : flightInfo && (
                 <div className="p-5 sm:p-6 space-y-6">
                   <div className="flex items-center justify-between">
-                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider ${s.bg} ${s.border} ${s.color}`}>
+                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-wider ${s.bg} ${s.border} ${s.text}`}>
                       {s.icon} {flightInfo.statusShort}
                     </div>
                     <div className="text-[9px] font-bold text-muted-foreground/40 uppercase">
@@ -143,7 +143,7 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
                        <div className="text-[8px] text-muted-foreground/40 uppercase">{CONSTANTS.MESSAGES.ORIGIN}</div>
                     </div>
                     <div className="flex-1 relative h-px bg-current opacity-10">
-                       <div className={`absolute top-1/2 -translate-y-1/2 p-2 rounded-full bg-background border-2 shadow-sm transition-all duration-700 ${s.color} ${s.border} ${flightInfo.isLanded ? 'right-0' : 'left-1/2'}`}>
+                       <div className={`absolute top-1/2 -translate-y-1/2 p-2 rounded-full bg-background border-2 shadow-sm transition-all duration-700 ${s.text} ${s.border} ${flightInfo.isLanded ? 'right-0' : 'left-1/2'}`}>
                           <Plane className="w-3.5 h-3.5 fill-current" />
                        </div>
                     </div>
@@ -156,7 +156,7 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
                   <div className="grid grid-cols-2 gap-6 pt-4 border-t border-current/5">
                     <div>
                       <div className="text-[9px] font-black text-muted-foreground/40 uppercase">{CONSTANTS.MESSAGES.ARRIVAL}</div>
-                      <div className={`text-lg font-black tabular-nums ${s.color}`}>{flightInfo.arrivalTimeLocal}</div>
+                      <div className={`text-lg font-black tabular-nums ${s.text}`}>{flightInfo.arrivalTimeLocal}</div>
                       {flightInfo.timingLabel && <div className="text-[9px] font-bold opacity-60 uppercase">{flightInfo.timingLabel}</div>}
                     </div>
                     <div className="text-right">

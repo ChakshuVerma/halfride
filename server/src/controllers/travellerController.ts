@@ -43,7 +43,6 @@ export async function getTravellersByAirport(req: Request, res: Response) {
         gender: user?.isFemale ? "Female" : "Male",
         username: `@${user?.username ?? 'user'}`,
         destination: trav.destination || "N/A",
-        airportName: fData?.airlineName || "Unknown Airline", 
         flightDateTime: fData?.arrival?.estimatedActualTime 
             ? new Date(fData.arrival.estimatedActualTime) 
             : (fData?.arrival?.scheduledTime ? new Date(fData.arrival.scheduledTime) : null),
