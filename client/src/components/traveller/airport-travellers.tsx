@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from "react"
+import { useEffect, useCallback, useState, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
 import {
   Command,
@@ -16,7 +16,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent } from "../ui/dialog"
-import { UsersRound, Loader2, Filter, ArrowUpDown, User, MapPin, Check, ChevronsUpDown } from "lucide-react"
+import { UsersRound, Loader2, Filter, ArrowUpDown, User, MapPin, Check, ChevronsUpDown, Plane } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useGetTravellerApi } from "@/hooks/useGetTravellerApi"
 import { useGetAirportsApi, type Airport } from "@/hooks/useGetAirportApi"
@@ -24,6 +24,7 @@ import { TravellerCard } from "./traveller-card"
 import { GroupCard } from "./group-card"
 import { TravellerModal } from "./traveller-modal"
 import { GroupModal } from "./group-modal"
+import { JoinWaitlistModal } from "./join-waitlist-modal"
 import { type Traveller, type Group, type ViewMode, type SelectedEntity, ENTITY_TYPE, VIEW_MODE } from "./types"
 import ListSection from "./list-section"
 
@@ -103,6 +104,17 @@ const AirportTravellers = () => {
   const [sortBy, setSortBy] = useState<SortOption>("distance")
   const [filterGender, setFilterGender] = useState<FilterGender>("all")
   const [open, setOpen] = useState(false)
+  const [isWaitlistModalOpen, setIsWaitlistModalOpen] = useState(false)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (open) {
+      const timer = setTimeout(() => {
+        searchInputRef.current?.focus()
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [open])
 
   // console.log(selectedAirport)
 
@@ -306,7 +318,7 @@ const AirportTravellers = () => {
                     </PopoverTrigger>
                     <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 rounded-2xl border-border/20 shadow-xl" align="start">
                       <Command>
-                        <CommandInput placeholder="Search airport..." />
+                        <CommandInput ref={searchInputRef} placeholder="Search airport..." />
                         <CommandList>
                           <CommandEmpty>No airport found.</CommandEmpty>
                           <CommandGroup>
@@ -337,6 +349,7 @@ const AirportTravellers = () => {
                     </PopoverContent>
                   </Popover>
                 </div>
+
                 </div>
                 {
                   selectedAirport && (
@@ -412,6 +425,14 @@ const AirportTravellers = () => {
                                   </SelectContent>
                                 </Select>
                              </div>
+
+                             <Button 
+                                onClick={() => setIsWaitlistModalOpen(true)}
+                                className="w-full sm:w-auto h-11 px-6 rounded-xl font-bold uppercase tracking-widest text-[10px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all"
+                             >
+                                <Plane className="w-3.5 h-3.5 mr-2" />
+                                Join Waitlist
+                             </Button>
                         </div>
                        </div>
                     </div>
@@ -451,6 +472,7 @@ const AirportTravellers = () => {
           </CardContent>
         </Card>
       </div>
+      <JoinWaitlistModal open={isWaitlistModalOpen} onOpenChange={setIsWaitlistModalOpen} />
     </>
   )
 }

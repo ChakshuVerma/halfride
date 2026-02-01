@@ -194,6 +194,16 @@ export function useFlightTrackerApi() {
 
   return {
     fetchFlightTrackerByFlightNumber,
+    createFlightTracker: useCallback(async (data: { carrier: string; flightNumber: string; year: number; month: number; day: number; destination: string }) => {
+      const url = API_ROUTES.NEW_FLIGHT_TRACKER;
+      return await sessionRequest(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+    }, [sessionRequest]),
     loading
   }
 }

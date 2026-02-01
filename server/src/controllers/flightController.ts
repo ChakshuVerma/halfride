@@ -95,26 +95,25 @@ async function fetchAndMapFlightData(carrier: string, fNum: string, y: number, m
   }
 
   const isLanded = f.status?.statusCode === 'L' || f.status?.statusCode === 'A' || !!f.flightNote?.landed;
+  const arrivalObj = Array.isArray(f.arrivalAirport) ? f.arrivalAirport[0] : f.arrivalAirport;
+  const departureObj = Array.isArray(f.departureAirport) ? f.departureAirport[0] : f.departureAirport;
 
   return {
     airlineName: f.resultHeader?.carrier?.name || f.ticketHeader?.carrier?.name || null,
-    
     departure: {
-      airportCode: f.departureAirport?.fs || f.positional?.departureAirportCode || null,
-      terminal: f.departureAirport?.terminal || null,
-      gate: f.departureAirport?.gate || null,
+      airportCode: departureObj?.fs || f.positional?.departureAirportCode || null,
+      terminal: departureObj?.terminal || null,
+      gate: departureObj?.gate || null,
       scheduledTime: f.schedule?.scheduledDepartureUTC || null,
     },
-
     arrival: {
-      airportCode: f.arrivalAirport?.fs || f.positional?.arrivalAirportCode || null,
-      terminal: f.arrivalAirport?.terminal || null,
-      gate: f.arrivalAirport?.gate || null,
-      baggage: f.arrivalAirport?.baggage || null,
+      airportCode: arrivalObj?.fs || f.positional?.arrivalAirportCode || null,
+      terminal: arrivalObj?.terminal || null,
+      gate: arrivalObj?.gate || null,
+      baggage: arrivalObj?.baggage || null,
       scheduledTime: f.schedule?.scheduledArrivalUTC || f.schedule?.scheduledArrival?.dateUtc || null,
       estimatedActualTime: f.schedule?.estimatedActualArrivalUTC || f.schedule?.estimatedActualArrival?.dateUtc || null,
     },
-
     schedule: {
       scheduledArrival: f.schedule?.scheduledArrivalUTC || f.schedule?.scheduledArrival?.dateUtc || null,
       estimatedActualArrival: f.schedule?.estimatedActualArrivalUTC || f.schedule?.estimatedActualArrival?.dateUtc || null,
@@ -176,9 +175,23 @@ export async function createFlightTracker(req: Request, res: Response) {
       const existingDoc = flightSnap.data();
       flightData = existingDoc?.flightData;
     } else {
-      // If it doesn't, fetch from external API and save it
+      // If it doesn't, fetch from external API
       flightData = await fetchAndMapFlightData(carrier, fNum, y, m, d);
-      
+    }
+
+    // 3. Validate Arrival Airport
+    const arrivalCode = flightData.arrival?.airportCode;
+    if (!arrivalCode) {
+      return res.status(400).json({ ok: false, error: 'Bad Request', message: 'Flight arrival airport not found' });
+    }
+
+    const airportDoc = await db.collection(COLLECTIONS.AIRPORTS).doc(arrivalCode).get();
+    if (!airportDoc.exists) {
+      return res.status(400).json({ ok: false, error: 'Bad Request', message: `Arrival airport ${arrivalCode} is not supported` });
+    }
+
+    // 4. Persist Flight if new
+    if (!flightSnap.exists) {
       const newFlight = {
         flightId: `${carrier}_${fNum}`,
         carrier,
@@ -194,7 +207,7 @@ export async function createFlightTracker(req: Request, res: Response) {
       await flightRef.set(newFlight);
     }
 
-    // 3. Create/Update the traveller_data record
+    // 5. Create/Update the traveller_data record
     // We use a composite ID (uid_flightId) so a user can't track the same flight twice
     const travellerDocId = `${uid}_${flightDocId}`;
 

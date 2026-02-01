@@ -18,6 +18,7 @@ export const API_ROUTES = {
 
   // Flight tracker routes
   FLIGHT_TRACKER: `${API_BASE_URL}/flight-tracker`,
+  NEW_FLIGHT_TRACKER: `${API_BASE_URL}/new-flight-tracker`,
 
   // Traveller routes
   TRAVELLERS_BY_AIRPORT: `${API_BASE_URL}/travellers-by-airport`,
