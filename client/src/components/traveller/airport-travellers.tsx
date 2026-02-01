@@ -1,8 +1,23 @@
 import { useEffect, useCallback, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
+import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent } from "../ui/dialog"
-import { UsersRound, Loader2, Filter, ArrowUpDown, User, MapPin } from "lucide-react"
+import { UsersRound, Loader2, Filter, ArrowUpDown, User, MapPin, Check, ChevronsUpDown } from "lucide-react"
+import { cn } from "@/lib/utils"
 import { useGetTravellerApi } from "@/hooks/useGetTravellerApi"
 import { useGetAirportsApi, type Airport } from "@/hooks/useGetAirportApi"
 import { TravellerCard } from "./traveller-card"
@@ -87,6 +102,9 @@ const AirportTravellers = () => {
 
   const [sortBy, setSortBy] = useState<SortOption>("distance")
   const [filterGender, setFilterGender] = useState<FilterGender>("all")
+  const [open, setOpen] = useState(false)
+
+  // console.log(selectedAirport)
 
   // Hooks
   const { fetchTravellers, fetchGroups, loading: isFetchingList } = useGetTravellerApi()
@@ -272,27 +290,52 @@ const AirportTravellers = () => {
                   <label className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-widest">
                     {CONSTANTS.LABELS.AIRPORT}
                   </label>
-                  <Select
-                    value={selectedAirport || ""}
-                    onValueChange={(value) => {
-                      setSelectedAirport(value)
-                    }}
-                  >
-                    <SelectTrigger className="h-13 bg-background rounded-2xl border border-border/30 hover:border-border/50 focus:ring-2 focus:ring-primary/20 transition-all duration-200 shadow-sm hover:shadow-md w-full">
-                      <SelectValue placeholder={CONSTANTS.LABELS.SELECT_PLACEHOLDER} />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-2xl border border-border/20 shadow-xl">
-                      {airports.map((airport) => (
-                        <SelectItem
-                          key={airport.airportCode}
-                          value={airport.airportName}
-                          className="rounded-xl"
-                        >
-                          {airport.airportName}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={open} onOpenChange={setOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={open}
+                        className={cn("w-full h-13 justify-between bg-background rounded-2xl border-border/30 hover:border-border/50 hover:bg-background/80 text-foreground px-3 font-normal", !selectedAirport && "text-muted-foreground")}
+                      >
+                        {selectedAirport
+                          ? airports.find((airport) => airport.airportName === selectedAirport)?.airportName
+                          : CONSTANTS.LABELS.SELECT_PLACEHOLDER}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 rounded-2xl border-border/20 shadow-xl" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search airport..." />
+                        <CommandList>
+                          <CommandEmpty>No airport found.</CommandEmpty>
+                          <CommandGroup>
+                            {airports.map((airport) => (
+                              <CommandItem
+                                key={airport.airportCode}
+                                value={`${airport.airportName} ${airport.airportCode}`}
+                                onSelect={(currentValue) => {
+                                  // We find the airport based on the one that was clicked
+                                  // The currentValue will be the combined string lowercased by cmdk
+                                  setSelectedAirport(airport.airportName === selectedAirport ? undefined : airport.airportName)
+                                  setOpen(false)
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    selectedAirport === airport.airportName ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <span className="font-mono font-medium w-12">{airport.airportCode}</span>
+                                <span className="ml-2">{airport.airportName}</span>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 </div>
                 {

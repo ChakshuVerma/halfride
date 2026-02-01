@@ -248,7 +248,6 @@ export async function getFlightTracker(req: Request, res: Response) {
   const d = Number(day);
 
   const flightDocId = `${carrier}_${fNum}_${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-  console.log(flightDocId)
   const db = admin.firestore();
 
   const flightRef = db.collection(COLLECTIONS.FLIGHT_DETAIL).doc(flightDocId);
@@ -279,5 +278,30 @@ export async function getFlightTracker(req: Request, res: Response) {
   } catch (error: any) {
     console.error('Tracker Error:', error.message);
     return res.status(500).json({ ok: false, error: 'Internal Server Error' });
+  }
+}
+
+/**
+ * ENDPOINT 3: GET AIRPORTS
+ */
+export async function getAirports(_req: Request, res: Response) {
+  try {
+    const db = admin.firestore();
+    const snapshot = await db.collection(COLLECTIONS.AIRPORTS).get();
+    
+    // map doc.id to airportCode and name to airportName
+    const airports = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+            airportName: data.name || data.airportName || 'Unknown Airport', // Handle different potential field names
+            airportCode: doc.id 
+        };
+    });
+
+    return res.json({ ok: true, data: airports });
+
+  } catch (error: any) {
+    console.error('Get Airports Error:', error.message);
+    return res.status(500).json({ ok: false, error: 'Internal Server Error', message: error.message });
   }
 }

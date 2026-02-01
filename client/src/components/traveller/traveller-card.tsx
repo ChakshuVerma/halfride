@@ -31,7 +31,6 @@ export const TravellerCard = memo(function TravellerCard({
   onClick,
 }: TravellerCardProps) {
   const isMale = traveller.gender === CONSTANTS.GENDER.MALE
-  console.log(traveller)
   
   // Subtle gradients and accents
   const cardBorder = isMale 

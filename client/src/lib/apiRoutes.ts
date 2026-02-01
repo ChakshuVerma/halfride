@@ -21,5 +21,8 @@ export const API_ROUTES = {
 
   // Traveller routes
   TRAVELLERS_BY_AIRPORT: `${API_BASE_URL}/travellers-by-airport`,
+  
+  // Airport routes
+  AIRPORTS: `${API_BASE_URL}/airports`,
 } as const
 

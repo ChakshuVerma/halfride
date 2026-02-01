@@ -1,27 +1,24 @@
-import { useCallback, useState } from "react"
+import { useCallback } from "react"
+import { useApi } from "./useApi"
+import { API_ROUTES } from "@/lib/apiRoutes"
 
 export type Airport = {
   airportName: string
   airportCode: string
 }
 
-// Dummy data – this will eventually come from the backend
-const dummyAirports: Airport[] = [
-  { airportName: "Indira Gandhi International Airport", airportCode: "DEL" },
-  { airportName: "Kempegowda International Airport", airportCode: "BLR" },
-  { airportName: "Rajiv Gandhi International Airport", airportCode: "HYD" },
-]
-
 export function useGetAirportsApi() {
-  const [loading, setLoading] = useState(false)
+  const { loading, sessionRequest } = useApi()
+  
   const fetchAirports = useCallback(async (): Promise<Airport[]> => {
-    setLoading(true)
-    // TODO: Replace with actual API call
-    // return sessionRequest<Airport[]>(API_ROUTES.AIRPORT_TERMINALS)
-    await new Promise((resolve) => setTimeout(resolve, 500)) // Fake delay
-    setLoading(false)
-    return dummyAirports
-  }, [])
+    try {
+        const response = await sessionRequest<{ ok: boolean; data: Airport[] }>(API_ROUTES.AIRPORTS)
+        return response.data
+    } catch (error) {
+        console.error("Failed to fetch airports", error)
+        return []
+    }
+  }, [sessionRequest])
 
   return {
     fetchAirports,

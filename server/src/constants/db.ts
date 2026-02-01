@@ -5,6 +5,7 @@ export const COLLECTIONS = {
   USERS: 'users',
   FLIGHT_DETAIL: 'flightDetail',
   TRAVELLER_DATA: 'traveller_data',
+  AIRPORTS: 'airports',
 } as const;
 
 /**
