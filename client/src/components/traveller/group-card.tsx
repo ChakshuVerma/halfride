@@ -1,13 +1,12 @@
-import { Users, MapPin, Clock, CalendarRange, ArrowRight } from "lucide-react"
+import { Users, MapPin, CalendarRange, ArrowRight } from "lucide-react"
 import type { Group } from "./types"
-import { formatWaitTime, formatFlightDateTime } from "./utils"
+import { formatWaitTime } from "./utils"
 
 const CONSTANTS = {
   LABELS: {
     SEATS: "seats",
     CAPACITY: "Capacity",
     DESTINATION: "Destination",
-    FLIGHT_TIME: "Flight",
     WAIT_TIME: "Wait",
   },
   UNITS: {
@@ -94,7 +93,7 @@ export function GroupCard({ group, onClick }: GroupCardProps) {
       {/* Bottom Section - White Background */}
       <div className="flex-1 p-0 bg-white dark:bg-black/20">
         {/* Info Grid */}
-        <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
            {/* Destination */}
            <div className="flex flex-col gap-1">
               <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
@@ -102,16 +101,6 @@ export function GroupCard({ group, onClick }: GroupCardProps) {
               </span>
               <span className="text-xs font-bold text-foreground truncate" title={group.destination}>
                   {group.destination}
-              </span>
-           </div>
-
-           {/* Time */}
-           <div className="flex flex-col gap-1 sm:border-l border-zinc-100 sm:pl-3 pt-2 sm:pt-0 border-t sm:border-t-0 dark:border-white/5">
-              <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
-                  <Clock className="w-3 h-3" /> {CONSTANTS.LABELS.FLIGHT_TIME}
-              </span>
-              <span className="text-xs font-bold text-foreground">
-                  {formatFlightDateTime(group.flightDateTime).split(',')[1]} 
               </span>
            </div>
            
