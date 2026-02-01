@@ -18,7 +18,6 @@ const CONSTANTS = {
     REFRESH_FLIGHT_ERROR: "Could not refresh flight arrival time.",
   },
   LABELS: {
-    DUMMY_DATA: "Dummy data",
     AIRPORT: "Airport",
     SELECT_PLACEHOLDER: "Select airport",
     VIEW: "View",
@@ -262,9 +261,6 @@ const AirportTravellers = () => {
                     {CONSTANTS.LABELS.HEADER}
                   </CardTitle>
                 </div>
-              </div>
-              <div className="hidden sm:block text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800/50 border border-border/40">
-                {CONSTANTS.LABELS.DUMMY_DATA}
               </div>
             </div>
           </CardHeader>
