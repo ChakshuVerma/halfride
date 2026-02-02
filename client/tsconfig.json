@@ -1,6 +1,7 @@
 {
   "files": [],
   "compilerOptions": {
+    "types": ["google.maps"],
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"]
