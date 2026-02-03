@@ -8,15 +8,11 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
+
 import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select"
 import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent } from "../ui/dialog"
-import { UsersRound, Loader2, Filter, ArrowUpDown, User, MapPin, Check, ChevronsUpDown, Plane } from "lucide-react"
+import { Dialog, DialogContent, DialogTrigger, DialogTitle, DialogDescription } from "../ui/dialog"
+import { UsersRound, Loader2, Filter, ArrowUpDown, User, ChevronsUpDown, Plane, Pencil } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useGetTravellerApi } from "@/hooks/useGetTravellerApi"
 import { useGetAirportsApi, type Airport } from "@/hooks/useGetAirportApi"
@@ -41,7 +37,7 @@ const CONSTANTS = {
     GROUP: "Group",
     TRAVELLERS_TITLE: "Travellers",
     GROUPS_TITLE: "Groups",
-    HEADER: "Airport travellers & groups",
+
     DEPARTING_FROM: "Departing from",
     ALL_GENDERS: "All Genders",
     MIN_DISTANCE: "Min Distance",
@@ -51,6 +47,8 @@ const CONSTANTS = {
     SEARCH_AIRPORT_PLACEHOLDER: "Search airport...",
     JOIN_WAITLIST: "Join Waitlist",
     TERMINAL: "Terminal",
+    HERO_TITLE: "Find your travel companion",
+    HERO_SUBTITLE: "Select your departure airport to connect with fellow travellers and groups.",
   },
   MESSAGES: {
     NO_TRAVELLERS: "No travellers found. Try changing the filter.",
@@ -134,10 +132,16 @@ const AirportTravellers = () => {
   useEffect(() => {
     const loadAirports = async () => {
       const fetched = await fetchAirports()
+      fetched.sort((a, b) => a.airportName.localeCompare(b.airportName))
       setAirports(fetched)
     }
     void loadAirports()
   }, [])
+
+  const filterAirports = (value: string, search: string) => {
+    if (value.toLowerCase().includes(search.toLowerCase())) return 1
+    return 0
+  }
 
   useEffect(() => {
     if (!selectedAirport) {
@@ -250,6 +254,96 @@ const AirportTravellers = () => {
       filterGender  // Add dependency
   ])
 
+  // --- Helper Component: AirportSelect ---
+  const AirportSelect = ({ 
+    large = false,
+    children
+  }: { 
+    large?: boolean
+    children?: React.ReactNode
+  }) => (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        {children || (
+        <Button
+          variant="outline"
+          role="combobox"
+          aria-expanded={open}
+          className={cn(
+            "justify-between bg-background border-border/30 hover:border-border/50 hover:bg-background/80 text-foreground px-4 font-normal transition-all duration-300",
+            !selectedAirport && "text-muted-foreground",
+            large ? "w-full h-14 sm:h-16 text-base sm:text-lg rounded-2xl shadow-sm" : "w-full h-13 rounded-2xl",
+            open && "opacity-0 pointer-events-none" 
+          )}
+        >
+           <span className="truncate">
+            {selectedAirport
+                ? airports.find((airport) => airport.airportName === selectedAirport)?.airportName
+                : CONSTANTS.LABELS.SELECT_PLACEHOLDER}
+           </span>
+          <ChevronsUpDown className={cn("ml-2 shrink-0 opacity-50", large ? "h-5 w-5" : "h-4 w-4")} />
+        </Button>
+        )}
+      </DialogTrigger>
+      <DialogContent className="p-0 overflow-hidden bg-background/80 backdrop-blur-xl border-border/20 shadow-2xl rounded-2xl sm:rounded-3xl w-[90vw] max-w-2xl gap-0"  onPointerDownOutside={(event) => event.preventDefault()}
+                onEscapeKeyDown={(event) => event.preventDefault()}>
+        <div className="flex flex-col h-[65vh] sm:h-[600px]">
+             <div className="px-4 py-3 border-b border-border/10 bg-muted/5">
+                <DialogTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-widest pl-2">
+                    {CONSTANTS.LABELS.SELECT_AIRPORT_TITLE || "Select Airport"}
+                </DialogTitle>
+                <DialogDescription className="sr-only">
+                    Search and select your departure airport to connect with fellow travellers.
+                </DialogDescription>
+            </div>
+            <Command className="flex-1 bg-transparent" filter={filterAirports}>
+            <CommandInput 
+                ref={searchInputRef} 
+                placeholder={CONSTANTS.LABELS.SEARCH_AIRPORT_PLACEHOLDER} 
+                className="border-none focus:ring-0 text-lg sm:text-xl py-6 h-16 bg-transparent"
+            />
+            <CommandList className="max-h-full p-2 scrollbar-thin scrollbar-thumb-muted-foreground/20 scrollbar-track-transparent">
+                <CommandEmpty className="py-10 text-center text-muted-foreground">
+                    {CONSTANTS.MESSAGES.NO_AIRPORT_FOUND}
+                </CommandEmpty>
+                <CommandGroup>
+                {airports.map((airport) => (
+                    <CommandItem
+                    key={airport.airportCode}
+                    value={`${airport.airportName} ${airport.airportCode}`}
+                    onSelect={() => {
+                        setSelectedAirport(airport.airportName === selectedAirport ? undefined : airport.airportName)
+                        setOpen(false)
+                    }}
+                    className="flex items-center justify-between py-3 px-4 rounded-xl aria-selected:bg-primary/5 aria-selected:text-primary mb-1 cursor-pointer transition-colors"
+                    >
+                    <div className="flex items-center gap-4">
+                         <div className={cn(
+                             "w-10 h-10 rounded-full flex items-center justify-center border transition-all duration-300",
+                                selectedAirport === airport.airportName 
+                                ? "bg-primary text-primary-foreground border-primary" 
+                                : "bg-muted/30 text-muted-foreground border-border/40"
+                         )}>
+                             <Plane className="w-4 h-4" />
+                         </div>
+                        <div className="flex flex-col">
+                            <span className="text-base font-medium text-foreground">{airport.airportName}</span>
+                            <span className="text-xs text-muted-foreground">International Airport</span>
+                        </div>
+                    </div>
+                     <span className="text-xs font-bold font-mono px-2 py-1 rounded-md bg-muted/50 text-muted-foreground border border-border/20">
+                         {airport.airportCode}
+                     </span>
+                    </CommandItem>
+                ))}
+                </CommandGroup>
+            </CommandList>
+            </Command>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+
   if (isFetchingCombos) {
     return (
       <div className="flex flex-col items-center justify-center h-full py-16 text-muted-foreground/60 gap-3">
@@ -292,82 +386,62 @@ const AirportTravellers = () => {
       `}</style>
       <div className="flex items-center justify-center min-h-[50vh] p-2 sm:p-8 w-full">
         <Card className="w-full max-w-5xl border border-border/20 shadow-xl shadow-black/5 rounded-3xl bg-card/98 backdrop-blur-xl">
-          <CardHeader className="pt-6 sm:pt-10 pb-6 sm:pb-7 px-6 sm:px-10 border-b border-border/10">
-            <div className="flex items-start justify-between gap-8">
-              <div className="flex items-center gap-4 sm:gap-6">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-primary bg-primary/5 border border-primary/10 shadow-sm">
-                  {viewMode === VIEW_MODE.INDIVIDUAL ? (
-                    <User className="w-6 h-6 sm:w-8 sm:h-8" />
-                  ) : (
-                    <UsersRound className="w-6 h-6 sm:w-8 sm:h-8" />
-                  )}
+            {selectedAirport && (
+              <CardHeader className="pt-6 sm:pt-10 pb-6 sm:pb-7 px-6 sm:px-10 border-b border-border/10">
+                <div className="flex items-start justify-between gap-8">
+                  <div className="flex items-center gap-4 sm:gap-6">
+                    <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-primary bg-primary/5 border border-primary/10 shadow-sm">
+                      <Plane className="w-6 h-6 sm:w-8 sm:h-8" />
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight">
+                        {selectedAirport}
+                      </CardTitle>
+                      <AirportSelect>
+                        <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full opacity-50 hover:opacity-100 hover:bg-primary/10 hover:text-primary transition-all">
+                            <Pencil className="w-4 h-4" />
+                        </Button>
+                      </AirportSelect>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight">
-                    {CONSTANTS.LABELS.HEADER}
-                  </CardTitle>
-                </div>
-              </div>
-            </div>
-          </CardHeader>
+              </CardHeader>
+            )}
 
-          <CardContent className="px-3 sm:px-10 pb-6 sm:pb-10 space-y-7">
-            <div className="flex flex-col gap-6">
-              <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-                <div className="flex flex-col gap-3 flex-1 w-full">
-                  <label className="text-xs font-semibold text-muted-foreground/80 uppercase tracking-widest">
-                    {CONSTANTS.LABELS.AIRPORT}
-                  </label>
-                  <Popover open={open} onOpenChange={setOpen}>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        role="combobox"
-                        aria-expanded={open}
-                        className={cn("w-full h-13 justify-between bg-background rounded-2xl border-border/30 hover:border-border/50 hover:bg-background/80 text-foreground px-3 font-normal", !selectedAirport && "text-muted-foreground")}
-                      >
-                        {selectedAirport
-                          ? airports.find((airport) => airport.airportName === selectedAirport)?.airportName
-                          : CONSTANTS.LABELS.SELECT_PLACEHOLDER}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 rounded-2xl border-border/20 shadow-xl" align="start">
-                      <Command>
-                        <CommandInput ref={searchInputRef} placeholder={CONSTANTS.LABELS.SEARCH_AIRPORT_PLACEHOLDER} />
-                        <CommandList>
-                          <CommandEmpty>{CONSTANTS.MESSAGES.NO_AIRPORT_FOUND}</CommandEmpty>
-                          <CommandGroup>
-                            {airports.map((airport) => (
-                              <CommandItem
-                                key={airport.airportCode}
-                                value={`${airport.airportName} ${airport.airportCode}`}
-                                onSelect={() => {
-                                  setSelectedAirport(airport.airportName === selectedAirport ? undefined : airport.airportName)
-                                  setOpen(false)
-                                }}
-                              >
-                                <Check
-                                  className={cn(
-                                    "mr-2 h-4 w-4",
-                                    selectedAirport === airport.airportName ? "opacity-100" : "opacity-0"
-                                  )}
-                                />
-                                <span className="font-mono font-medium w-12">{airport.airportCode}</span>
-                                <span className="ml-2">{airport.airportName}</span>
-                              </CommandItem>
-                            ))}
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
-                </div>
+          <CardContent className={cn("px-3 sm:px-10 pb-6 sm:pb-10 transition-all duration-500", !selectedAirport ? "pt-10 sm:pt-20 pb-20 sm:pb-32" : "pt-6 sm:pt-10 space-y-7")}>
+            
+            {/* STATE 1: NO AIRPORT SELECTED (HERO VIEW) */}
+            {!selectedAirport && (
+                <div className="flex flex-col items-center justify-center text-center space-y-8 animate-in fade-in zoom-in-95 slide-in-from-bottom-4 duration-700 ease-out max-w-2xl mx-auto">
+                    <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-[2rem] bg-gradient-to-br from-primary/10 to-primary/5 flex items-center justify-center text-primary shadow-inner ring-1 ring-primary/20 mb-2">
+                        <Plane className="w-10 h-10 sm:w-12 sm:h-12" />
+                    </div>
+                    
+                    <div className="space-y-4 max-w-lg">
+                        <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-foreground bg-clip-text text-transparent bg-gradient-to-b from-foreground to-foreground/70">
+                        {CONSTANTS.LABELS.HERO_TITLE}
+                        </h2>
+                        <p className="text-muted-foreground text-lg leading-relaxed">
+                        {CONSTANTS.LABELS.HERO_SUBTITLE}
+                        </p>
+                    </div>
 
+                    <div className="w-full max-w-md pt-2">
+                        <div className="relative group">
+                            <div className="absolute -inset-1 bg-gradient-to-r from-primary/20 to-blue-500/20 rounded-[1.2rem] blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+                            <div className="relative">
+                                <AirportSelect large />
+                            </div>
+                        </div>
+                    </div>
                 </div>
-                {
-                  selectedAirport && (
-                    <div className="flex flex-col gap-6 w-full animate-in fade-in slide-in-from-bottom-4 duration-500">
+            )}
+
+            {/* STATE 2: AIRPORT SELECTED (DASHBOARD VIEW) */}
+             {selectedAirport && (
+              <div className="flex flex-col gap-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
+               {/* Visibility Section */}
+               <div className="flex flex-col gap-6 w-full">
                        <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-6">
                         {/* Toggle */}
                         <div className="flex flex-col gap-3 w-full xl:w-auto">
@@ -463,25 +537,12 @@ const AirportTravellers = () => {
                         </div>
                         )}
                     </div>
-                  )
-                }
- 
-                {!selectedAirport && (
-                   <div className="flex flex-col items-center justify-center py-16 sm:py-20 text-center space-y-4 rounded-3xl border border-dashed border-border/40 bg-muted/5">
-                      <div className="p-4 rounded-full bg-primary/5 text-primary mb-2">
-                         <MapPin className="w-8 h-8 sm:w-10 sm:h-10 opacity-50" />
-                      </div>
-                       <div className="space-y-1 max-w-sm px-4">
-                         <h3 className="text-lg font-semibold text-foreground">{CONSTANTS.LABELS.SELECT_AIRPORT_TITLE}</h3>
-                         <p className="text-sm text-muted-foreground/70">
-                           {CONSTANTS.LABELS.SELECT_AIRPORT_MSG}
-                         </p>
-                       </div>
-                   </div>
-                )}
-              </div>
-
+                </div>
+            )}
+            
+            {/* TRAVELLER LIST */}
             <ListSectionWrapper />
+
             <Dialog
               open={selectedEntity !== null}
               onOpenChange={(open) => {
