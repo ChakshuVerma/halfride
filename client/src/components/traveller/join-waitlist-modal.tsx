@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from "../ui/button"
 import { Input } from "../ui/input"
 import { Label } from "../ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
 import { useFlightTrackerApi } from "@/hooks/useFlightTrackerApi"
 import { Loader2, Plane, Calendar, CheckCircle2, ArrowRight, X } from "lucide-react"
 import DestinationSearch from "./destination-search"
@@ -18,11 +19,13 @@ const MODAL_CONTENT = {
       DESTINATION: "Destination",
       CARRIER: "Carrier",
       FLIGHT_NO: "Flight No.",
+      TERMINAL: "Terminal",
       DEPARTURE_DATE: "Departure Date",
     },
     PLACEHOLDERS: {
       CARRIER: "AA",
       FLIGHT_NO: "1234",
+      TERMINAL: "Select Terminal",
     },
     BUTTONS: {
       JOINING: "Joining...",
@@ -44,9 +47,11 @@ const MODAL_CONTENT = {
 interface JoinWaitlistModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  terminals: { id: string; name: string }[]
+  defaultTerminal: string
 }
 
-export function JoinWaitlistModal({ open, onOpenChange }: JoinWaitlistModalProps) {
+export function JoinWaitlistModal({ open, onOpenChange, terminals, defaultTerminal }: JoinWaitlistModalProps) {
   const { createFlightTracker } = useFlightTrackerApi()
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
@@ -56,7 +61,8 @@ export function JoinWaitlistModal({ open, onOpenChange }: JoinWaitlistModalProps
     carrier: "",
     flightNumber: "",
     date: "",
-    destination: ""
+    destination: "",
+    terminal: defaultTerminal || ""
   })
 
   // Removed useEffect for focus
@@ -87,7 +93,7 @@ export function JoinWaitlistModal({ open, onOpenChange }: JoinWaitlistModalProps
       setTimeout(() => {
         onOpenChange(false)
         setSuccess(false)
-        setFormData({ carrier: "", flightNumber: "", date: "", destination: "" })
+        setFormData({ carrier: "", flightNumber: "", date: "", destination: "", terminal: defaultTerminal || "" })
       }, 2500)
 
     } catch (err: any) {
@@ -160,6 +166,28 @@ export function JoinWaitlistModal({ open, onOpenChange }: JoinWaitlistModalProps
                   }} 
                 />
               </div>
+
+              {/* Terminal Selection */}
+              {terminals.length > 0 && (
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-muted-foreground ml-1">{MODAL_CONTENT.FORM.LABELS.TERMINAL}</Label>
+                  <Select 
+                    value={formData.terminal} 
+                    onValueChange={(val) => setFormData(prev => ({ ...prev, terminal: val }))}
+                  >
+                    <SelectTrigger className="h-11 rounded-xl bg-background border-input ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                      <SelectValue placeholder={MODAL_CONTENT.FORM.PLACEHOLDERS.TERMINAL} />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border border-border shadow-xl">
+                      {terminals.map(terminal => (
+                        <SelectItem key={terminal.id} value={terminal.id} className="rounded-lg cursor-pointer">
+                          {terminal.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Carrier & Flight */}
               <div className="grid grid-cols-3 gap-3">

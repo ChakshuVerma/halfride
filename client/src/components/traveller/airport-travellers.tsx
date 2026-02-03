@@ -46,7 +46,6 @@ const CONSTANTS = {
     SELECT_AIRPORT_MSG: "Please select an airport above to view available travellers and groups.",
     SEARCH_AIRPORT_PLACEHOLDER: "Search airport...",
     JOIN_WAITLIST: "Join Waitlist",
-    TERMINAL: "Terminal",
     HERO_TITLE: "Find your travel companion",
     HERO_SUBTITLE: "Select your departure airport to connect with fellow travellers and groups.",
   },
@@ -109,6 +108,7 @@ const AirportTravellers = () => {
 
   const [sortBy, setSortBy] = useState<SortOption>(CONSTANTS.VALUES.DISTANCE)
   const [filterGender, setFilterGender] = useState<FilterGender>(CONSTANTS.VALUES.ALL)
+  const [filterTerminal, setFilterTerminal] = useState<string>(CONSTANTS.VALUES.ALL)
   const [open, setOpen] = useState(false)
   const [isWaitlistModalOpen, setIsWaitlistModalOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -122,12 +122,10 @@ const AirportTravellers = () => {
     }
   }, [open])
 
-  // console.log(selectedAirport)
-
   // Hooks
   const { fetchTravellers, fetchGroups, loading: isFetchingList } = useGetTravellerApi()
   const { fetchAirports, fetchTerminals, loading: isFetchingCombos } = useGetAirportsApi()
-  const [terminals, setTerminals] = useState<string[]>([])
+  const [terminals, setTerminals] = useState<{ id: string; name: string }[]>([])
 
   useEffect(() => {
     const loadAirports = async () => {
@@ -146,6 +144,7 @@ const AirportTravellers = () => {
   useEffect(() => {
     if (!selectedAirport) {
         setTerminals([])
+        setFilterTerminal(CONSTANTS.VALUES.ALL) // Reset terminal filter
         return
     }
 
@@ -181,7 +180,7 @@ const AirportTravellers = () => {
     let processedTravellers = [...travellers]
     let processedGroups = [...groups]
 
-    // 1. FILTER
+    // 1. FILTER GENDER
     if (filterGender !== CONSTANTS.VALUES.ALL) {
         if (viewMode === VIEW_MODE.INDIVIDUAL) {
             processedTravellers = processedTravellers.filter(t => t.gender === filterGender)
@@ -189,8 +188,16 @@ const AirportTravellers = () => {
             processedGroups = processedGroups.filter(g => g.gender === filterGender)
         }
     }
-
-    // 2. SORT
+    
+    // 2. FILTER TERMINAL
+    if (filterTerminal !== CONSTANTS.VALUES.ALL) {
+        if (viewMode === VIEW_MODE.INDIVIDUAL) {
+            processedTravellers = processedTravellers.filter(t => t.terminal === filterTerminal)
+        } else {
+            processedGroups = processedGroups.filter(g => g.terminal === filterTerminal)
+        }
+    }
+    // 3. SORT
     const sortFn = (a: any, b: any) => {
         if (sortBy === CONSTANTS.VALUES.DISTANCE) {
             return a.distanceFromUserKm - b.distanceFromUserKm
@@ -250,8 +257,9 @@ const AirportTravellers = () => {
       travellers, 
       groups, 
       isFetchingList,
-      sortBy,       // Add dependency
-      filterGender  // Add dependency
+      sortBy,       
+      filterGender,
+      filterTerminal // Add dependency
   ])
 
   // --- Helper Component: AirportSelect ---
@@ -469,76 +477,95 @@ const AirportTravellers = () => {
                           </div>
                         </div>
 
-                        {/* Filters & Sort */}
-                        <div className="flex flex-col sm:flex-row gap-3 flex-1 justify-end">
-                             {/* Filter */}
-                             <div className="w-full sm:w-[180px]">
-                                <Select
-                                  value={filterGender}
-                                  onValueChange={(val) => setFilterGender(val as FilterGender)}
-                                >
-                                  <SelectTrigger className="h-11 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20 transition-all rounded-xl font-medium shadow-sm">
-                                    <div className="flex items-center gap-2.5 truncate">
-                                      <Filter className="w-4 h-4 text-zinc-400" />
-                                      <span className="text-sm text-zinc-700 dark:text-zinc-200">
-                                        {filterGender === CONSTANTS.VALUES.ALL ? CONSTANTS.LABELS.ALL_GENDERS : filterGender}
-                                      </span>
-                                    </div>
-                                  </SelectTrigger>
-                                  <SelectContent className="rounded-xl border border-zinc-200 dark:border-white/10 shadow-xl p-1">
-                                    <SelectItem value={CONSTANTS.VALUES.ALL} className="rounded-lg">{CONSTANTS.LABELS.ALL_GENDERS}</SelectItem>
-                                    <SelectItem value={CONSTANTS.VALUES.MALE} className="text-blue-600 focus:text-blue-600 dark:text-blue-400 dark:focus:text-blue-400 font-medium rounded-lg">{CONSTANTS.VALUES.MALE}</SelectItem>
-                                    <SelectItem value={CONSTANTS.VALUES.FEMALE} className="text-pink-600 focus:text-pink-600 dark:text-pink-400 dark:focus:text-pink-400 font-medium rounded-lg">{CONSTANTS.VALUES.FEMALE}</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                             </div>
+                         {/* Filters & Sort */}
+                         <div className="flex flex-col gap-4 flex-1 justify-end w-full sm:w-auto">
+                              
+                              <div className="flex flex-col gap-2">
+                                  {/* Gender Filter Buttons */}
+                                  <div className="flex items-center gap-2 p-1 bg-zinc-100/50 dark:bg-zinc-800/50 rounded-xl w-fit">
+                                      {[CONSTANTS.VALUES.ALL, CONSTANTS.VALUES.MALE, CONSTANTS.VALUES.FEMALE].map((gender) => (
+                                          <button
+                                              key={gender}
+                                              onClick={() => setFilterGender(gender as FilterGender)}
+                                              className={cn(
+                                                  "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200",
+                                                  filterGender === gender
+                                                      ? "bg-white dark:bg-zinc-700 text-foreground shadow-sm ring-1 ring-black/5 dark:ring-white/10"
+                                                      : "text-muted-foreground hover:text-foreground hover:bg-white/50 dark:hover:bg-white/5"
+                                              )}
+                                          >
+                                              {gender === CONSTANTS.VALUES.ALL ? "All" : gender}
+                                          </button>
+                                      ))}
+                                  </div>
 
-                             {/* Sort */}
-                             <div className="w-full sm:w-[180px]">
-                                <Select
-                                  value={sortBy}
-                                  onValueChange={(val) => setSortBy(val as SortOption)}
-                                >
-                                  <SelectTrigger className="h-11 bg-white dark:bg-zinc-900 border-zinc-200 dark:border-white/10 hover:border-zinc-300 dark:hover:border-white/20 transition-all rounded-xl font-medium shadow-sm">
-                                     <div className="flex items-center gap-2.5 truncate">
-                                      <ArrowUpDown className="w-4 h-4 text-zinc-400" />
-                                      <span className="text-sm text-zinc-700 dark:text-zinc-200">
-                                        {sortBy === CONSTANTS.VALUES.DISTANCE ? CONSTANTS.LABELS.MIN_DISTANCE : CONSTANTS.LABELS.WAIT_TIME}
-                                      </span>
-                                    </div>
-                                  </SelectTrigger>
-                                  <SelectContent className="rounded-xl border border-zinc-200 dark:border-white/10 shadow-xl p-1">
-                                    <SelectItem value={CONSTANTS.VALUES.DISTANCE} className="rounded-lg">{CONSTANTS.LABELS.MIN_DISTANCE}</SelectItem>
-                                    <SelectItem value={CONSTANTS.VALUES.WAIT_TIME_VAL} className="rounded-lg">{CONSTANTS.LABELS.WAIT_TIME}</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                             </div>
+                                  {/* Terminal Filter Buttons */}
+                                  {terminals.length > 0 && (
+                                      <div className="flex flex-wrap items-center gap-2">
+                                          <button
+                                              onClick={() => setFilterTerminal(CONSTANTS.VALUES.ALL)}
+                                              className={cn(
+                                                  "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 border",
+                                                  filterTerminal === CONSTANTS.VALUES.ALL
+                                                      ? "bg-primary/10 text-primary border-primary/20"
+                                                      : "bg-transparent border-transparent text-muted-foreground hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                              )}
+                                          >
+                                              All Terminals
+                                          </button>
+                                          {terminals.map((t) => (
+                                              <button
+                                                  key={t.id}
+                                                  onClick={() => setFilterTerminal(t.id)}
+                                                  className={cn(
+                                                      "px-3 py-1.5 text-xs font-semibold rounded-lg transition-all duration-200 border",
+                                                      filterTerminal === t.id
+                                                          ? "bg-primary/10 text-primary border-primary/20"
+                                                          : "bg-zinc-100/50 dark:bg-zinc-800/50 border-transparent text-foreground hover:border-border/50"
+                                                  )}
+                                              >
+                                                {t.name}
+                                              </button>
+                                          ))}
+                                      </div>
+                                  )}
+                              </div>
 
-                             <Button 
-                                onClick={() => setIsWaitlistModalOpen(true)}
-                                className="w-full sm:w-auto h-11 px-6 rounded-xl font-bold uppercase tracking-widest text-[10px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all"
-                             >
-                                <Plane className="w-3.5 h-3.5 mr-2" />
-                                {CONSTANTS.LABELS.JOIN_WAITLIST}
-                             </Button>
+                              <div className="flex flex-col sm:flex-row gap-3 items-center">
+                                  {/* Sort */}
+                                 <div className="w-full sm:w-[180px]">
+                                    <Select
+                                      value={sortBy}
+                                      onValueChange={(val) => setSortBy(val as SortOption)}
+                                    >
+                                      <SelectTrigger className="h-10 bg-transparent border-transparent hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-all rounded-xl font-medium text-muted-foreground hover:text-foreground">
+                                         <div className="flex items-center gap-2.5 truncate">
+                                          <ArrowUpDown className="w-4 h-4" />
+                                          <span className="text-sm">
+                                            {sortBy === CONSTANTS.VALUES.DISTANCE ? CONSTANTS.LABELS.MIN_DISTANCE : CONSTANTS.LABELS.WAIT_TIME}
+                                          </span>
+                                        </div>
+                                      </SelectTrigger>
+                                      <SelectContent className="rounded-xl border border-zinc-200 dark:border-white/10 shadow-xl p-1">
+                                        <SelectItem value={CONSTANTS.VALUES.DISTANCE} className="rounded-lg">{CONSTANTS.LABELS.MIN_DISTANCE}</SelectItem>
+                                        <SelectItem value={CONSTANTS.VALUES.WAIT_TIME_VAL} className="rounded-lg">{CONSTANTS.LABELS.WAIT_TIME}</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                 </div>
+
+                                 <Button 
+                                    onClick={() => setIsWaitlistModalOpen(true)}
+                                    className="w-full sm:w-auto h-10 px-6 rounded-xl font-bold uppercase tracking-widest text-[10px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all"
+                                 >
+                                    <Plane className="w-3.5 h-3.5 mr-2" />
+                                    {CONSTANTS.LABELS.JOIN_WAITLIST}
+                                 </Button>
+                              </div>
+                         </div>
                         </div>
-                       </div>
-                       
-                        {terminals.length > 0 && (
-                        <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                            {terminals.map((terminal) => (
-                            <div 
-                                key={terminal}
-                                className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-white/10 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors cursor-default"
-                            >
-                                {CONSTANTS.LABELS.TERMINAL} {terminal}
-                            </div>
-                            ))}
-                        </div>
-                        )}
                     </div>
                 </div>
-            )}
+             )}
             
             {/* TRAVELLER LIST */}
             <ListSectionWrapper />
@@ -560,7 +587,12 @@ const AirportTravellers = () => {
           </CardContent>
         </Card>
       </div>
-      <JoinWaitlistModal open={isWaitlistModalOpen} onOpenChange={setIsWaitlistModalOpen} />
+      <JoinWaitlistModal 
+        open={isWaitlistModalOpen} 
+        onOpenChange={setIsWaitlistModalOpen} 
+        terminals={terminals}
+        defaultTerminal={filterTerminal === CONSTANTS.VALUES.ALL ? "" : filterTerminal}
+      />
     </>
   )
 }

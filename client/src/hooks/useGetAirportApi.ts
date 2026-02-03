@@ -20,14 +20,13 @@ export function useGetAirportsApi() {
     }
   }, [sessionRequest])
 
-  const fetchTerminals = useCallback(async (code: string): Promise<string[]> => {
+  const fetchTerminals = useCallback(async (code: string): Promise<{ id: string; name: string }[]> => {
     try {
-        const response = await sessionRequest<{ ok: boolean; data: string[] }>(API_ROUTES.GET_TERMINALS, {
+        const response = await sessionRequest<{ ok: boolean; data: { id: string; name: string }[] }>(API_ROUTES.GET_TERMINALS, {
             method: "POST",
             body: JSON.stringify({ airportCode: code }),
         })
-        // The terminals are object, return only the terminal name
-        return response.data.map((terminal: any) => terminal.name)
+        return response.data
     } catch (error) {
         console.error("Failed to fetch terminals", error)
         return []
