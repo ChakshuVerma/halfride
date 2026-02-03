@@ -25,5 +25,5 @@ export const API_ROUTES = {
   
   // Airport routes
   AIRPORTS: `${API_BASE_URL}/airports`,
+  GET_TERMINALS: `${API_BASE_URL}/terminals`,
 } as const
-

@@ -5,6 +5,6 @@ import { createFlightTracker, getFlightTracker, getAirports, getTerminals } from
 export const flightRouter = Router();
 
 flightRouter.get('/airports', requireSession, getAirports);
-flightRouter.get('/airports/:airportCode/terminals', requireSession, getTerminals);
+flightRouter.post('/terminals', requireSession, getTerminals);
 flightRouter.put('/flight-tracker', requireSession, getFlightTracker);
 flightRouter.post('/new-flight-tracker', requireSession, createFlightTracker);

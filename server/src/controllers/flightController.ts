@@ -323,7 +323,7 @@ export async function getAirports(_req: Request, res: Response) {
  * ENDPOINT 4: GET TERMINALS FOR AIRPORT
  */
 export async function getTerminals(req: Request, res: Response) {
-  const { airportCode } = req.params;
+  const { airportCode } = req.body;
 
   if (!airportCode) {
       return res.status(400).json({ ok: false, error: 'Bad Request', message: 'Airport Code is required' });

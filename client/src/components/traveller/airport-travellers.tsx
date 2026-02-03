@@ -13,7 +13,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent } from "../ui/dialog"
 import { UsersRound, Loader2, Filter, ArrowUpDown, User, MapPin, Check, ChevronsUpDown, Plane } from "lucide-react"
@@ -48,10 +48,14 @@ const CONSTANTS = {
     WAIT_TIME: "Wait Time",
     SELECT_AIRPORT_TITLE: "Select an Airport",
     SELECT_AIRPORT_MSG: "Please select an airport above to view available travellers and groups.",
+    SEARCH_AIRPORT_PLACEHOLDER: "Search airport...",
+    JOIN_WAITLIST: "Join Waitlist",
+    TERMINAL: "Terminal",
   },
   MESSAGES: {
     NO_TRAVELLERS: "No travellers found. Try changing the filter.",
     NO_GROUPS: "No groups found. Try changing the filter.",
+    NO_AIRPORT_FOUND: "No airport found.",
   },
   LOADING: "Loading...",
   VALUES: {
@@ -60,8 +64,12 @@ const CONSTANTS = {
      FEMALE: "Female",
      DISTANCE: "distance",
      WAIT_TIME_VAL: "wait_time",
+  },
+  ANIMATION: {
+    LEFT: "left",
+    RIGHT: "right",
   }
-}
+} as const
 
 
 // Toggle button component
@@ -98,11 +106,11 @@ const AirportTravellers = () => {
   const [groups, setGroups] = useState<Group[]>([])
   const [airports, setAirports] = useState<Airport[]>([])
 
-  type SortOption = "distance" | "wait_time"
-  type FilterGender = "all" | "Male" | "Female"
+  type SortOption = typeof CONSTANTS.VALUES.DISTANCE | typeof CONSTANTS.VALUES.WAIT_TIME_VAL
+  type FilterGender = typeof CONSTANTS.VALUES.ALL | typeof CONSTANTS.VALUES.MALE | typeof CONSTANTS.VALUES.FEMALE
 
-  const [sortBy, setSortBy] = useState<SortOption>("distance")
-  const [filterGender, setFilterGender] = useState<FilterGender>("all")
+  const [sortBy, setSortBy] = useState<SortOption>(CONSTANTS.VALUES.DISTANCE)
+  const [filterGender, setFilterGender] = useState<FilterGender>(CONSTANTS.VALUES.ALL)
   const [open, setOpen] = useState(false)
   const [isWaitlistModalOpen, setIsWaitlistModalOpen] = useState(false)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -120,7 +128,8 @@ const AirportTravellers = () => {
 
   // Hooks
   const { fetchTravellers, fetchGroups, loading: isFetchingList } = useGetTravellerApi()
-  const { fetchAirports, loading: isFetchingCombos } = useGetAirportsApi()
+  const { fetchAirports, fetchTerminals, loading: isFetchingCombos } = useGetAirportsApi()
+  const [terminals, setTerminals] = useState<string[]>([])
 
   useEffect(() => {
     const loadAirports = async () => {
@@ -131,14 +140,21 @@ const AirportTravellers = () => {
   }, [])
 
   useEffect(() => {
-    if (!selectedAirport) return
+    if (!selectedAirport) {
+        setTerminals([])
+        return
+    }
 
     const loadData = async () => {
       // Find code for selected airport name
       const airportObj = airports.find(a => a.airportName === selectedAirport)
       const code = airportObj?.airportCode
+      if (!code) return
 
-      if (viewMode === VIEW_MODE.INDIVIDUAL && code) {
+      const fetchedTerminals = await fetchTerminals(code)
+      setTerminals(fetchedTerminals)
+
+      if (viewMode === VIEW_MODE.INDIVIDUAL) {
         const fetchedTravellers = await fetchTravellers(code)
         setTravellers(fetchedTravellers)
       } else if (viewMode === VIEW_MODE.GROUP) {
@@ -147,14 +163,14 @@ const AirportTravellers = () => {
       }
     }
     void loadData()
-  }, [viewMode, fetchTravellers, fetchGroups, selectedAirport, airports])
+  }, [viewMode, fetchTravellers, fetchGroups, selectedAirport, airports, fetchTerminals])
 
   const ListSectionWrapper = useCallback(() => {
     if (!selectedAirport) return null
     const title = viewMode === VIEW_MODE.INDIVIDUAL ? CONSTANTS.LABELS.TRAVELLERS_TITLE : CONSTANTS.LABELS.GROUPS_TITLE
 
     const emptyMessage = viewMode === VIEW_MODE.INDIVIDUAL ? CONSTANTS.MESSAGES.NO_TRAVELLERS : CONSTANTS.MESSAGES.NO_GROUPS
-    const animation = viewMode === VIEW_MODE.INDIVIDUAL ? "left" : "right"
+    const animation = viewMode === VIEW_MODE.INDIVIDUAL ? CONSTANTS.ANIMATION.LEFT : CONSTANTS.ANIMATION.RIGHT
     const airportSubtitle = `${CONSTANTS.LABELS.DEPARTING_FROM} ${selectedAirport}`
 
     // --- Filtering & Sorting Logic ---
@@ -318,17 +334,15 @@ const AirportTravellers = () => {
                     </PopoverTrigger>
                     <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 rounded-2xl border-border/20 shadow-xl" align="start">
                       <Command>
-                        <CommandInput ref={searchInputRef} placeholder="Search airport..." />
+                        <CommandInput ref={searchInputRef} placeholder={CONSTANTS.LABELS.SEARCH_AIRPORT_PLACEHOLDER} />
                         <CommandList>
-                          <CommandEmpty>No airport found.</CommandEmpty>
+                          <CommandEmpty>{CONSTANTS.MESSAGES.NO_AIRPORT_FOUND}</CommandEmpty>
                           <CommandGroup>
                             {airports.map((airport) => (
                               <CommandItem
                                 key={airport.airportCode}
                                 value={`${airport.airportName} ${airport.airportCode}`}
-                                onSelect={(currentValue) => {
-                                  // We find the airport based on the one that was clicked
-                                  // The currentValue will be the combined string lowercased by cmdk
+                                onSelect={() => {
                                   setSelectedAirport(airport.airportName === selectedAirport ? undefined : airport.airportName)
                                   setOpen(false)
                                 }}
@@ -431,10 +445,23 @@ const AirportTravellers = () => {
                                 className="w-full sm:w-auto h-11 px-6 rounded-xl font-bold uppercase tracking-widest text-[10px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all"
                              >
                                 <Plane className="w-3.5 h-3.5 mr-2" />
-                                Join Waitlist
+                                {CONSTANTS.LABELS.JOIN_WAITLIST}
                              </Button>
                         </div>
                        </div>
+                       
+                        {terminals.length > 0 && (
+                        <div className="flex flex-wrap gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                            {terminals.map((terminal) => (
+                            <div 
+                                key={terminal}
+                                className="px-3 py-1.5 rounded-lg bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-white/10 text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors cursor-default"
+                            >
+                                {CONSTANTS.LABELS.TERMINAL} {terminal}
+                            </div>
+                            ))}
+                        </div>
+                        )}
                     </div>
                   )
                 }
