@@ -318,3 +318,34 @@ export async function getAirports(_req: Request, res: Response) {
     return res.status(500).json({ ok: false, error: 'Internal Server Error', message: error.message });
   }
 }
+
+/**
+ * ENDPOINT 4: GET TERMINALS FOR AIRPORT
+ */
+export async function getTerminals(req: Request, res: Response) {
+  const { airportCode } = req.params;
+
+  if (!airportCode) {
+      return res.status(400).json({ ok: false, error: 'Bad Request', message: 'Airport Code is required' });
+  }
+
+  const code = String(airportCode).toUpperCase();
+
+  try {
+    const db = admin.firestore();
+    const doc = await db.collection(COLLECTIONS.AIRPORTS).doc(code).get();
+    
+    if (!doc.exists) {
+        return res.status(404).json({ ok: false, error: 'Not Found', message: `Airport ${airportCode} not found` });
+    }
+
+    const data = doc.data();
+    const terminals = data?.terminals || [];
+
+    return res.json({ ok: true, data: terminals });
+
+  } catch (error: any) {
+    console.error('Get Terminals Error:', error.message);
+    return res.status(500).json({ ok: false, error: 'Internal Server Error', message: error.message });
+  }
+}
