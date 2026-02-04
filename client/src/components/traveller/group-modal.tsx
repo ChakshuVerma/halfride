@@ -98,7 +98,7 @@ export function GroupModal({ group }: GroupModalProps) {
       <DialogHeader className="space-y-0 pb-4 border-b border-border/10">
         <div className="flex items-start gap-4">
           <div className="relative shrink-0">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-linear-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 border border-black/5 dark:border-white/10 shadow-lg">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 border border-black/5 dark:border-white/10 shadow-lg">
               <UsersRound className="w-6 h-6 text-violet-600 dark:text-violet-400" strokeWidth={1.5} />
             </div>
           </div>
@@ -138,7 +138,7 @@ export function GroupModal({ group }: GroupModalProps) {
               className={`h-full rounded-full transition-all duration-700 ease-out shadow-sm ${
                 isFull 
                  ? "bg-red-500" 
-                 : "bg-linear-to-r from-primary via-primary/90 to-primary/80"
+                 : "bg-gradient-to-r from-primary via-primary/90 to-primary/80"
               }`}
               style={{ width: `${Math.min(100, capacityPercentage)}%` }}
             />
@@ -194,8 +194,8 @@ export function GroupModal({ group }: GroupModalProps) {
                 <div key={member.id} className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/10 transition-colors border border-transparent hover:border-border/5">
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 border shadow-sm ${
                     member.gender === CONSTANTS.GENDER.MALE
-                      ? "bg-linear-to-br from-blue-500/10 to-blue-500/5 border-blue-500/10 text-blue-600"
-                      : "bg-linear-to-br from-pink-500/10 to-pink-500/5 border-pink-500/10 text-pink-600"
+                      ? "bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/10 text-blue-600"
+                      : "bg-gradient-to-br from-pink-500/10 to-pink-500/5 border-pink-500/10 text-pink-600"
                   }`}>
                     <User className="w-4 h-4" />
                   </div>
@@ -231,7 +231,7 @@ export function GroupModal({ group }: GroupModalProps) {
             }}
           >
             {!isFull && (
-               <div className="absolute inset-0 bg-linear-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+               <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
             )}
             <span className="relative flex items-center justify-center gap-2 font-bold text-sm tracking-wide">
               {isFull ? CONSTANTS.LABELS.GROUP_FULL : CONSTANTS.LABELS.JOIN}

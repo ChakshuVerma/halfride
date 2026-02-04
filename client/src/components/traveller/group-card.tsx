@@ -35,7 +35,7 @@ export function GroupCard({ group, onClick }: GroupCardProps) {
   const percentFull = Math.round((group.groupSize / group.maxUsers) * 100)
   
   // Monochromatic/Neutral gradient for group cards (Light Gray)
-  const avatarGradient = "bg-linear-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 border border-black/5 dark:border-white/10"
+  const avatarGradient = "bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 border border-black/5 dark:border-white/10"
   const accentColor = "text-violet-600 dark:text-violet-400"
 
   return (
