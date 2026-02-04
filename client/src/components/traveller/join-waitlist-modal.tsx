@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,13 +11,6 @@ import {
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "../ui/select";
 import { useFlightTrackerApi } from "@/hooks/useFlightTrackerApi";
 import {
   Loader2,
@@ -26,8 +19,10 @@ import {
   CheckCircle2,
   ArrowRight,
   X,
+  MapPin,
 } from "lucide-react";
 import DestinationSearch from "./destination-search";
+import { cn } from "@/lib/utils";
 
 const MODAL_CONTENT = {
   HEADER: {
@@ -69,12 +64,14 @@ interface JoinWaitlistModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   terminals: { id: string; name: string }[];
+  currentAirport: { airportName: string; airportCode: string } | undefined;
 }
 
 export function JoinWaitlistModal({
   open,
   onOpenChange,
   terminals,
+  currentAirport,
 }: JoinWaitlistModalProps) {
   const { createFlightTracker } = useFlightTrackerApi();
   const [loading, setLoading] = useState(false);
@@ -89,7 +86,15 @@ export function JoinWaitlistModal({
     terminal: "",
   });
 
-  // Removed useEffect for focus
+  // Default terminal selection logic
+  useEffect(() => {
+    if (open && terminals.length > 0 && !formData.terminal) {
+      setFormData((prev) => ({
+        ...prev,
+        terminal: terminals[0].id,
+      }));
+    }
+  }, [open, terminals, formData.terminal]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -117,6 +122,8 @@ export function JoinWaitlistModal({
         month: dateObj.getMonth() + 1,
         day: dateObj.getDate(),
         destination: formData.destination,
+        userTerminal: formData.terminal,
+        airportCode: currentAirport?.airportCode || "",
       });
 
       setSuccess(true);
@@ -128,7 +135,7 @@ export function JoinWaitlistModal({
           flightNumber: "",
           date: "",
           destination: "",
-          terminal: "",
+          terminal: terminals[0]?.id || "",
         });
       }, 2500);
     } catch (err: any) {
@@ -141,19 +148,16 @@ export function JoinWaitlistModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="w-[95vw] max-w-md max-h-[90vh] overflow-y-auto p-0 gap-0 rounded-2xl sm:rounded-3xl border border-border/50 bg-background/95 backdrop-blur-xl shadow-2xl custom-scrollbar [&>button]:hidden"
+        className="w-[95vw] max-w-md max-h-[93vh] overflow-y-auto p-0 gap-0 rounded-2xl sm:rounded-3xl border border-border/50 bg-background/95 backdrop-blur-xl shadow-2xl custom-scrollbar [&>button]:hidden"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
-        {/* Header */}
+        {/* Header Section */}
         <div className="relative p-6 px-8 border-b border-border/40 pb-6 overflow-hidden">
-          {/* Close Button - Explicitly placed in header for visibility */}
           <DialogClose className="absolute right-6 top-6 rounded-full p-2 bg-background/50 hover:bg-background/80 text-muted-foreground hover:text-foreground transition-all z-50 focus:outline-none focus:ring-2 focus:ring-ring">
             <X className="w-4 h-4" />
-            <span className="sr-only">Close</span>
           </DialogClose>
 
-          {/* Subtle background glow */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
           <DialogHeader className="relative z-10 text-left space-y-2">
@@ -165,12 +169,29 @@ export function JoinWaitlistModal({
                 {MODAL_CONTENT.HEADER.LABEL}
               </span>
             </div>
+
             <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">
               {MODAL_CONTENT.HEADER.TITLE}
             </DialogTitle>
+
             <DialogDescription className="text-muted-foreground text-sm">
               {MODAL_CONTENT.HEADER.DESCRIPTION}
             </DialogDescription>
+
+            {/* Airport Context Span */}
+            {currentAirport && (
+              <div className="flex items-center gap-1.5 mt-1 animate-in fade-in slide-in-from-left-2">
+                <div className="flex items-center gap-1.5 px-4 py-3 rounded-full bg-primary/5 border border-primary/10">
+                  <MapPin className="w-3 h-3 text-primary" />
+                  <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-tight">
+                    {currentAirport.airportName}
+                    <span className="ml-1.5 text-primary">
+                      ({currentAirport.airportCode})
+                    </span>
+                  </span>
+                </div>
+              </div>
+            )}
           </DialogHeader>
         </div>
 
@@ -203,10 +224,10 @@ export function JoinWaitlistModal({
             onSubmit={handleSubmit}
             className="p-6 px-8 space-y-6 relative overflow-visible"
           >
-            <div className="space-y-4">
+            <div className="space-y-5">
               {/* Destination */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-muted-foreground ml-1">
+              <div className="space-y-2">
+                <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 ml-1">
                   {MODAL_CONTENT.FORM.LABELS.DESTINATION}
                 </Label>
                 <DestinationSearch
@@ -221,45 +242,47 @@ export function JoinWaitlistModal({
 
               {/* Terminal Selection */}
               {terminals.length > 0 && (
-                <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-muted-foreground ml-1">
+                <div className="space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 ml-1">
                     {MODAL_CONTENT.FORM.LABELS.TERMINAL}
                   </Label>
-                  <Select
-                    value={formData.terminal}
-                    onValueChange={(val) =>
-                      setFormData((prev) => ({ ...prev, terminal: val }))
-                    }
-                  >
-                    <SelectTrigger className="h-11 rounded-xl bg-background border-input ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                      <SelectValue
-                        placeholder={MODAL_CONTENT.FORM.PLACEHOLDERS.TERMINAL}
-                      />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border border-border shadow-xl">
-                      {terminals.map((terminal) => (
-                        <SelectItem
+                  <div className="flex flex-wrap gap-2.5">
+                    {terminals.map((terminal) => {
+                      const isSelected = formData.terminal === terminal.id;
+                      return (
+                        <button
                           key={terminal.id}
-                          value={terminal.id}
-                          className="rounded-lg cursor-pointer"
+                          type="button"
+                          onClick={() =>
+                            setFormData((prev) => ({
+                              ...prev,
+                              terminal: terminal.id,
+                            }))
+                          }
+                          className={cn(
+                            "relative px-5 py-2 rounded-full text-xs font-bold transition-all duration-300 ease-out border",
+                            isSelected
+                              ? "bg-primary text-primary-foreground border-primary shadow-lg shadow-primary/25 scale-105"
+                              : "bg-secondary/50 text-muted-foreground border-border/50 hover:border-primary/30 hover:bg-secondary hover:text-foreground",
+                          )}
                         >
-                          {terminal.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                          {terminal.id.toLocaleUpperCase()}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
 
               {/* Carrier & Flight */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="col-span-1 space-y-1.5">
-                  <Label className="text-xs font-semibold text-muted-foreground ml-1">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-1 space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 ml-1">
                     {MODAL_CONTENT.FORM.LABELS.CARRIER}
                   </Label>
                   <Input
                     placeholder={MODAL_CONTENT.FORM.PLACEHOLDERS.CARRIER}
-                    className="h-11 rounded-xl font-medium text-center uppercase tracking-wide placeholder:font-normal"
+                    className="h-12 rounded-xl font-bold text-center uppercase tracking-widest bg-secondary/30 focus:bg-background transition-colors"
                     value={formData.carrier}
                     onChange={(e) =>
                       setFormData((prev) => ({
@@ -273,13 +296,13 @@ export function JoinWaitlistModal({
                   />
                 </div>
 
-                <div className="col-span-2 space-y-1.5">
-                  <Label className="text-xs font-semibold text-muted-foreground ml-1">
+                <div className="col-span-2 space-y-2">
+                  <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 ml-1">
                     {MODAL_CONTENT.FORM.LABELS.FLIGHT_NO}
                   </Label>
                   <Input
                     placeholder={MODAL_CONTENT.FORM.PLACEHOLDERS.FLIGHT_NO}
-                    className="h-11 rounded-xl font-medium"
+                    className="h-12 rounded-xl font-bold bg-secondary/30 focus:bg-background transition-colors"
                     value={formData.flightNumber}
                     onChange={(e) =>
                       setFormData((prev) => ({
@@ -294,15 +317,15 @@ export function JoinWaitlistModal({
               </div>
 
               {/* Date */}
-              <div className="space-y-1.5">
-                <Label className="text-xs font-semibold text-muted-foreground ml-1">
+              <div className="space-y-2">
+                <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 ml-1">
                   {MODAL_CONTENT.FORM.LABELS.DEPARTURE_DATE}
                 </Label>
                 <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground/50 pointer-events-none" />
+                  <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-primary pointer-events-none" />
                   <Input
                     type="date"
-                    className="pl-10 h-11 rounded-xl font-medium"
+                    className="pl-12 h-12 rounded-xl font-medium bg-secondary/30 focus:bg-background transition-colors"
                     value={formData.date}
                     onChange={(e) =>
                       setFormData((prev) => ({ ...prev, date: e.target.value }))
@@ -315,7 +338,7 @@ export function JoinWaitlistModal({
             </div>
 
             {error && (
-              <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-sm font-medium flex items-center gap-2">
+              <div className="p-3 rounded-xl bg-destructive/10 text-destructive text-xs font-bold flex items-center gap-2 animate-in fade-in slide-in-from-top-2">
                 <span className="text-lg">⚠️</span> {error}
               </div>
             )}
@@ -323,14 +346,17 @@ export function JoinWaitlistModal({
             <DialogFooter className="pt-2">
               <Button
                 type="submit"
-                className="w-full h-12 rounded-xl text-sm font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all"
+                className="w-full h-14 rounded-2xl text-base font-bold shadow-xl shadow-primary/20 hover:shadow-primary/40 hover:-translate-y-0.5 transition-all duration-300"
                 disabled={loading}
               >
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {loading
-                  ? MODAL_CONTENT.FORM.BUTTONS.JOINING
-                  : MODAL_CONTENT.FORM.BUTTONS.JOIN_WAITLIST}
-                {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
+                {loading ? (
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                ) : (
+                  <>
+                    {MODAL_CONTENT.FORM.BUTTONS.JOIN_WAITLIST}
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </form>

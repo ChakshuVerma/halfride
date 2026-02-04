@@ -123,7 +123,7 @@ function ToggleButton({ label, isActive, onClick, icon }: ToggleButtonProps) {
 }
 
 const AirportTravellers = () => {
-  const [selectedAirport, setSelectedAirport] = useState<string | undefined>(
+  const [selectedAirport, setSelectedAirport] = useState<Airport | undefined>(
     undefined,
   );
   const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODE.INDIVIDUAL);
@@ -173,10 +173,7 @@ const AirportTravellers = () => {
       return;
     }
     const loadData = async () => {
-      const airportObj = airports.find(
-        (a) => a.airportName === selectedAirport,
-      );
-      const code = airportObj?.airportCode;
+      const code = selectedAirport?.airportCode;
       if (!code) return;
 
       const fetchedTerminals = await fetchTerminals(code);
@@ -187,12 +184,12 @@ const AirportTravellers = () => {
         const fetchedTravellers = await fetchTravellers(code);
         setTravellers(fetchedTravellers);
       } else {
-        const fetchedGroups = await fetchGroups(selectedAirport);
+        const fetchedGroups = await fetchGroups(selectedAirport.airportCode);
         setGroups(fetchedGroups);
       }
     };
     void loadData();
-  }, [viewMode, selectedAirport, airports]);
+  }, [viewMode, selectedAirport]);
 
   const handleFilterToggle = useCallback(
     (
@@ -318,7 +315,8 @@ const AirportTravellers = () => {
             )}
           >
             <span className="truncate">
-              {selectedAirport || CONSTANTS.LABELS.SELECT_PLACEHOLDER}
+              {selectedAirport?.airportName ||
+                CONSTANTS.LABELS.SELECT_PLACEHOLDER}
             </span>
             <ChevronsUpDown
               className={cn(
@@ -355,7 +353,7 @@ const AirportTravellers = () => {
                     key={airport.airportCode}
                     value={`${airport.airportName} ${airport.airportCode}`}
                     onSelect={() => {
-                      setSelectedAirport(airport.airportName);
+                      setSelectedAirport(airport);
                       setOpen(false);
                     }}
                     className="flex items-center justify-between py-3 px-4 rounded-xl cursor-pointer"
@@ -364,7 +362,7 @@ const AirportTravellers = () => {
                       <div
                         className={cn(
                           "w-10 h-10 rounded-full flex items-center justify-center border",
-                          selectedAirport === airport.airportName
+                          selectedAirport?.airportCode === airport.airportCode
                             ? "bg-primary text-primary-foreground"
                             : "bg-muted/30",
                         )}
@@ -413,7 +411,7 @@ const AirportTravellers = () => {
                 </div>
                 <div className="flex items-center gap-3">
                   <CardTitle className="text-xl sm:text-3xl font-bold tracking-tight leading-tight">
-                    {selectedAirport}
+                    {selectedAirport.airportName}
                   </CardTitle>
                   <AirportSelect>
                     <Button
@@ -590,11 +588,14 @@ const AirportTravellers = () => {
           </CardContent>
         </Card>
       </div>
-      <JoinWaitlistModal
-        open={isWaitlistModalOpen}
-        onOpenChange={setIsWaitlistModalOpen}
-        terminals={terminals}
-      />
+      {selectedAirport && (
+        <JoinWaitlistModal
+          currentAirport={selectedAirport}
+          open={isWaitlistModalOpen}
+          onOpenChange={setIsWaitlistModalOpen}
+          terminals={terminals}
+        />
+      )}
     </>
   );
 };
