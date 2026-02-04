@@ -212,13 +212,19 @@ const AirportTravellers = () => {
     if (!selectedAirport) return null;
 
     const isIndividual = viewMode === VIEW_MODE.INDIVIDUAL;
+    const isTerminalVisible = (terminal: string) => {
+      // Show if selected in filter OR if not in the list of known terminals (exhaustive search)
+      return (
+        filterTerminal.includes(terminal) ||
+        !terminals.some((t) => t.id === terminal)
+      );
+    };
+
     let processedTravellers = [...travellers].filter(
-      (t) =>
-        filterGender.includes(t.gender) && filterTerminal.includes(t.terminal),
+      (t) => filterGender.includes(t.gender) && isTerminalVisible(t.terminal),
     );
     let processedGroups = [...groups].filter(
-      (g) =>
-        filterGender.includes(g.gender) && filterTerminal.includes(g.terminal),
+      (g) => filterGender.includes(g.gender) && isTerminalVisible(g.terminal),
     );
 
     const sortFn = (a: any, b: any) => {
@@ -588,7 +594,6 @@ const AirportTravellers = () => {
         open={isWaitlistModalOpen}
         onOpenChange={setIsWaitlistModalOpen}
         terminals={terminals}
-        defaultTerminal={filterTerminal.length === 1 ? filterTerminal[0] : ""}
       />
     </>
   );
