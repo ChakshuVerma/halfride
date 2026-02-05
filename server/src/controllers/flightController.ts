@@ -2,12 +2,7 @@ import type { Request, Response } from "express";
 import { admin } from "../firebase/admin";
 import { Timestamp, FieldValue } from "firebase-admin/firestore";
 import { checkUserExists } from "./userController";
-import {
-  COLLECTIONS,
-  FLIGHT_FIELDS,
-  USER_FIELDS,
-  TRAVELLER_FIELDS,
-} from "../constants/db";
+import { COLLECTIONS, TRAVELLER_FIELDS } from "../constants/db";
 
 /**
  * TYPES & INTERFACES
@@ -61,6 +56,7 @@ interface FlightStatsResponse {
  * SHARED UTILS & CONSTANTS
  */
 const TEN_MINUTES_IN_MS = 0;
+const MAX_DISTANCE = 80000;
 
 const isDateTodayOrTomorrow = (inputDate: Date): boolean => {
   const compareInput = new Date(inputDate);
@@ -172,6 +168,33 @@ async function fetchAndMapFlightData(
   };
 }
 
+const checkRoadDistance = async (originCode: string, destPlaceId: string) => {
+  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+
+  // We use "airport" prefix to help Google geocode the IATA code correctly
+  const origin = `airport ${originCode}`;
+  const destination = `place_id:${destPlaceId}`;
+
+  const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origin}&destinations=${destination}&key=${apiKey}`;
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error(`Google API responded with status: ${response.status}`);
+  }
+
+  const data = (await response.json()) as any;
+
+  if (data.status !== "OK" || data.rows[0].elements[0].status !== "OK") {
+    throw new Error(
+      "Unable to calculate road distance between airport and destination.",
+    );
+  }
+
+  // distance.value is in meters
+  return data.rows[0].elements[0].distance.value;
+};
+
 /**
  * ENDPOINT 1: CREATE FLIGHT ENTRY
  */
@@ -187,6 +210,23 @@ export async function createFlightTracker(req: Request, res: Response) {
     airportCode,
   } = req.body;
   const uid = req.auth!.uid;
+
+  if (
+    !rawCarrier ||
+    !rawFlightNumber ||
+    !year ||
+    !month ||
+    !day ||
+    !destination ||
+    !userTerminal ||
+    !airportCode
+  ) {
+    return res.status(400).json({
+      ok: false,
+      error: "Bad Request",
+      message: "Missing required parameters",
+    });
+  }
 
   // 1. Verify User record actually exists in Firestore
   const userCheck = await checkUserExists(uid);
@@ -259,6 +299,30 @@ export async function createFlightTracker(req: Request, res: Response) {
       });
     }
 
+    // 4. Validate that the distance between airport and destination is less than MAX_DISTANCE
+    if (destination.placeId) {
+      try {
+        const distance = await checkRoadDistance(
+          arrivalCode,
+          destination.placeId,
+        );
+
+        if (distance > MAX_DISTANCE) {
+          return res.status(400).json({
+            ok: false,
+            error: "Bad Request",
+            message: `This flight is too far from ${arrivalCode}.`,
+          });
+        }
+      } catch (error) {
+        console.error("Error checking road distance:", error);
+        return res.status(500).json({
+          ok: false,
+          error: "Internal Server Error",
+          message: "Error checking road distance",
+        });
+      }
+    }
     const airportDoc = await db
       .collection(COLLECTIONS.AIRPORTS)
       .doc(arrivalCode)
@@ -272,22 +336,22 @@ export async function createFlightTracker(req: Request, res: Response) {
     }
 
     // 4. Persist Flight if new
-    if (!flightSnap.exists) {
-      const newFlight = {
-        flightId: `${carrier}_${fNum}`,
-        carrier,
-        flightNumber: fNum,
-        flightDate: flightDateStr,
-        etaFetchedAt: admin.firestore.FieldValue.serverTimestamp(),
-        flightData,
-        createdAt: admin.firestore.FieldValue.serverTimestamp(),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        userTerminal,
-        status: flightData.isLanded ? "completed" : "active",
-      };
+    // if (!flightSnap.exists) {
+    //   const newFlight = {
+    //     flightId: `${carrier}_${fNum}`,
+    //     carrier,
+    //     flightNumber: fNum,
+    //     flightDate: flightDateStr,
+    //     etaFetchedAt: admin.firestore.FieldValue.serverTimestamp(),
+    //     flightData,
+    //     createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    //     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    //     userTerminal,
+    //     status: flightData.isLanded ? "completed" : "active",
+    //   };
 
-      await flightRef.set(newFlight);
-    }
+    //   await flightRef.set(newFlight);
+    // }
 
     // 5. Create/Update the traveller_data record
     // We use a composite ID (uid_flightId) so a user can't track the same flight twice
@@ -319,7 +383,7 @@ export async function createFlightTracker(req: Request, res: Response) {
         admin.firestore.FieldValue.serverTimestamp();
     }
 
-    await travellerRef.set(travellerPayload, { merge: true });
+    // await travellerRef.set(travellerPayload, { merge: true });
 
     return res.status(201).json({
       ok: true,

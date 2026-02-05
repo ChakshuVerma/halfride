@@ -82,11 +82,10 @@ export function JoinWaitlistModal({
     carrier: "",
     flightNumber: "",
     date: "",
-    destination: "",
+    destination: null as any, // This is now an object
     terminal: "",
   });
 
-  // Default terminal selection logic
   useEffect(() => {
     if (open && terminals.length > 0 && !formData.terminal) {
       setFormData((prev) => ({
@@ -106,7 +105,7 @@ export function JoinWaitlistModal({
         !formData.carrier ||
         !formData.flightNumber ||
         !formData.date ||
-        !formData.destination
+        !formData.destination?.placeId
       ) {
         throw new Error(MODAL_CONTENT.FORM.ERRORS.FILL_ALL);
       }
@@ -121,7 +120,7 @@ export function JoinWaitlistModal({
         year: dateObj.getFullYear(),
         month: dateObj.getMonth() + 1,
         day: dateObj.getDate(),
-        destination: formData.destination,
+        destination: formData.destination, // Full object sent to API
         userTerminal: formData.terminal,
         airportCode: currentAirport?.airportCode || "",
       });
@@ -134,7 +133,7 @@ export function JoinWaitlistModal({
           carrier: "",
           flightNumber: "",
           date: "",
-          destination: "",
+          destination: null, // Reset back to null
           terminal: terminals[0]?.id || "",
         });
       }, 2500);
@@ -152,7 +151,6 @@ export function JoinWaitlistModal({
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
-        {/* Header Section */}
         <div className="relative p-6 px-8 border-b border-border/40 pb-6 overflow-hidden">
           <DialogClose className="absolute right-6 top-6 rounded-full p-2 bg-background/50 hover:bg-background/80 text-muted-foreground hover:text-foreground transition-all z-50 focus:outline-none focus:ring-2 focus:ring-ring">
             <X className="w-4 h-4" />
@@ -178,7 +176,6 @@ export function JoinWaitlistModal({
               {MODAL_CONTENT.HEADER.DESCRIPTION}
             </DialogDescription>
 
-            {/* Airport Context Span */}
             {currentAirport && (
               <div className="flex items-center gap-1.5 mt-1 animate-in fade-in slide-in-from-left-2">
                 <div className="flex items-center gap-1.5 px-4 py-3 rounded-full bg-primary/5 border border-primary/10">
@@ -207,7 +204,8 @@ export function JoinWaitlistModal({
               <p className="text-muted-foreground text-sm">
                 {MODAL_CONTENT.SUCCESS.TRACKING_PREFIX}{" "}
                 <span className="font-semibold text-foreground">
-                  {formData.carrier} {formData.flightNumber}
+                  {formData.carrier} {formData.flightNumber} to{" "}
+                  {formData.destination?.address || "N/A"}
                 </span>
               </p>
             </div>
@@ -225,22 +223,21 @@ export function JoinWaitlistModal({
             className="p-6 px-8 space-y-6 relative overflow-visible"
           >
             <div className="space-y-5">
-              {/* Destination */}
               <div className="space-y-2">
                 <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 ml-1">
                   {MODAL_CONTENT.FORM.LABELS.DESTINATION}
                 </Label>
                 <DestinationSearch
+                  value={formData.destination}
                   onLocationSelected={(location: any) => {
                     setFormData((prev) => ({
                       ...prev,
-                      destination: location.address,
+                      destination: location,
                     }));
                   }}
                 />
               </div>
 
-              {/* Terminal Selection */}
               {terminals.length > 0 && (
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 ml-1">
@@ -274,7 +271,6 @@ export function JoinWaitlistModal({
                 </div>
               )}
 
-              {/* Carrier & Flight */}
               <div className="grid grid-cols-3 gap-4">
                 <div className="col-span-1 space-y-2">
                   <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 ml-1">
@@ -316,7 +312,6 @@ export function JoinWaitlistModal({
                 </div>
               </div>
 
-              {/* Date */}
               <div className="space-y-2">
                 <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80 ml-1">
                   {MODAL_CONTENT.FORM.LABELS.DEPARTURE_DATE}

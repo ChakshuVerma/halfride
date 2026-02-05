@@ -211,7 +211,7 @@ export function useFlightTrackerApi() {
       year: number;
       month: number;
       day: number;
-      destination: string;
+      destination: any;
       userTerminal: string;
       airportCode: string;
     }) => {
