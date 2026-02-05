@@ -81,6 +81,11 @@ export function ForgotPassword() {
   const [resetKey, setResetKey] = useState(0)
   const recaptchaRef = useRef<RecaptchaVerifier | null>(null)
   const { completeForgotPassword } = useAuthApi()
+  const usernameRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    usernameRef.current?.focus()
+  }, [])
 
   useEffect(() => {
     const init = async () => {
@@ -201,6 +206,7 @@ export function ForgotPassword() {
               </Label>
               <Input
                 id="username"
+                ref={usernameRef}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 className="h-12 bg-background rounded-xl border-border/60 focus:ring-4 focus:ring-primary/10 transition-all"

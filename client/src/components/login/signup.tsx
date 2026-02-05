@@ -115,6 +115,11 @@ export function Signup() {
   const [otp, setOtp] = useState("")
   const [resetKey, setResetKey] = useState(0)
   const recaptchaRef = useRef<RecaptchaVerifier | null>(null)
+  const usernameRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    usernameRef.current?.focus()
+  }, [])
 
   useEffect(() => {
     const init = async () => {
@@ -297,6 +302,7 @@ export function Signup() {
                 </Label>
                 <Input
                   id="username"
+                  ref={usernameRef}
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder={CONSTANTS.PLACEHOLDERS.USERNAME}

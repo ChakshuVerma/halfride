@@ -1,4 +1,4 @@
-const API_BASE_URL = "/api"
+const API_BASE_URL = "/api";
 
 export const API_ROUTES = {
   // Auth routes
@@ -18,5 +18,13 @@ export const API_ROUTES = {
 
   // Flight tracker routes
   FLIGHT_TRACKER: `${API_BASE_URL}/flight-tracker`,
-} as const
+  NEW_FLIGHT_TRACKER: `${API_BASE_URL}/new-flight-tracker`,
 
+  // Traveller routes
+  TRAVELLERS_BY_AIRPORT: `${API_BASE_URL}/travellers-by-airport`,
+  CHECK_LISTING: `${API_BASE_URL}/check-listing`,
+
+  // Airport routes
+  AIRPORTS: `${API_BASE_URL}/airports`,
+  GET_TERMINALS: `${API_BASE_URL}/terminals`,
+} as const;

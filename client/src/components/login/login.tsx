@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { toast } from "sonner"
 import { Loader2, LogIn, Eye, EyeOff } from "lucide-react"
 import { useNavigate } from "react-router-dom"
@@ -51,6 +51,11 @@ export function Login() {
   const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
   const { login } = useAuthApi()
+  const usernameRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    usernameRef.current?.focus()
+  }, [])
 
   const showError = (message: string) => {
     setError(message)
@@ -102,6 +107,7 @@ export function Login() {
               </Label>
               <Input
                 id="username"
+                ref={usernameRef}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder={CONSTANTS.PLACEHOLDERS.USERNAME}

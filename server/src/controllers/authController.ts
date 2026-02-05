@@ -5,6 +5,8 @@ import { admin, adminInitialized } from '../firebase/admin';
 import { serializeCookie, readCookie } from '../utils/cookies';
 import { hashPassword, verifyPassword } from '../utils/password';
 import { randomJti, signJwt, verifyJwt } from '../utils/jwt';
+import { COLLECTIONS, USER_FIELDS } from '../constants/db';
+
 
 const ERROR_SERVER_CONFIG = 'Server Configuration Error';
 const ERROR_BAD_REQUEST = 'Bad Request';
@@ -73,7 +75,8 @@ export async function signupComplete(req: Request, res: Response) {
     // Enforce unique username
     const existingByUsername = await admin
       .firestore()
-      .collection('users')
+      .collection(COLLECTIONS.USERS)
+
       .where('username', '==', username)
       .limit(1)
       .get();
@@ -81,7 +84,8 @@ export async function signupComplete(req: Request, res: Response) {
       return res.status(409).json({ error: 'Conflict', message: 'Username already taken' });
     }
 
-    const users = admin.firestore().collection('users');
+    const users = admin.firestore().collection(COLLECTIONS.USERS);
+
     const docRef = users.doc(uid);
 
     const pwd = await hashPassword(password);
@@ -89,20 +93,21 @@ export async function signupComplete(req: Request, res: Response) {
 
     // create() guarantees uniqueness for uid doc
     await docRef.create({
-      userID: uid,
-      username,
-      passwordSalt: pwd.saltB64,
-      passwordHash: pwd.hashB64,
-      refreshJtiHash: hashRefreshJti(refreshJti),
-      refreshUpdatedAt: FieldValue.serverTimestamp(),
-      DOB,
-      FirstName,
-      LastName,
-      Phone: phone,
-      isFemale,
-      createdAt: FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
+      [USER_FIELDS.USER_ID]: uid,
+      [USER_FIELDS.USERNAME]: username,
+      [USER_FIELDS.PASSWORD_SALT]: pwd.saltB64,
+      [USER_FIELDS.PASSWORD_HASH]: pwd.hashB64,
+      [USER_FIELDS.REFRESH_JTI_HASH]: hashRefreshJti(refreshJti),
+      [USER_FIELDS.REFRESH_UPDATED_AT]: FieldValue.serverTimestamp(),
+      [USER_FIELDS.DOB]: DOB,
+      [USER_FIELDS.FIRST_NAME]: FirstName,
+      [USER_FIELDS.LAST_NAME]: LastName,
+      [USER_FIELDS.PHONE]: phone,
+      [USER_FIELDS.IS_FEMALE]: isFemale,
+      [USER_FIELDS.CREATED_AT]: FieldValue.serverTimestamp(),
+      [USER_FIELDS.UPDATED_AT]: FieldValue.serverTimestamp(),
     });
+
 
     const now = Math.floor(Date.now() / 1000);
     const accessToken = signJwt({
@@ -144,23 +149,29 @@ export async function login(req: Request, res: Response) {
     return res.status(400).json({ error: ERROR_BAD_REQUEST, message: 'username and password are required' });
   }
 
-  const qs = await admin.firestore().collection('users').where('username', '==', username).limit(1).get();
+  const qs = await admin.firestore().collection(COLLECTIONS.USERS).where(USER_FIELDS.USERNAME, '==', username).limit(1).get();
+
   if (qs.empty) return res.status(401).json({ error: ERROR_UNAUTHORIZED, message: 'Invalid credentials' });
 
   const doc = qs.docs[0];
   const data = doc.data() as any;
-  if (!data.passwordSalt || !data.passwordHash) {
+  if (!data[USER_FIELDS.PASSWORD_SALT] || !data[USER_FIELDS.PASSWORD_HASH]) {
     return res.status(401).json({ error: ERROR_UNAUTHORIZED, message: 'Password login not enabled for this user' });
   }
 
-  const ok = await verifyPassword({ password, saltB64: data.passwordSalt, hashB64: data.passwordHash });
+  const ok = await verifyPassword({ password, saltB64: data[USER_FIELDS.PASSWORD_SALT], hashB64: data[USER_FIELDS.PASSWORD_HASH] });
+
   if (!ok) return res.status(401).json({ error: ERROR_UNAUTHORIZED, message: 'Invalid credentials' });
 
   const refreshJti = randomJti();
   await doc.ref.set(
-    { refreshJtiHash: hashRefreshJti(refreshJti), refreshUpdatedAt: FieldValue.serverTimestamp() },
+    { 
+      [USER_FIELDS.REFRESH_JTI_HASH]: hashRefreshJti(refreshJti), 
+      [USER_FIELDS.REFRESH_UPDATED_AT]: FieldValue.serverTimestamp() 
+    },
     { merge: true }
   );
+
 
   const now = Math.floor(Date.now() / 1000);
   const accessToken = signJwt({
@@ -193,21 +204,27 @@ export async function refresh(req: Request, res: Response) {
   const refreshJti = String(verified.payload.jti);
   const username = String((verified.payload as any).username ?? '');
 
-  const docRef = admin.firestore().collection('users').doc(uid);
+  const docRef = admin.firestore().collection(COLLECTIONS.USERS).doc(uid);
+
   const snap = await docRef.get();
   if (!snap.exists) return res.status(401).json({ error: ERROR_UNAUTHORIZED, message: 'Invalid session' });
 
   const data = snap.data() as any;
-  if (!data.refreshJtiHash || data.refreshJtiHash !== hashRefreshJti(refreshJti)) {
+  if (!data[USER_FIELDS.REFRESH_JTI_HASH] || data[USER_FIELDS.REFRESH_JTI_HASH] !== hashRefreshJti(refreshJti)) {
     return res.status(401).json({ error: ERROR_UNAUTHORIZED, message: 'Refresh token revoked' });
   }
+
 
   // rotate refresh token
   const newRefreshJti = randomJti();
   await docRef.set(
-    { refreshJtiHash: hashRefreshJti(newRefreshJti), refreshUpdatedAt: FieldValue.serverTimestamp() },
+    { 
+      [USER_FIELDS.REFRESH_JTI_HASH]: hashRefreshJti(newRefreshJti), 
+      [USER_FIELDS.REFRESH_UPDATED_AT]: FieldValue.serverTimestamp() 
+    },
     { merge: true }
   );
+
 
   const now = Math.floor(Date.now() / 1000);
   const accessToken = signJwt({
@@ -236,10 +253,14 @@ export async function logout(req: Request, res: Response) {
       const verified = verifyJwt({ token: refreshToken, secret: refreshSecret });
       if (verified.valid) {
         const uid = String(verified.payload.sub);
-        await admin.firestore().collection('users').doc(uid).set(
-          { refreshJtiHash: null, refreshUpdatedAt: FieldValue.serverTimestamp() },
+        await admin.firestore().collection(COLLECTIONS.USERS).doc(uid).set(
+          { 
+            [USER_FIELDS.REFRESH_JTI_HASH]: null, 
+            [USER_FIELDS.REFRESH_UPDATED_AT]: FieldValue.serverTimestamp() 
+          },
           { merge: true }
         );
+
       }
     }
   } catch {
@@ -296,7 +317,8 @@ export async function forgotPasswordComplete(req: Request, res: Response) {
       return res.status(400).json({ error: ERROR_BAD_REQUEST, message: 'Phone number missing in token' });
     }
 
-    const qs = await admin.firestore().collection('users').where('username', '==', username).limit(1).get();
+    const qs = await admin.firestore().collection(COLLECTIONS.USERS).where(USER_FIELDS.USERNAME, '==', username).limit(1).get();
+
     if (qs.empty) {
       // Avoid username enumeration: return generic error
       return res.status(401).json({ error: ERROR_UNAUTHORIZED, message: 'Invalid verification' });
@@ -312,12 +334,13 @@ export async function forgotPasswordComplete(req: Request, res: Response) {
     const pwd = await hashPassword(newPassword);
     await doc.ref.set(
       {
-        passwordSalt: pwd.saltB64,
-        passwordHash: pwd.hashB64,
-        refreshJtiHash: null, // revoke all refresh tokens
-        refreshUpdatedAt: FieldValue.serverTimestamp(),
-        updatedAt: FieldValue.serverTimestamp(),
+        [USER_FIELDS.PASSWORD_SALT]: pwd.saltB64,
+        [USER_FIELDS.PASSWORD_HASH]: pwd.hashB64,
+        [USER_FIELDS.REFRESH_JTI_HASH]: null, // revoke all refresh tokens
+        [USER_FIELDS.REFRESH_UPDATED_AT]: FieldValue.serverTimestamp(),
+        [USER_FIELDS.UPDATED_AT]: FieldValue.serverTimestamp(),
       },
+
       { merge: true }
     );
 
