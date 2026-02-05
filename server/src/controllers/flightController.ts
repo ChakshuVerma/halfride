@@ -59,18 +59,27 @@ const TEN_MINUTES_IN_MS = 0;
 const MAX_DISTANCE = 80000;
 
 const isDateTodayOrTomorrow = (inputDate: Date): boolean => {
-  const compareInput = new Date(inputDate);
-  compareInput.setHours(0, 0, 0, 0);
+  const now = new Date();
 
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
+  // Create UTC dates for comparison (ignoring time)
+  const today = new Date(
+    Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()),
+  );
   const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
+  tomorrow.setUTCDate(today.getUTCDate() + 1);
+
+  // Normalize input to UTC midnight
+  const input = new Date(
+    Date.UTC(
+      inputDate.getUTCFullYear(),
+      inputDate.getUTCMonth(),
+      inputDate.getUTCDate(),
+    ),
+  );
 
   return (
-    compareInput.getTime() === today.getTime() ||
-    compareInput.getTime() === tomorrow.getTime()
+    input.getTime() === today.getTime() ||
+    input.getTime() === tomorrow.getTime()
   );
 };
 
@@ -252,7 +261,7 @@ export async function createFlightTracker(req: Request, res: Response) {
     isNaN(y) ||
     isNaN(m) ||
     isNaN(d) ||
-    !isDateTodayOrTomorrow(new Date(y, m - 1, d))
+    !isDateTodayOrTomorrow(new Date(Date.UTC(y, m - 1, d)))
   ) {
     return res
       .status(400)
@@ -346,7 +355,6 @@ export async function createFlightTracker(req: Request, res: Response) {
         flightData,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
         updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-        userTerminal,
         status: flightData.isLanded ? "completed" : "active",
       };
 
@@ -370,7 +378,7 @@ export async function createFlightTracker(req: Request, res: Response) {
         flightData.arrival?.airportCode || "N/A",
       [TRAVELLER_FIELDS.FLIGHT_DEPARTURE]:
         flightData.departure?.airportCode || "N/A",
-      [TRAVELLER_FIELDS.TERMINAL]: flightData.departure?.terminal || "N/A",
+      [TRAVELLER_FIELDS.TERMINAL]: userTerminal || "N/A",
       [TRAVELLER_FIELDS.DESTINATION]: destination,
       [TRAVELLER_FIELDS.FLIGHT_REF]: flightRef,
       [TRAVELLER_FIELDS.USER_REF]: userRef,
