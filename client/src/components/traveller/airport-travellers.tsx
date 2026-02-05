@@ -146,6 +146,7 @@ const AirportTravellers = () => {
   const {
     fetchTravellers,
     fetchGroups,
+    checkListing,
     loading: isFetchingList,
   } = useGetTravellerApi();
   const {
@@ -190,6 +191,18 @@ const AirportTravellers = () => {
     };
     void loadData();
   }, [viewMode, selectedAirport]);
+
+  const [hasListing, setHasListing] = useState(false);
+
+  useEffect(() => {
+    const checkUserListing = async () => {
+      if (selectedAirport?.airportCode) {
+        const result = await checkListing(selectedAirport.airportCode);
+        setHasListing(result);
+      }
+    };
+    checkUserListing();
+  }, [selectedAirport, checkListing]);
 
   const handleFilterToggle = useCallback(
     (
@@ -554,13 +567,15 @@ const AirportTravellers = () => {
                     />
                   </div>
 
-                  <Button
-                    onClick={() => setIsWaitlistModalOpen(true)}
-                    className="w-full sm:w-auto h-11 px-6 rounded-xl font-bold uppercase tracking-widest text-[10px] bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                  >
-                    <Plane className="w-3.5 h-3.5 mr-2" />{" "}
-                    {CONSTANTS.LABELS.JOIN_WAITLIST}
-                  </Button>
+                  {!hasListing && (
+                    <Button
+                      onClick={() => setIsWaitlistModalOpen(true)}
+                      className="w-full sm:w-auto h-11 px-6 rounded-xl font-bold uppercase tracking-widest text-[10px] bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                    >
+                      <Plane className="w-3.5 h-3.5 mr-2" />{" "}
+                      {CONSTANTS.LABELS.JOIN_WAITLIST}
+                    </Button>
+                  )}
                 </div>
 
                 <ListSectionWrapper />

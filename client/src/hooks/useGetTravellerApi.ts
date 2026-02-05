@@ -1,7 +1,7 @@
-import { useCallback, useState } from "react"
-import { sessionRequest } from "@/lib/api"
-import { API_ROUTES } from "@/lib/apiRoutes"
-import type { Traveller, Group } from "@/components/traveller/types"
+import { useCallback, useState } from "react";
+import { sessionRequest } from "@/lib/api";
+import { API_ROUTES } from "@/lib/apiRoutes";
+import type { Traveller, Group } from "@/components/traveller/types";
 
 // Dummy data – this will eventually come from the backend
 const dummyTravellers: Traveller[] = [
@@ -95,7 +95,7 @@ const dummyTravellers: Traveller[] = [
     tags: ["Books", "Nature", "Quiet"],
     isVerified: true,
   },
-]
+];
 
 const dummyGroups: Group[] = [
   {
@@ -166,77 +166,113 @@ const dummyGroups: Group[] = [
       female: 2,
     },
   },
-]
+];
 
 export function useGetTravellerApi() {
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false);
 
-  const fetchTravellers = useCallback(async (airportCode?: string): Promise<Traveller[]> => {
-    if (!airportCode) return []
+  const fetchTravellers = useCallback(
+    async (airportCode?: string): Promise<Traveller[]> => {
+      if (!airportCode) return [];
 
-    setLoading(true)
-    try {
-      const url = `${API_ROUTES.TRAVELLERS_BY_AIRPORT}/${airportCode}`
-      const response = await sessionRequest<{ ok: boolean; data: Traveller[] }>(url)
-      
-      const data = response.data || []
-      return data
-    } catch (error) {
-      console.error("Failed to fetch travellers:", error)
-      return []
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+      setLoading(true);
+      try {
+        const url = `${API_ROUTES.TRAVELLERS_BY_AIRPORT}/${airportCode}`;
+        const response = await sessionRequest<{
+          ok: boolean;
+          data: Traveller[];
+        }>(url);
 
-  const fetchGroups = useCallback(async (airportName?: string): Promise<Group[]> => {
-    setLoading(true)
-    try {
-      // TODO: Replace with actual API call
-      // return sessionRequest<Group[]>(API_ROUTES.GROUPS, { params: { airportName } })
-      await new Promise((resolve) => setTimeout(resolve, 600)) // Fake delay
-      let data = dummyGroups
-      if (airportName) {
-        data = data.filter((g) => g.airportName === airportName)
+        const data = response.data || [];
+        return data;
+      } catch (error) {
+        console.error("Failed to fetch travellers:", error);
+        return [];
+      } finally {
+        setLoading(false);
       }
-      return data
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+    },
+    [],
+  );
 
-  const fetchGroupMembers = useCallback(async (groupId: string, count?: number): Promise<Traveller[]> => {
-    setLoading(true)
-    try {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 600)) // Fake delay
-      // Return a subset of travellers as group members matching the requested count
-      const requestedCount = count || Math.floor(Math.random() * 3) + 2
-      
-      // If we need more members than we have dummy data for, repeat the list
-      const result: Traveller[] = []
-      while (result.length < requestedCount) {
-        const remaining = requestedCount - result.length
-        const slice = dummyTravellers.slice(0, Math.min(remaining, dummyTravellers.length))
-        
-        // Deep clone to provide unique IDs for repeated items
-        const clonedSlice = slice.map((t, idx) => ({
-             ...t, 
-             id: `${t.id}_${result.length + idx}` 
-        }))
-        
-        result.push(...clonedSlice)
+  const fetchGroups = useCallback(
+    async (airportName?: string): Promise<Group[]> => {
+      setLoading(true);
+      try {
+        // TODO: Replace with actual API call
+        // return sessionRequest<Group[]>(API_ROUTES.GROUPS, { params: { airportName } })
+        await new Promise((resolve) => setTimeout(resolve, 600)); // Fake delay
+        let data = dummyGroups;
+        if (airportName) {
+          data = data.filter((g) => g.airportName === airportName);
+        }
+        return data;
+      } finally {
+        setLoading(false);
       }
-      return result
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+    },
+    [],
+  );
+
+  const checkListing = useCallback(
+    async (airportCode: string): Promise<boolean> => {
+      setLoading(true);
+      try {
+        const url = `${API_ROUTES.CHECK_LISTING}?airportCode=${airportCode}`;
+        const response = await sessionRequest<{
+          ok: boolean;
+          hasListing: boolean;
+        }>(url);
+        return response.ok && response.hasListing;
+      } catch (error) {
+        console.error("Failed to check listing:", error);
+        return false;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
+
+  const fetchGroupMembers = useCallback(
+    async (groupId: string, count?: number): Promise<Traveller[]> => {
+      setLoading(true);
+      try {
+        // TODO: Replace with actual API call
+        await new Promise((resolve) => setTimeout(resolve, 600)); // Fake delay
+        // Return a subset of travellers as group members matching the requested count
+        const requestedCount = count || Math.floor(Math.random() * 3) + 2;
+
+        // If we need more members than we have dummy data for, repeat the list
+        const result: Traveller[] = [];
+        while (result.length < requestedCount) {
+          const remaining = requestedCount - result.length;
+          const slice = dummyTravellers.slice(
+            0,
+            Math.min(remaining, dummyTravellers.length),
+          );
+
+          // Deep clone to provide unique IDs for repeated items
+          const clonedSlice = slice.map((t, idx) => ({
+            ...t,
+            id: `${t.id}_${result.length + idx}`,
+          }));
+
+          result.push(...clonedSlice);
+        }
+        return result;
+      } finally {
+        setLoading(false);
+      }
+    },
+    [],
+  );
 
   return {
     fetchTravellers,
     fetchGroups,
     fetchGroupMembers,
+    checkListing,
     loading,
-  }
+  };
 }

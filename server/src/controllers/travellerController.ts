@@ -74,3 +74,41 @@ export async function getTravellersByAirport(req: Request, res: Response) {
     return res.status(500).json({ ok: false, error: "Internal Server Error" });
   }
 }
+
+export async function checkTravellerHasListing(req: Request, res: Response) {
+  const { airportCode } = req.query;
+  const uid = req.auth?.uid;
+
+  if (!uid) {
+    return res.status(401).json({ ok: false, error: "Unauthorized" });
+  }
+
+  if (!airportCode) {
+    return res
+      .status(400)
+      .json({ ok: false, message: "Airport code is required" });
+  }
+
+  const db = admin.firestore();
+
+  try {
+    const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
+
+    // Check if there is any traveller data for this user at the specified airport
+    const snapshot = await db
+      .collection(COLLECTIONS.TRAVELLER_DATA)
+      .where(TRAVELLER_FIELDS.USER_REF, "==", userRef)
+      .where(
+        TRAVELLER_FIELDS.FLIGHT_ARRIVAL,
+        "==",
+        String(airportCode).toUpperCase(),
+      )
+      .limit(1)
+      .get();
+
+    return res.json({ ok: true, hasListing: !snapshot.empty });
+  } catch (error: any) {
+    console.error("Check Listing Error:", error.message);
+    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+  }
+}

@@ -336,22 +336,22 @@ export async function createFlightTracker(req: Request, res: Response) {
     }
 
     // 4. Persist Flight if new
-    // if (!flightSnap.exists) {
-    //   const newFlight = {
-    //     flightId: `${carrier}_${fNum}`,
-    //     carrier,
-    //     flightNumber: fNum,
-    //     flightDate: flightDateStr,
-    //     etaFetchedAt: admin.firestore.FieldValue.serverTimestamp(),
-    //     flightData,
-    //     createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    //     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-    //     userTerminal,
-    //     status: flightData.isLanded ? "completed" : "active",
-    //   };
+    if (!flightSnap.exists) {
+      const newFlight = {
+        flightId: `${carrier}_${fNum}`,
+        carrier,
+        flightNumber: fNum,
+        flightDate: flightDateStr,
+        etaFetchedAt: admin.firestore.FieldValue.serverTimestamp(),
+        flightData,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        userTerminal,
+        status: flightData.isLanded ? "completed" : "active",
+      };
 
-    //   await flightRef.set(newFlight);
-    // }
+      await flightRef.set(newFlight);
+    }
 
     // 5. Create/Update the traveller_data record
     // We use a composite ID (uid_flightId) so a user can't track the same flight twice
@@ -383,7 +383,7 @@ export async function createFlightTracker(req: Request, res: Response) {
         admin.firestore.FieldValue.serverTimestamp();
     }
 
-    // await travellerRef.set(travellerPayload, { merge: true });
+    await travellerRef.set(travellerPayload, { merge: true });
 
     return res.status(201).json({
       ok: true,
