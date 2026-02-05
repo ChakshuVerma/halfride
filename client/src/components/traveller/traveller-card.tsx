@@ -25,11 +25,13 @@ const CONSTANTS = {
 type TravellerCardProps = {
   traveller: Traveller;
   onClick: () => void;
+  hasListing: boolean;
 };
 
 export const TravellerCard = memo(function TravellerCard({
   traveller,
   onClick,
+  hasListing,
 }: TravellerCardProps) {
   const isMale = traveller.gender === CONSTANTS.GENDER.MALE;
 
@@ -152,13 +154,15 @@ export const TravellerCard = memo(function TravellerCard({
 
       {/* Footer/Distance */}
       <div className="flex items-center justify-between pt-0 mt-auto">
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
-          <MapPin className="w-3 h-3 text-zinc-400" />
-          <span className="text-[10px] font-semibold text-zinc-600 dark:text-zinc-300">
-            {traveller.distanceFromUserKm} {CONSTANTS.UNITS.KM}{" "}
-            {CONSTANTS.LABELS.AWAY}
-          </span>
-        </div>
+        {hasListing && (
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
+            <MapPin className="w-3 h-3 text-zinc-400" />
+            <span className="text-[10px] font-semibold text-zinc-600 dark:text-zinc-300">
+              {traveller.distanceFromUserKm} {CONSTANTS.UNITS.KM}{" "}
+              {CONSTANTS.LABELS.AWAY}
+            </span>
+          </div>
+        )}
         <button
           onClick={onClick}
           className="text-xs font-bold bg-zinc-900 text-white dark:bg-white dark:text-black px-4 py-2 rounded-xl shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-1"

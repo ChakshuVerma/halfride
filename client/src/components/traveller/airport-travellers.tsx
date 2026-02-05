@@ -180,7 +180,14 @@ const AirportTravellers = () => {
       const fetchedTerminals = await fetchTerminals(code);
       setTerminals(fetchedTerminals);
       setFilterTerminal(fetchedTerminals.map((t) => t.id));
+    };
+    void loadData();
+  }, [selectedAirport]);
 
+  useEffect(() => {
+    if (!selectedAirport?.airportCode) return;
+    const loadData = async () => {
+      const code = selectedAirport?.airportCode;
       if (viewMode === VIEW_MODE.INDIVIDUAL) {
         const fetchedTravellers = await fetchTravellers(code);
         setTravellers(fetchedTravellers);
@@ -233,9 +240,7 @@ const AirportTravellers = () => {
     let processedTravellers = [...travellers].filter(
       (t) => filterGender.includes(t.gender) && isTerminalVisible(t.terminal),
     );
-    let processedGroups = [...groups].filter(
-      (g) => filterGender.includes(g.gender) && isTerminalVisible(g.terminal),
-    );
+    let processedGroups = groups;
 
     const sortFn = (a: any, b: any) => {
       if (sortBy === CONSTANTS.VALUES.DISTANCE)
@@ -257,7 +262,7 @@ const AirportTravellers = () => {
             ? CONSTANTS.LABELS.TRAVELLERS_TITLE
             : CONSTANTS.LABELS.GROUPS_TITLE
         }
-        subtitle={`${CONSTANTS.LABELS.DEPARTING_FROM} ${selectedAirport}`}
+        subtitle={`${CONSTANTS.LABELS.DEPARTING_FROM} ${selectedAirport.airportName}`}
         count={
           isIndividual ? processedTravellers.length : processedGroups.length
         }
@@ -284,6 +289,7 @@ const AirportTravellers = () => {
                 onClick={() =>
                   setSelectedEntity({ type: ENTITY_TYPE.TRAVELLER, data: t })
                 }
+                hasListing={hasListing}
               />
             ))
           : processedGroups.map((g, index) => (
@@ -366,7 +372,11 @@ const AirportTravellers = () => {
                     key={airport.airportCode}
                     value={`${airport.airportName} ${airport.airportCode}`}
                     onSelect={() => {
-                      setSelectedAirport(airport);
+                      if (
+                        selectedAirport?.airportCode !== airport.airportCode
+                      ) {
+                        setSelectedAirport(airport);
+                      }
                       setOpen(false);
                     }}
                     className="flex items-center justify-between py-3 px-4 rounded-xl cursor-pointer"
@@ -556,13 +566,21 @@ const AirportTravellers = () => {
                     <ToggleButton
                       label={CONSTANTS.LABELS.INDIVIDUAL}
                       isActive={viewMode === VIEW_MODE.INDIVIDUAL}
-                      onClick={() => setViewMode(VIEW_MODE.INDIVIDUAL)}
+                      onClick={() => {
+                        if (viewMode !== VIEW_MODE.INDIVIDUAL) {
+                          setViewMode(VIEW_MODE.INDIVIDUAL);
+                        }
+                      }}
                       icon={<User className="w-3.5 h-3.5" />}
                     />
                     <ToggleButton
                       label={CONSTANTS.LABELS.GROUP}
                       isActive={viewMode === VIEW_MODE.GROUP}
-                      onClick={() => setViewMode(VIEW_MODE.GROUP)}
+                      onClick={() => {
+                        if (viewMode !== VIEW_MODE.GROUP) {
+                          setViewMode(VIEW_MODE.GROUP);
+                        }
+                      }}
                       icon={<UsersRound className="w-3.5 h-3.5" />}
                     />
                   </div>
