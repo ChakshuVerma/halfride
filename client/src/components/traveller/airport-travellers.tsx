@@ -28,6 +28,7 @@ import {
   Pencil,
   Mars,
   Venus,
+  MapPin,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGetTravellerApi } from "@/hooks/useGetTravellerApi";
@@ -148,7 +149,7 @@ const AirportTravellers = () => {
   const {
     fetchTravellers,
     fetchGroups,
-    checkListing,
+    fetchUserDestination,
     loading: isFetchingList,
   } = useGetTravellerApi();
   const {
@@ -202,17 +203,17 @@ const AirportTravellers = () => {
     void loadData();
   }, [viewMode, selectedAirport]);
 
-  const [hasListing, setHasListing] = useState(false);
+  const [userDestination, setUserDestination] = useState<string | null>(null);
 
   useEffect(() => {
     const checkUserListing = async () => {
       if (selectedAirport?.airportCode) {
-        const result = await checkListing(selectedAirport.airportCode);
-        setHasListing(result);
+        const result = await fetchUserDestination(selectedAirport.airportCode);
+        setUserDestination(result);
       }
     };
     checkUserListing();
-  }, [selectedAirport, checkListing]);
+  }, [selectedAirport, fetchUserDestination]);
 
   const handleFilterToggle = useCallback(
     (
@@ -292,7 +293,7 @@ const AirportTravellers = () => {
                 onClick={() =>
                   setSelectedEntity({ type: ENTITY_TYPE.TRAVELLER, data: t })
                 }
-                hasListing={hasListing}
+                hasListing={!!userDestination}
               />
             ))
           : processedGroups.map((g, index) => (
@@ -588,15 +589,24 @@ const AirportTravellers = () => {
                     />
                   </div>
 
-                  {!hasListing && (
-                    <Button
-                      onClick={() => setIsWaitlistModalOpen(true)}
-                      className="w-full sm:w-auto h-11 px-6 rounded-xl font-bold uppercase tracking-widest text-[10px] bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                    >
-                      <Plane className="w-3.5 h-3.5 mr-2" />{" "}
-                      {CONSTANTS.LABELS.JOIN_WAITLIST}
-                    </Button>
-                  )}
+                  {userDestination
+                    ? initialDataFetchCompleted && (
+                        <div className="flex items-center gap-2 px-4 py-3 bg-primary/10 text-primary rounded-xl border border-primary/20 w-full sm:w-auto justify-center">
+                          <MapPin className="w-4 h-4" />
+                          <span className="text-sm font-bold">
+                            {userDestination}
+                          </span>
+                        </div>
+                      )
+                    : initialDataFetchCompleted && (
+                        <Button
+                          onClick={() => setIsWaitlistModalOpen(true)}
+                          className="w-full sm:w-auto h-11 px-6 rounded-xl font-bold uppercase tracking-widest text-[10px] bg-primary text-primary-foreground shadow-lg shadow-primary/20"
+                        >
+                          <Plane className="w-3.5 h-3.5 mr-2" />{" "}
+                          {CONSTANTS.LABELS.JOIN_WAITLIST}
+                        </Button>
+                      )}
                 </div>
 
                 <ListSectionWrapper />

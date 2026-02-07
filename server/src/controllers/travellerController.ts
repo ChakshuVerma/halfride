@@ -14,9 +14,10 @@ export async function getTravellersByAirport(req: Request, res: Response) {
 
   const db = admin.firestore();
   const uid = req.auth?.uid;
-  const placeId = uid
-    ? await getCurrentUsersPlaceId(uid, airportCode as string)
+  const destination = uid
+    ? await getCurrentUserDestination(uid, airportCode as string)
     : null;
+  const placeId = destination?.placeId;
 
   try {
     // 1. Fetch all travellers associated with this airport (as the origin)
@@ -112,15 +113,18 @@ export async function checkTravellerHasListing(req: Request, res: Response) {
   }
 
   try {
-    const hasListing = await getCurrentUsersPlaceId(uid, airportCode as string);
-    return res.json({ ok: true, hasListing: !!hasListing });
+    const destination = await getCurrentUserDestination(
+      uid,
+      airportCode as string,
+    );
+    return res.json({ ok: true, destinationAddress: destination?.address });
   } catch (error: any) {
     console.error("Check Listing Error:", error.message);
     return res.status(500).json({ ok: false, error: "Internal Server Error" });
   }
 }
 
-const getCurrentUsersPlaceId = async (uid: string, airportCode: string) => {
+const getCurrentUserDestination = async (uid: string, airportCode: string) => {
   const db = admin.firestore();
 
   try {
@@ -142,7 +146,7 @@ const getCurrentUsersPlaceId = async (uid: string, airportCode: string) => {
     if (snapshot.empty) {
       return null;
     }
-    return snapshot.docs[0].data().destination.placeId;
+    return snapshot.docs[0].data().destination;
   } catch (error: any) {
     console.error("Check Listing Error:", error.message);
     return null;

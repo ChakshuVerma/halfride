@@ -46,18 +46,18 @@ export function useGetTravellerApi() {
     [],
   );
 
-  const checkListing = useCallback(
-    async (airportCode: string): Promise<boolean> => {
+  const fetchUserDestination = useCallback(
+    async (airportCode: string): Promise<string | null> => {
       try {
         const url = `${API_ROUTES.CHECK_LISTING}?airportCode=${airportCode}`;
         const response = await sessionRequest<{
           ok: boolean;
-          hasListing: boolean;
+          destinationAddress: string | null;
         }>(url);
-        return response.ok && response.hasListing;
+        return response.ok ? response.destinationAddress : null;
       } catch (error) {
         console.error("Failed to check listing:", error);
-        return false;
+        return null;
       }
     },
     [sessionRequest],
@@ -96,7 +96,7 @@ export function useGetTravellerApi() {
     fetchTravellers,
     fetchGroups,
     fetchGroupMembers,
-    checkListing,
+    fetchUserDestination,
     loading,
   };
 }
