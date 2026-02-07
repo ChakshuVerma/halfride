@@ -1,22 +1,17 @@
 import { memo } from "react";
-import { User, MapPin, Clock, CalendarRange, ChevronRight } from "lucide-react";
+import {
+  User,
+  Clock,
+  Plane,
+  ArrowRight,
+  Calendar,
+  Sparkles,
+} from "lucide-react";
 import type { Traveller } from "./types";
 import { formatDateAndTime, calculateWaitText } from "./utils";
+import { cn } from "@/lib/utils";
 
 const CONSTANTS = {
-  LABELS: {
-    DESTINATION: "Dest",
-    TERMINAL: "Terminal",
-    FLIGHT: "Flight",
-    WAIT: "Wait",
-    AWAY: "away",
-  },
-  UNITS: {
-    KM: "km",
-  },
-  BUTTONS: {
-    VIEW_MORE: "View More",
-  },
   GENDER: {
     MALE: "Male",
   },
@@ -35,140 +30,149 @@ export const TravellerCard = memo(function TravellerCard({
 }: TravellerCardProps) {
   const isMale = traveller.gender === CONSTANTS.GENDER.MALE;
 
-  // Subtle gradients and accents
-  const cardBorder = isMale
-    ? "hover:border-blue-500/30 dark:hover:border-blue-400/30"
-    : "hover:border-pink-500/30 dark:hover:border-pink-400/30";
-
-  const avatarBg = isMale
-    ? "bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400"
-    : "bg-pink-50 dark:bg-pink-950/30 text-pink-600 dark:text-pink-400";
-
+  // REVERTED: Using the original utility function
   const flightTime = formatDateAndTime(traveller.flightDateTime);
-  const waitTime = calculateWaitText(traveller.flightDateTime);
+  const waitText = calculateWaitText(traveller.flightDateTime);
+
+  // Format distance to 1 decimal place
+  const distance = traveller.distanceFromUserKm?.toFixed(1);
 
   return (
     <div
-      className={`
-        group relative flex flex-col p-5 gap-5
-        bg-white dark:bg-zinc-900/50 
-        backdrop-blur-sm
-        rounded-[1.5rem] 
-        border border-black/5 dark:border-white/10
-        shadow-sm hover:shadow-xl hover:shadow-black/5 dark:hover:shadow-black/20
-        transition-all duration-300 ease-out
-        hover:-translate-y-1
-        ${cardBorder}
-      `}
+      onClick={onClick}
+      className={cn(
+        "group relative flex flex-col w-full",
+        "bg-white rounded-[2rem]",
+        "border border-zinc-200",
+        "shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.08)]",
+        "transition-all duration-300 ease-out hover:-translate-y-1 cursor-pointer overflow-hidden",
+      )}
     >
-      {/* Header Section */}
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3.5">
-          {/* Avatar Area */}
+      {/* 1. Identity Header */}
+      <div className="p-5 pb-4 flex items-start gap-4">
+        {/* Avatar with Status Ring */}
+        <div className="relative">
           <div
-            className={`
-            relative w-14 h-14 rounded-2xl flex items-center justify-center 
-            transition-transform duration-500 group-hover:scale-105
-            ${avatarBg}
-          `}
+            className={cn(
+              "w-14 h-14 rounded-2xl flex items-center justify-center text-zinc-900 border-2 border-zinc-100 bg-zinc-50 group-hover:bg-zinc-900 group-hover:text-white group-hover:border-zinc-900 transition-colors duration-300",
+            )}
           >
-            <User className="w-7 h-7" strokeWidth={2.5} />
-            {/* Status Dot */}
-            <span
-              className={`absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-[3px] border-white dark:border-zinc-900 ${isMale ? "bg-blue-500" : "bg-pink-500"} shadow-sm`}
-            ></span>
+            <User className="w-6 h-6" strokeWidth={2} />
           </div>
+          {/* Online/Gender Indicator */}
+          <div
+            className={cn(
+              "absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-[3px] border-white flex items-center justify-center",
+              isMale ? "bg-zinc-900" : "bg-zinc-400",
+            )}
+          >
+            {hasListing && (
+              <div className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
+            )}
+          </div>
+        </div>
 
-          <div className="flex flex-col gap-0.5">
-            <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-50 leading-tight group-hover:text-primary transition-colors">
+        {/* Name & Tags */}
+        <div className="flex-1 min-w-0 pt-0.5">
+          <div className="flex justify-between items-start">
+            <h3 className="font-bold text-lg text-zinc-900 truncate leading-none mb-1.5">
               {traveller.name}
             </h3>
-            <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">
-              {traveller.username}
+          </div>
+          <p className="text-sm text-zinc-500 font-medium mb-2">
+            @{traveller.username}
+          </p>
+
+          <div className="flex flex-wrap gap-2">
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-zinc-100 text-[11px] font-bold text-zinc-700 uppercase tracking-wide border border-zinc-200">
+              <Plane className="w-3 h-3" />
+              {traveller.flightNumber}
             </span>
-            <div className="flex flex-wrap items-center gap-1 mt-1">
-              <span className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400 px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-zinc-800/50">
-                {traveller.flightNumber}
+            <span className="inline-flex items-center gap-1 px-2 py-1 rounded-md bg-zinc-900 text-[11px] font-bold text-white uppercase tracking-wide">
+              <Clock className="w-3 h-3" />
+              {waitText}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      {/* 2. Visual Divider (Dashed Line) */}
+      <div className="relative w-full h-px">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t-2 border-dashed border-zinc-100" />
+        </div>
+        <div className="absolute left-0 top-1/2 -translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-zinc-50 border-r border-zinc-200" />
+        <div className="absolute right-0 top-1/2 translate-x-1/2 -translate-y-1/2 w-4 h-4 rounded-full bg-zinc-50 border-l border-zinc-200" />
+      </div>
+
+      {/* 3. Journey Details (Boarding Pass Style) */}
+      <div className="p-5 pt-4 bg-zinc-50/50 space-y-5">
+        {/* Route Visualization */}
+        <div className="flex items-center justify-between gap-4">
+          {/* Origin */}
+          <div className="flex flex-col min-w-[60px]">
+            <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-0.5">
+              Terminal
+            </span>
+            <span className="text-xl font-black text-zinc-900">
+              {traveller.terminal}
+            </span>
+          </div>
+
+          {/* Plane Path */}
+          <div className="flex-1 flex flex-col items-center gap-1 opacity-40">
+            <div className="w-full flex items-center gap-2">
+              <div className="h-[2px] w-full bg-zinc-300 rounded-full" />
+              <Plane className="w-5 h-5 text-zinc-400 rotate-90 shrink-0" />
+              <div className="h-[2px] w-full bg-zinc-300 rounded-full" />
+            </div>
+            <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">
+              Direct
+            </span>
+          </div>
+
+          {/* Destination */}
+          <div className="flex flex-col text-right max-w-[50%]">
+            <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider mb-0.5">
+              Dest
+            </span>
+            <span className="text-lg font-black text-zinc-900 leading-tight">
+              {traveller.destination}
+            </span>
+          </div>
+        </div>
+
+        {/* Time & Action Footer */}
+        <div className="flex items-end justify-between gap-4">
+          <div className="flex items-center gap-3 bg-white border border-zinc-200 rounded-xl px-3 py-2 shadow-sm flex-1 min-w-0">
+            <Calendar className="w-4 h-4 text-zinc-400 shrink-0" />
+            <div className="flex flex-col truncate">
+              <span className="text-[10px] font-bold text-zinc-400 uppercase">
+                Departure
               </span>
-              {traveller.tags?.slice(0, 2).map((tag, i) => (
-                <span
-                  key={i}
-                  className="text-[10px] font-medium text-zinc-400 dark:text-zinc-500 px-1.5 py-0.5 rounded-md bg-zinc-50 dark:bg-zinc-900 border border-zinc-100 dark:border-zinc-800"
-                >
-                  #{tag}
-                </span>
-              ))}
+              {/* Updated to use flightTime directly */}
+              <span className="text-sm font-bold text-zinc-900 leading-none truncate">
+                {flightTime}
+              </span>
             </div>
           </div>
-        </div>
-      </div>
 
-      {/* Info Grid */}
-      <div className="grid grid-cols-4 gap-2 py-3 border-t border-black/5 dark:border-white/5 border-dashed">
-        {/* Terminal */}
-        <div className="flex flex-col gap-1">
-          <span className="text-[10px] uppercase tracking-wider font-semibold text-zinc-400 flex items-center gap-1">
-            <MapPin className="w-3 h-3" /> {CONSTANTS.LABELS.TERMINAL}
-          </span>
-          <span
-            className="text-xs font-bold text-zinc-700 dark:text-zinc-200 truncate pr-1"
-            title={traveller.terminal}
-          >
-            {traveller.terminal}
-          </span>
+          <button className="h-10 px-5 rounded-xl bg-zinc-900 text-white text-xs font-bold flex items-center gap-2 shadow-lg shadow-zinc-900/20 group-hover:scale-105 group-hover:bg-black transition-all duration-300 shrink-0">
+            View <ArrowRight className="w-3.5 h-3.5" />
+          </button>
         </div>
 
-        {/* Destination */}
-        <div className="flex flex-col gap-1 pl-2 border-l border-black/5 dark:border-white/5">
-          <span className="text-[10px] uppercase tracking-wider font-semibold text-zinc-400 flex items-center gap-1">
-            <MapPin className="w-3 h-3" /> {CONSTANTS.LABELS.DESTINATION}
-          </span>
-          <span
-            className="text-xs font-bold text-zinc-700 dark:text-zinc-200 truncate pr-1"
-            title={traveller.destination}
-          >
-            {traveller.destination}
-          </span>
-        </div>
-
-        {/* Flight Time */}
-        <div className="flex flex-col gap-1 pl-2 border-l border-black/5 dark:border-white/5">
-          <span className="text-[10px] uppercase tracking-wider font-semibold text-zinc-400 flex items-center gap-1">
-            <Clock className="w-3 h-3" /> {CONSTANTS.LABELS.FLIGHT}
-          </span>
-          <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
-            {flightTime}
-          </span>
-        </div>
-
-        {/* Wait Time */}
-        <div className="flex flex-col gap-1 pl-2 border-l border-black/5 dark:border-white/5">
-          <span className="text-[10px] uppercase tracking-wider font-semibold text-zinc-400 flex items-center gap-1">
-            <CalendarRange className="w-3 h-3" /> {CONSTANTS.LABELS.WAIT}
-          </span>
-          <span className="text-xs font-bold text-zinc-700 dark:text-zinc-200">
-            {waitTime}
-          </span>
-        </div>
-      </div>
-
-      {/* Footer/Distance */}
-      <div className="flex items-center justify-between pt-0 mt-auto">
+        {/* Distance Badge */}
         {hasListing && (
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
-            <MapPin className="w-3 h-3 text-zinc-400" />
-            <span className="text-[10px] font-semibold text-zinc-600 dark:text-zinc-300">
-              {traveller.distanceFromUserKm} {CONSTANTS.UNITS.KM}{" "}
-              {CONSTANTS.LABELS.AWAY}
-            </span>
+          <div className="absolute top-4 right-5 animate-in fade-in slide-in-from-right-4 z-10">
+            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-white border border-zinc-200 shadow-sm">
+              <Sparkles className="w-3 h-3 text-zinc-900 fill-zinc-900" />
+              <span className="text-[10px] font-bold text-zinc-700">
+                {distance} km away
+              </span>
+            </div>
           </div>
         )}
-        <button
-          onClick={onClick}
-          className="text-xs font-bold bg-zinc-900 text-white dark:bg-white dark:text-black px-4 py-2 rounded-xl shadow-lg hover:opacity-90 active:scale-[0.98] transition-all flex items-center justify-center gap-1"
-        >
-          {CONSTANTS.BUTTONS.VIEW_MORE} <ChevronRight className="w-3 h-3" />
-        </button>
       </div>
     </div>
   );
