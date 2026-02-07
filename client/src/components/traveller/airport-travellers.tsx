@@ -141,6 +141,8 @@ const AirportTravellers = () => {
   const [filterTerminal, setFilterTerminal] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const [isWaitlistModalOpen, setIsWaitlistModalOpen] = useState(false);
+  const [initialDataFetchCompleted, setInitialDataFetchCompleted] =
+    useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const {
@@ -195,6 +197,7 @@ const AirportTravellers = () => {
         const fetchedGroups = await fetchGroups(selectedAirport.airportCode);
         setGroups(fetchedGroups);
       }
+      setInitialDataFetchCompleted(true);
     };
     void loadData();
   }, [viewMode, selectedAirport]);
@@ -272,7 +275,7 @@ const AirportTravellers = () => {
             : CONSTANTS.MESSAGES.NO_GROUPS
         }
         animation={isIndividual ? "left" : "right"}
-        loading={isFetchingList}
+        loading={isFetchingList || !initialDataFetchCompleted}
         icon={
           isIndividual ? (
             <User className="w-5 h-5" />
