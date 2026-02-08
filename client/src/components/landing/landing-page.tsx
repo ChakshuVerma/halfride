@@ -5,7 +5,6 @@ import {
   ShieldCheck,
   Leaf,
   Users,
-  Search,
   Car,
   Star,
   CheckCircle2,
@@ -14,17 +13,102 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 
+const LANDING_CONTENT = {
+  navigation: {
+    brand: "HalfRide",
+    signIn: "Sign In",
+    getStarted: "Get Started",
+  },
+  hero: {
+    badge: "Live in 5 major airports",
+    titleLine1: "Airport rides,",
+    titleLine2: "better together.",
+    description:
+      "Stop overpaying for solo cabs. Match with verified travelers on your flight, split the bill, and enjoy the ride.",
+    findRide: "Find a Ride Now",
+    estimateSavings: "Estimate Savings",
+    trustCount: "+2k",
+    trustText: "Trusted by smart travelers",
+  },
+  mockup: {
+    title: "Ride Match",
+    matchFoundTitle: "Match Found!",
+    matchFoundSubtitle: "Sarah is on your flight",
+    flightCode: "BA-249",
+    savings: "Save $24.00",
+    confirmButton: "Confirm Ride",
+    arrivingLabel: "Arriving in",
+    arrivingTime: "5 mins",
+  },
+  logos: {
+    title: "Works seamlessly with flights from",
+    brands: ["British Airways", "Emirates", "Lufthansa", "DELTA", "Ryanair"],
+  },
+  features: {
+    heading: "More than just a ride.",
+    subheading:
+      "We've re-engineered the airport transfer experience to optimize for cost, safety, and comfort.",
+    community: {
+      title: "Community First",
+      description:
+        "We don't just match destinations; we match people. See verified profiles, LinkedIn connections, and flight details before you say yes.",
+    },
+    eco: {
+      title: "Eco-Friendly",
+      description:
+        "Sharing one car instead of two reduces your carbon footprint by 50% instantly.",
+      stat: "-4.2kg CO2",
+    },
+    verified: {
+      title: "Verified Users",
+      description: "Government ID verification required for all riders.",
+    },
+    payment: {
+      title: "Split Payments",
+      description:
+        "No awkward cash exchanges. The app handles the fare split automatically when the ride ends.",
+      receipt: {
+        totalLabel: "Total Fare",
+        totalAmount: "$45.00",
+        youPayLabel: "You pay",
+        youPayAmount: "$22.50",
+      },
+    },
+  },
+  cta: {
+    title: "Ready to take off?",
+    description:
+      "Join the community of travelers saving money and the planet, one ride at a time.",
+    button: "Get Started Now",
+    note: "No credit card required for sign up",
+  },
+  footer: {
+    brand: "HalfRide",
+    description:
+      "The smartest way to get from the runway to your doorway. Safe, verified, and affordable.",
+    columns: [
+      {
+        title: "Company",
+        links: ["About", "Careers", "Blog"],
+      },
+      {
+        title: "Support",
+        links: ["Help Center", "Safety", "Terms"],
+      },
+      {
+        title: "Social",
+        links: ["Twitter", "Instagram", "LinkedIn"],
+      },
+    ],
+    copyrightPrefix: "©",
+    copyrightSuffix: "HalfRide Inc.",
+    madeWith: "Made with ♥️ for travelers",
+  },
+};
+
 export function LandingPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-
-  const handleGetStarted = () => {
-    if (user) {
-      navigate("/dashboard");
-    } else {
-      navigate("/login");
-    }
-  };
 
   return (
     <div className="flex flex-col min-h-screen bg-background font-sans selection:bg-primary/20 overflow-x-hidden">
@@ -38,18 +122,23 @@ export function LandingPage() {
             <div className="w-9 h-9 bg-primary text-primary-foreground rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
               <Car className="w-5 h-5" />
             </div>
-            HalfRide
+            {LANDING_CONTENT.navigation.brand}
           </div>
           <div className="flex items-center gap-4">
+            {!user && (
+              <Button
+                variant="ghost"
+                className="hidden md:inline-flex"
+                onClick={() => navigate("/login")}
+              >
+                {LANDING_CONTENT.navigation.signIn}
+              </Button>
+            )}
             <Button
-              variant="ghost"
-              className="hidden md:inline-flex"
-              onClick={() => navigate("/login")}
+              onClick={() => navigate("/dashboard")}
+              className="rounded-full px-6"
             >
-              Sign In
-            </Button>
-            <Button onClick={handleGetStarted} className="rounded-full px-6">
-              Get Started
+              {LANDING_CONTENT.navigation.getStarted}
             </Button>
           </div>
         </div>
@@ -71,35 +160,34 @@ export function LandingPage() {
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                   </span>
-                  Live in 5 major airports
+                  {LANDING_CONTENT.hero.badge}
                 </div>
 
                 <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.1]">
-                  Airport rides, <br />
+                  {LANDING_CONTENT.hero.titleLine1} <br />
                   <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-600">
-                    better together.
+                    {LANDING_CONTENT.hero.titleLine2}
                   </span>
                 </h1>
 
                 <p className="text-xl text-muted-foreground leading-relaxed max-w-lg">
-                  Stop overpaying for solo cabs. Match with verified travelers
-                  on your flight, split the bill, and enjoy the ride.
+                  {LANDING_CONTENT.hero.description}
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto pt-4">
                   <Button
                     size="lg"
-                    onClick={handleGetStarted}
+                    onClick={() => navigate("/airport")}
                     className="text-lg px-8 h-14 rounded-full shadow-xl shadow-primary/20 hover:translate-y-[-2px] transition-all"
                   >
-                    Find a Ride Now
+                    {LANDING_CONTENT.hero.findRide}
                   </Button>
                   <Button
                     size="lg"
                     variant="outline"
                     className="text-lg px-8 h-14 rounded-full bg-background/50 backdrop-blur-sm"
                   >
-                    Estimate Savings
+                    {LANDING_CONTENT.hero.estimateSavings}
                   </Button>
                 </div>
 
@@ -112,13 +200,15 @@ export function LandingPage() {
                         className="w-10 h-10 rounded-full border-2 border-background bg-gray-200 flex items-center justify-center overflow-hidden"
                       >
                         <img
-                          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${i * 13}`}
+                          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${
+                            i * 13
+                          }`}
                           alt="User"
                         />
                       </div>
                     ))}
                     <div className="w-10 h-10 rounded-full border-2 border-background bg-secondary flex items-center justify-center text-xs font-bold">
-                      +2k
+                      {LANDING_CONTENT.hero.trustCount}
                     </div>
                   </div>
                   <div className="flex flex-col">
@@ -129,7 +219,7 @@ export function LandingPage() {
                       <Star className="w-4 h-4 fill-current" />
                       <Star className="w-4 h-4 fill-current" />
                     </div>
-                    <span>Trusted by smart travelers</span>
+                    <span>{LANDING_CONTENT.hero.trustText}</span>
                   </div>
                 </div>
               </div>
@@ -153,7 +243,9 @@ export function LandingPage() {
                       <div className="bg-background/80 backdrop-blur rounded-full p-2 shadow-sm">
                         <ArrowRight className="w-4 h-4 rotate-180" />
                       </div>
-                      <h3 className="font-semibold">Ride Match</h3>
+                      <h3 className="font-semibold">
+                        {LANDING_CONTENT.mockup.title}
+                      </h3>
                       <div className="bg-background/80 backdrop-blur rounded-full p-2 shadow-sm">
                         <MessageCircle className="w-4 h-4" />
                       </div>
@@ -168,27 +260,29 @@ export function LandingPage() {
                             <CheckCircle2 className="w-6 h-6" />
                           </div>
                           <div>
-                            <p className="font-bold text-sm">Match Found!</p>
+                            <p className="font-bold text-sm">
+                              {LANDING_CONTENT.mockup.matchFoundTitle}
+                            </p>
                             <p className="text-xs text-muted-foreground">
-                              Sarah is on your flight
+                              {LANDING_CONTENT.mockup.matchFoundSubtitle}
                             </p>
                           </div>
                         </div>
                         <div className="flex justify-between items-center text-sm p-3 bg-secondary rounded-xl">
                           <div className="flex items-center gap-2">
                             <Plane className="w-4 h-4" />
-                            <span>BA-249</span>
+                            <span>{LANDING_CONTENT.mockup.flightCode}</span>
                           </div>
                           <div className="h-4 w-px bg-border"></div>
                           <div className="font-mono font-bold text-green-600">
-                            Save $24.00
+                            {LANDING_CONTENT.mockup.savings}
                           </div>
                         </div>
                       </div>
 
                       {/* Button */}
                       <div className="bg-primary text-primary-foreground p-4 rounded-2xl text-center font-bold shadow-lg shadow-primary/25 cursor-pointer">
-                        Confirm Ride
+                        {LANDING_CONTENT.mockup.confirmButton}
                       </div>
                     </div>
                   </div>
@@ -202,9 +296,11 @@ export function LandingPage() {
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">
-                        Arriving in
+                        {LANDING_CONTENT.mockup.arrivingLabel}
                       </p>
-                      <p className="font-bold">5 mins</p>
+                      <p className="font-bold">
+                        {LANDING_CONTENT.mockup.arrivingTime}
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -217,19 +313,25 @@ export function LandingPage() {
         <section className="border-y bg-secondary/20 py-10">
           <div className="container mx-auto px-4 text-center">
             <p className="text-sm font-semibold text-muted-foreground mb-6 uppercase tracking-wider">
-              Works seamlessly with flights from
+              {LANDING_CONTENT.logos.title}
             </p>
             <div className="flex flex-wrap justify-center items-center gap-8 md:gap-16 opacity-50 grayscale hover:grayscale-0 transition-all duration-500">
               {/* Placeholders for Airline Logos - using text for now but styled as logos */}
               <span className="text-xl font-black font-serif">
-                British Airways
+                {LANDING_CONTENT.logos.brands[0]}
               </span>
-              <span className="text-xl font-bold italic">Emirates</span>
+              <span className="text-xl font-bold italic">
+                {LANDING_CONTENT.logos.brands[1]}
+              </span>
               <span className="text-xl font-black tracking-tighter">
-                Lufthansa
+                {LANDING_CONTENT.logos.brands[2]}
               </span>
-              <span className="text-xl font-bold font-mono">DELTA</span>
-              <span className="text-xl font-bold">Ryanair</span>
+              <span className="text-xl font-bold font-mono">
+                {LANDING_CONTENT.logos.brands[3]}
+              </span>
+              <span className="text-xl font-bold">
+                {LANDING_CONTENT.logos.brands[4]}
+              </span>
             </div>
           </div>
         </section>
@@ -239,11 +341,10 @@ export function LandingPage() {
           <div className="container px-4 md:px-6 mx-auto">
             <div className="mb-16 md:text-center max-w-3xl mx-auto">
               <h2 className="text-3xl md:text-5xl font-bold mb-6">
-                More than just a ride.
+                {LANDING_CONTENT.features.heading}
               </h2>
               <p className="text-lg text-muted-foreground">
-                We've re-engineered the airport transfer experience to optimize
-                for cost, safety, and comfort.
+                {LANDING_CONTENT.features.subheading}
               </p>
             </div>
 
@@ -254,11 +355,11 @@ export function LandingPage() {
                   <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary mb-6">
                     <Users className="w-6 h-6" />
                   </div>
-                  <h3 className="text-2xl font-bold mb-3">Community First</h3>
+                  <h3 className="text-2xl font-bold mb-3">
+                    {LANDING_CONTENT.features.community.title}
+                  </h3>
                   <p className="text-muted-foreground text-lg">
-                    We don't just match destinations; we match people. See
-                    verified profiles, LinkedIn connections, and flight details
-                    before you say yes.
+                    {LANDING_CONTENT.features.community.description}
                   </p>
                 </div>
                 <div className="absolute right-0 bottom-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl translate-x-1/2 translate-y-1/2 group-hover:bg-primary/10 transition-colors"></div>
@@ -273,14 +374,15 @@ export function LandingPage() {
                   <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-primary mb-6 shadow-sm">
                     <Leaf className="w-6 h-6" />
                   </div>
-                  <h3 className="text-2xl font-bold mb-3">Eco-Friendly</h3>
+                  <h3 className="text-2xl font-bold mb-3">
+                    {LANDING_CONTENT.features.eco.title}
+                  </h3>
                   <p className="text-muted-foreground">
-                    Sharing one car instead of two reduces your carbon footprint
-                    by 50% instantly.
+                    {LANDING_CONTENT.features.eco.description}
                   </p>
                 </div>
                 <div className="mt-8 text-4xl font-bold text-primary/20">
-                  -4.2kg CO2
+                  {LANDING_CONTENT.features.eco.stat}
                 </div>
               </div>
 
@@ -289,9 +391,11 @@ export function LandingPage() {
                 <div className="w-12 h-12 bg-secondary rounded-2xl flex items-center justify-center text-primary mb-6">
                   <ShieldCheck className="w-6 h-6" />
                 </div>
-                <h3 className="text-2xl font-bold mb-3">Verified Users</h3>
+                <h3 className="text-2xl font-bold mb-3">
+                  {LANDING_CONTENT.features.verified.title}
+                </h3>
                 <p className="text-muted-foreground">
-                  Government ID verification required for all riders.
+                  {LANDING_CONTENT.features.verified.description}
                 </p>
               </div>
 
@@ -299,21 +403,28 @@ export function LandingPage() {
               <div className="md:col-span-2 bg-gradient-to-r from-primary to-blue-600 rounded-[2rem] p-8 md:p-12 text-primary-foreground relative overflow-hidden">
                 <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
                   <div className="max-w-md">
-                    <h3 className="text-2xl font-bold mb-3">Split Payments</h3>
+                    <h3 className="text-2xl font-bold mb-3">
+                      {LANDING_CONTENT.features.payment.title}
+                    </h3>
                     <p className="text-primary-foreground/80 text-lg">
-                      No awkward cash exchanges. The app handles the fare split
-                      automatically when the ride ends.
+                      {LANDING_CONTENT.features.payment.description}
                     </p>
                   </div>
                   <div className="bg-white/20 backdrop-blur-md rounded-xl p-4 min-w-[200px] text-center">
                     <p className="text-sm font-medium mb-1 opacity-80">
-                      Total Fare
+                      {LANDING_CONTENT.features.payment.receipt.totalLabel}
                     </p>
-                    <p className="text-3xl font-bold">$45.00</p>
+                    <p className="text-3xl font-bold">
+                      {LANDING_CONTENT.features.payment.receipt.totalAmount}
+                    </p>
                     <div className="my-3 h-px bg-white/20"></div>
                     <div className="flex justify-between text-sm">
-                      <span>You pay</span>
-                      <span className="font-bold">$22.50</span>
+                      <span>
+                        {LANDING_CONTENT.features.payment.receipt.youPayLabel}
+                      </span>
+                      <span className="font-bold">
+                        {LANDING_CONTENT.features.payment.receipt.youPayAmount}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -331,21 +442,20 @@ export function LandingPage() {
 
               <div className="relative z-10 space-y-8 max-w-2xl mx-auto">
                 <h2 className="text-4xl md:text-6xl font-bold tracking-tighter">
-                  Ready to take off?
+                  {LANDING_CONTENT.cta.title}
                 </h2>
                 <p className="text-xl text-gray-400">
-                  Join the community of travelers saving money and the planet,
-                  one ride at a time.
+                  {LANDING_CONTENT.cta.description}
                 </p>
                 <Button
                   size="lg"
-                  onClick={handleGetStarted}
+                  onClick={() => navigate("/airport")}
                   className="bg-white text-black hover:bg-gray-200 text-lg h-14 px-10 rounded-full"
                 >
-                  Get Started Now
+                  {LANDING_CONTENT.cta.button}
                 </Button>
                 <p className="text-sm text-gray-500 pt-4">
-                  No credit card required for sign up
+                  {LANDING_CONTENT.cta.note}
                 </p>
               </div>
             </div>
@@ -362,82 +472,73 @@ export function LandingPage() {
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground">
                   <Car className="w-4 h-4" />
                 </div>
-                HalfRide
+                {LANDING_CONTENT.footer.brand}
               </div>
               <p className="text-sm text-muted-foreground">
-                The smartest way to get from the runway to your doorway. Safe,
-                verified, and affordable.
+                {LANDING_CONTENT.footer.description}
               </p>
             </div>
 
             <div className="grid grid-cols-2 md:grid-cols-3 gap-16">
               <div className="space-y-3">
-                <h4 className="font-semibold">Company</h4>
+                <h4 className="font-semibold">
+                  {LANDING_CONTENT.footer.columns[0].title}
+                </h4>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>
-                    <a href="#" className="hover:text-primary">
-                      About
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="hover:text-primary">
-                      Careers
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="hover:text-primary">
-                      Blog
-                    </a>
-                  </li>
+                  {LANDING_CONTENT.footer.columns[0].links.map(
+                    (link, index) => (
+                      <li key={index}>
+                        <a href="#" className="hover:text-primary">
+                          {link}
+                        </a>
+                      </li>
+                    ),
+                  )}
                 </ul>
               </div>
               <div className="space-y-3">
-                <h4 className="font-semibold">Support</h4>
+                <h4 className="font-semibold">
+                  {LANDING_CONTENT.footer.columns[1].title}
+                </h4>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>
-                    <a href="#" className="hover:text-primary">
-                      Help Center
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="hover:text-primary">
-                      Safety
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="hover:text-primary">
-                      Terms
-                    </a>
-                  </li>
+                  {LANDING_CONTENT.footer.columns[1].links.map(
+                    (link, index) => (
+                      <li key={index}>
+                        <a href="#" className="hover:text-primary">
+                          {link}
+                        </a>
+                      </li>
+                    ),
+                  )}
                 </ul>
               </div>
               <div className="space-y-3 hidden md:block">
-                <h4 className="font-semibold">Social</h4>
+                <h4 className="font-semibold">
+                  {LANDING_CONTENT.footer.columns[2].title}
+                </h4>
                 <ul className="space-y-2 text-sm text-muted-foreground">
-                  <li>
-                    <a href="#" className="hover:text-primary">
-                      Twitter
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="hover:text-primary">
-                      Instagram
-                    </a>
-                  </li>
-                  <li>
-                    <a href="#" className="hover:text-primary">
-                      LinkedIn
-                    </a>
-                  </li>
+                  {LANDING_CONTENT.footer.columns[2].links.map(
+                    (link, index) => (
+                      <li key={index}>
+                        <a href="#" className="hover:text-primary">
+                          {link}
+                        </a>
+                      </li>
+                    ),
+                  )}
                 </ul>
               </div>
             </div>
           </div>
 
           <div className="mt-12 pt-8 border-t flex justify-between items-center text-sm text-muted-foreground">
-            <p>&copy; {new Date().getFullYear()} HalfRide Inc.</p>
+            <p>
+              {LANDING_CONTENT.footer.copyrightPrefix}{" "}
+              {new Date().getFullYear()}{" "}
+              {LANDING_CONTENT.footer.copyrightSuffix}
+            </p>
             <div className="flex gap-4">
-              <span>Made with ♥️ for travelers</span>
+              <span>{LANDING_CONTENT.footer.madeWith}</span>
             </div>
           </div>
         </div>
