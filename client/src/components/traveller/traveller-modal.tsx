@@ -275,10 +275,6 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
                         <span className="text-2xl font-black text-zinc-900 leading-none">
                           {flightInfo.originCode || "---"}
                         </span>
-                        {/* Departure time is not in FlightArrivalInfo, so we omit or use placeholder if needed */}
-                        <span className="text-xs font-medium text-zinc-400 mt-1">
-                          ---
-                        </span>
                       </div>
 
                       {/* Path */}
@@ -333,7 +329,12 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
                   </div>
 
                   {/* Details Grid */}
-                  <div className="grid grid-cols-3 divide-x divide-zinc-100 bg-zinc-50/50 border-t border-zinc-100">
+                  <div
+                    className={cn(
+                      "grid divide-x divide-zinc-100 bg-zinc-50/50 border-t border-zinc-100",
+                      flightInfo.gate ? "grid-cols-2" : "grid-cols-1",
+                    )}
+                  >
                     <div className="flex flex-col items-center justify-center p-3 text-center">
                       <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
                         Terminal
@@ -344,26 +345,17 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
                           : "--"}
                       </span>
                     </div>
-                    <div className="flex flex-col items-center justify-center p-3 text-center">
-                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
-                        Gate
-                      </span>
-                      <span className="text-sm font-black text-zinc-900">
-                        {flightInfo.gate
-                          ? `${CONSTANTS.MESSAGES.GATE_PREFIX}${flightInfo.gate}`
-                          : "TBD"}
-                      </span>
-                    </div>
-                    <div className="flex flex-col items-center justify-center p-3 text-center">
-                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
-                        Baggage
-                      </span>
-                      <span className="text-sm font-black text-zinc-900">
-                        {flightInfo.baggage
-                          ? `${CONSTANTS.MESSAGES.BELT} ${flightInfo.baggage}`
-                          : "--"}
-                      </span>
-                    </div>
+
+                    {flightInfo.gate && (
+                      <div className="flex flex-col items-center justify-center p-3 text-center">
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                          Gate
+                        </span>
+                        <span className="text-sm font-black text-zinc-900">
+                          {`${CONSTANTS.MESSAGES.GATE_PREFIX}${flightInfo.gate}`}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )
