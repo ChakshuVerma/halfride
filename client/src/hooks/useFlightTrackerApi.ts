@@ -164,6 +164,12 @@ function parseFlightArrivalInfo(
     timingCategory,
     timingLabel,
     timingDeltaMinutes,
+    airlineName: inner?.airlineName,
+    originCode: inner?.departure?.airportCode,
+    destCode: inner?.arrival?.airportCode,
+    terminal: inner?.arrival?.terminal,
+    gate: inner?.arrival?.gate,
+    baggage: inner?.arrival?.baggage,
   };
 }
 

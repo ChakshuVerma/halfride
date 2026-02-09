@@ -59,7 +59,7 @@ interface FlightStatsResponse {
 /**
  * SHARED UTILS & CONSTANTS
  */
-const TEN_MINUTES_IN_MS = 0;
+const TEN_MINUTES_IN_MS = 10 * 60 * 1000;
 const MAX_DISTANCE = 80000;
 
 const isStale = (etaFetchedAt: Timestamp | undefined | null): boolean => {
