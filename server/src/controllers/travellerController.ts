@@ -53,7 +53,7 @@ export async function getTravellersByAirport(req: Request, res: Response) {
           id: userSnap.id, // UID from Firestore
           name: `${user?.FirstName ?? ""} ${user?.LastName ?? ""}`.trim(),
           gender: user?.isFemale ? "Female" : "Male",
-          username: `@${user?.username ?? "user"}`,
+          username: `${user?.username ?? "user"}`,
           destination: trav.destination.address || "N/A",
           flightDateTime: fData?.arrival?.estimatedActualTime
             ? new Date(fData.arrival.estimatedActualTime)
