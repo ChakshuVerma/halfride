@@ -1,80 +1,69 @@
-import { useState, useCallback, useTransition } from "react"
-import { useNavigate } from "react-router-dom"
-import { LogOut, RefreshCw } from "lucide-react"
-import { Button } from "../ui/button"
-import { useAuth } from "../../contexts/AuthContext"
-import { toast } from "sonner"
-import { useHealthCheck } from "../../hooks/useHealthCheck"
-import { useUserProfileApi } from "../../hooks/useUserProfileApi"
+import { useState, useCallback, useTransition } from "react";
+import { useNavigate } from "react-router-dom";
+import { RefreshCw } from "lucide-react";
+import { Button } from "../ui/button";
+import { useAuth } from "../../contexts/AuthContext";
+import { toast } from "sonner";
+import { useHealthCheck } from "../../hooks/useHealthCheck";
+import { useUserProfileApi } from "../../hooks/useUserProfileApi";
+import { NotificationSeeder } from "../common/NotificationSeeder";
 
 // Constants
 // Error messages
-const ERROR_PUBLIC_API_FAILED = "Public API call failed"
-const ERROR_AUTHENTICATED_API_FAILED = "Authenticated API call failed"
-const ERROR_LOGOUT_FAILED = "Failed to log out"
+const ERROR_PUBLIC_API_FAILED = "Public API call failed";
+const ERROR_AUTHENTICATED_API_FAILED = "Authenticated API call failed";
 
 // Success messages
-const TOAST_PUBLIC_API_SUCCESS = "Public API call successful"
-const TOAST_AUTHENTICATED_API_SUCCESS = "Authenticated API call successful"
-const TOAST_LOGOUT_SUCCESS = "Logged out successfully"
+const TOAST_PUBLIC_API_SUCCESS = "Public API call successful";
+const TOAST_AUTHENTICATED_API_SUCCESS = "Authenticated API call successful";
 
 type ProfileUser = {
-  FirstName?: string
-  LastName?: string
-  DOB?: string
-  isFemale?: boolean
-  Phone?: string
-}
+  FirstName?: string;
+  LastName?: string;
+  DOB?: string;
+  isFemale?: boolean;
+  Phone?: string;
+};
 
 type ProfileData = {
-  ok?: boolean
-  user?: ProfileUser | null
-}
+  ok?: boolean;
+  user?: ProfileUser | null;
+};
 
 const Dashboard = () => {
-  const { logout, userProfile, user } = useAuth()
-  const [profileData, setProfileData] = useState<ProfileData | null>(null)
-  const [isHealthPending, startHealthTransition] = useTransition()
-  const [isProfilePending, startProfileTransition] = useTransition()
-  const navigate = useNavigate()
-  const { checkHealth } = useHealthCheck()
-  const { fetchProfile } = useUserProfileApi()
+  const { userProfile, user } = useAuth();
+  const [profileData, setProfileData] = useState<ProfileData | null>(null);
+  const [isHealthPending, startHealthTransition] = useTransition();
+  const [isProfilePending, startProfileTransition] = useTransition();
+  const navigate = useNavigate();
+  const { checkHealth } = useHealthCheck();
+  const { fetchProfile } = useUserProfileApi();
 
   const testPublicEndpoint = useCallback(() => {
     startHealthTransition(async () => {
       try {
-        await checkHealth()
-        toast.success(TOAST_PUBLIC_API_SUCCESS)
+        await checkHealth();
+        toast.success(TOAST_PUBLIC_API_SUCCESS);
       } catch {
-        toast.error(ERROR_PUBLIC_API_FAILED)
+        toast.error(ERROR_PUBLIC_API_FAILED);
       }
-    })
-  }, [checkHealth])
+    });
+  }, [checkHealth]);
 
   const testAuthenticatedEndpoint = useCallback(() => {
     startProfileTransition(async () => {
       try {
-        const data = await fetchProfile()
-        setProfileData(data)
-        toast.success(TOAST_AUTHENTICATED_API_SUCCESS)
+        const data = await fetchProfile();
+        setProfileData(data);
+        toast.success(TOAST_AUTHENTICATED_API_SUCCESS);
       } catch {
-        toast.error(ERROR_AUTHENTICATED_API_FAILED)
+        toast.error(ERROR_AUTHENTICATED_API_FAILED);
       }
-    })
-  }, [fetchProfile])
-
-  const handleLogout = async () => {
-    try {
-      await logout()
-      toast.success(TOAST_LOGOUT_SUCCESS)
-    } catch {
-      toast.error(ERROR_LOGOUT_FAILED)
-    } finally {
-      navigate("/login")
-    }
-  }
+    });
+  }, [fetchProfile]);
 
   return (
+    // <div>
     <div className="w-full max-w-4xl mx-auto p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -85,14 +74,6 @@ const Dashboard = () => {
             </p>
           )}
         </div>
-        <Button
-          variant="outline"
-          onClick={handleLogout}
-          className="gap-2"
-        >
-          <LogOut className="h-4 w-4" />
-          Logout
-        </Button>
       </div>
       <div className="border rounded-lg p-6 bg-card space-y-4">
         <div>
@@ -122,10 +103,7 @@ const Dashboard = () => {
               )}
             </Button>
           </div>
-          <Button
-            size="sm"
-            onClick={() => navigate("/airport")}
-          >
+          <Button size="sm" onClick={() => navigate("/airport")}>
             View airport travellers &amp; groups
           </Button>
         </div>
@@ -142,14 +120,22 @@ const Dashboard = () => {
         <div className="border-t pt-4">
           <h3 className="font-semibold mb-2">Current Auth State:</h3>
           <div className="text-sm space-y-1">
-            <p><strong>User ID:</strong> {user?.uid || 'Not available'}</p>
-            <p><strong>Username:</strong> {user?.username || 'Not available'}</p>
-            <p><strong>Profile Name:</strong> {userProfile?.firstName || 'Not set'}</p>
+            <p>
+              <strong>User ID:</strong> {user?.uid || "Not available"}
+            </p>
+            <p>
+              <strong>Username:</strong> {user?.username || "Not available"}
+            </p>
+            <p>
+              <strong>Profile Name:</strong>{" "}
+              {userProfile?.firstName || "Not set"}
+            </p>
           </div>
         </div>
       </div>
+      <NotificationSeeder />
     </div>
-  )
-}
+  );
+};
 
-export default Dashboard
+export default Dashboard;

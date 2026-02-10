@@ -8,6 +8,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { Spinner } from "@/components/ui/spinner";
 import { LandingPage } from "./components/landing/landing-page";
+import { Header } from "./components/common/Header";
 
 const LoadingText = "Loading...";
 
@@ -35,6 +36,24 @@ const AuthLayout = () => {
   );
 };
 
+// 2. Protected Layout for Authenticated Pages
+const ProtectedLayout = () => {
+  const { user } = useAuth();
+
+  if (!user) {
+    return <Navigate to={"/login"} replace />;
+  }
+
+  return (
+    <div className="min-h-screen bg-background font-sans antialiased flex flex-col">
+      <Header />
+      <main className="flex-1">
+        <Outlet />
+      </main>
+    </div>
+  );
+};
+
 function AppContent() {
   const { user, loading } = useAuth();
 
@@ -50,8 +69,6 @@ function AppContent() {
       </div>
     );
   }
-
-  // 2. Main Container is now clean (No global padding/centering)
   return (
     <div className="min-h-screen bg-background font-sans antialiased">
       <Routes>
@@ -76,17 +93,11 @@ function AppContent() {
           />
         </Route>
 
-        {/* PROTECTED ROUTES - These usually have their own sidebar/navbar layout */}
-        <Route
-          path="/dashboard"
-          element={user ? <Dashboard /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/airport"
-          element={
-            user ? <AirportTravellers /> : <Navigate to="/login" replace />
-          }
-        />
+        {/* PROTECTED ROUTES - Wrapped in ProtectedLayout */}
+        <Route element={<ProtectedLayout />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+          <Route path="/airport" element={<AirportTravellers />} />
+        </Route>
 
         {/* FALLBACK */}
         <Route path="*" element={<Navigate to="/" replace />} />

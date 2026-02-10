@@ -27,4 +27,10 @@ export const API_ROUTES = {
   // Airport routes
   AIRPORTS: `${API_BASE_URL}/airports`,
   GET_TERMINALS: `${API_BASE_URL}/terminals`,
+
+  // Notification routes
+  NOTIFICATIONS_SEED: `${API_BASE_URL}/notifications/seed`,
+  NOTIFICATIONS: `${API_BASE_URL}/notifications`,
+  NOTIFICATIONS_UNREAD: `${API_BASE_URL}/notifications/unread-count`,
+  NOTIFICATIONS_READ_ALL: `${API_BASE_URL}/notifications/read-all`,
 } as const;
