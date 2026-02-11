@@ -9,10 +9,13 @@ export type Traveller = {
   terminal: string;
   flightNumber: string;
   distanceFromUserKm: number;
+  flightCarrier?: string;
+  flightNumberRaw?: string;
   bio?: string;
   tags?: string[];
   isVerified?: boolean;
   username: string;
+  connectionStatus?: "SEND_REQUEST" | "REQUEST_SENT" | "REQUEST_RECEIVED";
 };
 
 export type Group = {

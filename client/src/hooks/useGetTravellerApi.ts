@@ -8,21 +8,25 @@ export function useGetTravellerApi() {
   const { sessionRequest, loading, dummyReq } = useApi();
 
   const fetchTravellers = useCallback(
-    async (airportCode?: string): Promise<Traveller[]> => {
-      if (!airportCode) return [];
+    async (
+      airportCode?: string,
+    ): Promise<{ travellers: Traveller[]; isUserInGroup: boolean }> => {
+      if (!airportCode) return { travellers: [], isUserInGroup: false };
 
       try {
         const url = `${API_ROUTES.TRAVELLERS_BY_AIRPORT}/${airportCode}`;
         const response = await sessionRequest<{
           ok: boolean;
           data: Traveller[];
+          isUserInGroup?: boolean;
         }>(url);
 
         const data = response.data || [];
-        return data;
+        const isUserInGroup = response.isUserInGroup || false;
+        return { travellers: data, isUserInGroup };
       } catch (error) {
         console.error("Failed to fetch travellers:", error);
-        return [];
+        return { travellers: [], isUserInGroup: false };
       }
     },
     [sessionRequest],

@@ -336,6 +336,9 @@ export async function createFlightTracker(req: Request, res: Response) {
       [TRAVELLER_FIELDS.USER_REF]: userRef,
       [TRAVELLER_FIELDS.UPDATED_AT]:
         admin.firestore.FieldValue.serverTimestamp(),
+      [TRAVELLER_FIELDS.GROUP_REF]: null,
+      [TRAVELLER_FIELDS.CONNECTION_REQUESTS]: [],
+      [TRAVELLER_FIELDS.IS_COMPLETED]: false,
     };
 
     if (isNewTraveller) {

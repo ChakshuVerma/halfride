@@ -46,6 +46,7 @@ export interface FlightDetailSchema {
   updatedAt: any;
 }
 
+// We assume that one traveller can have only one entry at a time which is active
 export interface TravellerDataSchema {
   date: string; // "YYYY-MM-DD" from flightDate
   flightArrival: string; // Airport Code
@@ -56,6 +57,9 @@ export interface TravellerDataSchema {
   userRef: any; // DocumentReference to users
   createdAt: any;
   updatedAt: any;
+  connectionRequests: any[]; // Array of DocumentReference to users
+  groupRef: any; // DocumentReference to groups
+  isCompleted: boolean;
 }
 
 export interface NotificationSchema {
@@ -131,6 +135,9 @@ export const TRAVELLER_FIELDS = {
   USER_REF: "userRef",
   CREATED_AT: "createdAt",
   UPDATED_AT: "updatedAt",
+  CONNECTION_REQUESTS: "connectionRequests",
+  GROUP_REF: "groupRef",
+  IS_COMPLETED: "isCompleted",
 } as const;
 
 // [NEW]

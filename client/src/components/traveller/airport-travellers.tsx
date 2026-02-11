@@ -164,13 +164,17 @@ const AirportTravellers = () => {
     void loadData();
   }, [selectedAirport]);
 
+  const [isUserInGroup, setIsUserInGroup] = useState(false);
+
   useEffect(() => {
     if (!selectedAirport?.airportCode) return;
     const loadData = async () => {
       const code = selectedAirport?.airportCode;
       if (viewMode === VIEW_MODE.INDIVIDUAL) {
-        const fetchedTravellers = await fetchTravellers(code);
+        const { travellers: fetchedTravellers, isUserInGroup } =
+          await fetchTravellers(code);
         setTravellers(fetchedTravellers);
+        setIsUserInGroup(isUserInGroup);
       } else {
         const fetchedGroups = await fetchGroups(selectedAirport.airportCode);
         setGroups(fetchedGroups);
@@ -697,7 +701,10 @@ const AirportTravellers = () => {
                   {CONSTANTS.LABELS.VIEW_MORE_INFO}
                 </DialogDescription>
                 {selectedEntity?.type === ENTITY_TYPE.TRAVELLER ? (
-                  <TravellerModal traveller={selectedEntity.data} />
+                  <TravellerModal
+                    traveller={selectedEntity.data}
+                    isUserInGroup={isUserInGroup}
+                  />
                 ) : (
                   selectedEntity && <GroupModal group={selectedEntity.data} />
                 )}

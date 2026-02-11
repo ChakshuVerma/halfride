@@ -19,6 +19,7 @@ import {
 } from "@/hooks/useFlightTrackerApi";
 import { calculateWaitText } from "./utils";
 import { cn } from "@/lib/utils";
+import { useConnectionApi } from "@/hooks/useConnectionApi";
 
 const CONSTANTS = {
   STATUS_KEYWORDS: {
@@ -78,7 +79,12 @@ const CONSTANTS = {
   },
 };
 
-type TravellerModalProps = { traveller: Traveller };
+type TravellerModalProps = {
+  traveller: Traveller;
+  isUserInGroup?: boolean;
+};
+
+// ... existing code ...
 
 const getStatusStyles = (info?: FlightArrivalInfo) => {
   const status = info?.statusShort?.toLowerCase() || "";
@@ -124,7 +130,10 @@ const getStatusStyles = (info?: FlightArrivalInfo) => {
   };
 };
 
-export function TravellerModal({ traveller }: TravellerModalProps) {
+export function TravellerModal({
+  traveller,
+  isUserInGroup,
+}: TravellerModalProps) {
   const { fetchFlightTrackerByFlightNumber, loading: apiLoading } =
     useFlightTrackerApi();
   const [flightInfo, setFlightInfo] = useState<FlightArrivalInfo | undefined>(
@@ -160,6 +169,32 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
   }, [traveller.id]);
 
   const s = useMemo(() => getStatusStyles(flightInfo), [flightInfo]);
+
+  const {
+    requestConnection,
+    loading: connectionLoading,
+    error: connectionError,
+  } = useConnectionApi();
+  const [connectionSent, setConnectionSent] = useState(
+    traveller.connectionStatus === "REQUEST_SENT",
+  );
+
+  const handleConnect = async () => {
+    if (!traveller.flightCarrier || !traveller.flightNumberRaw) {
+      console.error("Missing flight details for connection");
+      return;
+    }
+
+    const response = await requestConnection({
+      travellerUid: traveller.id,
+      flightCarrier: traveller.flightCarrier,
+      flightNumber: traveller.flightNumberRaw,
+    });
+
+    if (response.ok) {
+      setConnectionSent(true);
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-white text-zinc-900 selection:bg-zinc-100">
@@ -421,15 +456,62 @@ export function TravellerModal({ traveller }: TravellerModalProps) {
             </div>
           </div>
         )}
+
+        {/* Error Message */}
+        {connectionError && (
+          <div className="p-4 rounded-xl bg-red-50 text-red-600 text-sm font-medium">
+            {connectionError}
+          </div>
+        )}
       </div>
 
       {/* 3. Footer Action */}
-      <div className="p-6 pt-2 border-t border-zinc-100 bg-white">
-        <button className="w-full h-12 bg-zinc-900 hover:bg-black text-white rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl shadow-zinc-900/10 transition-all hover:scale-[1.01] active:scale-[0.98]">
-          {CONSTANTS.MESSAGES.CONNECT} {traveller.name.split(" ")[0]}
-          <ArrowRight className="w-4 h-4" />
-        </button>
-      </div>
+      {!isUserInGroup && (
+        <div className="p-6 pt-2 border-t border-zinc-100 bg-white">
+          <button
+            onClick={handleConnect}
+            disabled={
+              connectionLoading ||
+              connectionSent ||
+              traveller.connectionStatus === "REQUEST_SENT" ||
+              traveller.connectionStatus === "REQUEST_RECEIVED"
+            }
+            className={cn(
+              "w-full h-12 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl transition-all hover:scale-[1.01] active:scale-[0.98]",
+              connectionSent || traveller.connectionStatus === "REQUEST_SENT"
+                ? "bg-emerald-500 text-white shadow-emerald-500/20"
+                : traveller.connectionStatus === "REQUEST_RECEIVED"
+                  ? "bg-blue-500 text-white shadow-blue-500/20"
+                  : "bg-zinc-900 hover:bg-black text-white shadow-zinc-900/10",
+              (connectionLoading ||
+                connectionSent ||
+                traveller.connectionStatus === "REQUEST_SENT" ||
+                traveller.connectionStatus === "REQUEST_RECEIVED") &&
+                "cursor-not-allowed opacity-80",
+            )}
+          >
+            {connectionLoading ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : connectionSent ||
+              traveller.connectionStatus === "REQUEST_SENT" ? (
+              <>
+                Request Sent <CheckCircle2 className="w-4 h-4" />
+              </>
+            ) : traveller.connectionStatus === "REQUEST_RECEIVED" ? (
+              <>
+                Request Received <Info className="w-4 h-4" />
+              </>
+            ) : (
+              <>
+                {CONSTANTS.MESSAGES.CONNECT} {traveller.name.split(" ")[0]}
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
+//   );
+// }

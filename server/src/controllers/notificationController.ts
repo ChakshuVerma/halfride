@@ -4,6 +4,7 @@ import {
   COLLECTIONS,
   NOTIFICATION_FIELDS,
   GROUP_FIELDS,
+  TRAVELLER_FIELDS,
 } from "../constants/db";
 import {
   CreateNotificationPayload,
@@ -156,19 +157,61 @@ export async function notifyUserJoinAccepted(
 }
 
 /**
+ * Use Case 4: Connection Request
+ */
+export async function notifyUserOfConnectionRequest(
+  travellerDataId: string,
+  requesterUserId: string,
+) {
+  const db = admin.firestore();
+  try {
+    const travellerDataDoc = await db
+      .collection(COLLECTIONS.TRAVELLER_DATA)
+      .doc(travellerDataId)
+      .get();
+    if (!travellerDataDoc.exists) return;
+
+    const travellerData = travellerDataDoc.data();
+    if (!travellerData) {
+      return new Error("Traveller data not found");
+    }
+    const recipientRef = travellerData[TRAVELLER_FIELDS.USER_REF];
+    const recipientId = recipientRef.id;
+    if (!recipientId) {
+      return new Error("Recipient not found");
+    }
+    // Fetch requester name for better message
+    const userSnap = await db
+      .collection(COLLECTIONS.USERS)
+      .doc(requesterUserId)
+      .get();
+    const userName = userSnap.exists
+      ? userSnap.data()?.["FirstName"]
+      : "Someone";
+
+    await createNotification({
+      recipientUserId: recipientId,
+      type: NotificationType.CONNECTION_REQUEST,
+      title: "New Connection Request",
+      body: `${userName} wants to connect with you.`,
+      data: {
+        listingId: travellerDataId, // Using listingId to map to TravellerData ID
+        actorUserId: requesterUserId,
+      },
+    });
+  } catch (e) {
+    console.error("Notify Connection Request Error:", e);
+  }
+}
+
+/**
  * Get notifications for the authenticated user with Pagination.
  */
 export async function getMyNotifications(req: Request, res: Response) {
   const uid = req.auth?.uid;
   if (!uid) {
-    console.log("[Notification] getMyNotifications: Missing UID in req.auth");
     return res.status(401).json({ ok: false, error: "Unauthorized" });
   }
-
-  console.log(
-    `[Notification] Fetching for user: ${uid} with limit: ${req.query.limit}`,
-  );
-
   // Pagination params
   const limit = parseInt(String(req.query.limit || "20"));
   const lastId = req.query.lastId ? String(req.query.lastId) : undefined;

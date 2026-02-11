@@ -3,6 +3,7 @@ export enum NotificationType {
   GROUP_JOIN_REQUEST = "GROUP_JOIN_REQUEST",
   GROUP_JOIN_ACCEPTED = "GROUP_JOIN_ACCEPTED",
   FLIGHT_STATUS = "FLIGHT_STATUS",
+  CONNECTION_REQUEST = "CONNECTION_REQUEST",
 }
 
 export interface NotificationData {

@@ -3,6 +3,7 @@ import { requireSession } from "../middleware/sessionAuth";
 import {
   getTravellersByAirport,
   checkTravellerHasListing,
+  requestConnection,
 } from "../controllers/travellerController";
 
 export const travellerRouter = Router();
@@ -13,3 +14,4 @@ travellerRouter.get(
   getTravellersByAirport,
 );
 travellerRouter.get("/check-listing", requireSession, checkTravellerHasListing);
+travellerRouter.post("/request-connection", requireSession, requestConnection);
