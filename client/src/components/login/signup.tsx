@@ -41,6 +41,7 @@ import {
   validateAge,
 } from "./utils";
 import { useAuthApi } from "../../hooks/useAuthApi";
+import { ROUTES } from "@/constants/routes";
 
 const CONSTANTS = {
   OTP_LENGTH: 6,
@@ -219,7 +220,7 @@ export function Signup() {
         isFemale,
       });
       toast.success(CONSTANTS.TOASTS.ACCOUNT_CREATED);
-      navigate("/dashboard");
+      navigate(ROUTES.DASHBOARD);
       window.location.reload();
     } catch (e) {
       console.error(e);
@@ -601,7 +602,7 @@ export function Signup() {
           <p className="text-sm text-zinc-500 font-medium">
             Already have an account?{" "}
             <button
-              onClick={() => navigate("/login")}
+              onClick={() => navigate(ROUTES.LOGIN)}
               className="text-zinc-900 font-bold hover:underline"
             >
               Log in

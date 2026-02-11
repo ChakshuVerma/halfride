@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { useHealthCheck } from "../../hooks/useHealthCheck";
 import { useUserProfileApi } from "../../hooks/useUserProfileApi";
 import { NotificationSeeder } from "../common/NotificationSeeder";
+import { ROUTES } from "@/constants/routes";
 
 // Constants
 // Error messages
@@ -103,7 +104,7 @@ const Dashboard = () => {
               )}
             </Button>
           </div>
-          <Button size="sm" onClick={() => navigate("/airport")}>
+          <Button size="sm" onClick={() => navigate(ROUTES.AIRPORT)}>
             View airport travellers &amp; groups
           </Button>
         </div>

@@ -24,6 +24,7 @@ import { Label } from "../ui/label";
 import { InfoMessages } from "./helper";
 import { useAuthApi } from "../../hooks/useAuthApi";
 import { cn } from "@/lib/utils";
+import { ROUTES } from "@/constants/routes";
 
 // Constants
 const CONSTANTS = {
@@ -82,7 +83,7 @@ export function Login() {
     try {
       await login({ username, password });
       toast.success(CONSTANTS.TOASTS.LOGIN_SUCCESS);
-      navigate("/dashboard");
+      navigate(ROUTES.DASHBOARD);
       window.location.reload();
     } catch {
       showError(CONSTANTS.ERRORS.LOGIN_FAILED);
@@ -142,7 +143,7 @@ export function Login() {
                 </Label>
                 <button
                   type="button"
-                  onClick={() => navigate("/forgot-password")}
+                  onClick={() => navigate(ROUTES.FORGOT_PASSWORD)}
                   className="text-xs font-semibold text-zinc-500 hover:text-zinc-900 transition-colors"
                   tabIndex={-1}
                 >
@@ -212,7 +213,7 @@ export function Login() {
           <p className="text-sm font-medium text-zinc-500">
             {CONSTANTS.LABELS.CREATE_ACCOUNT}{" "}
             <button
-              onClick={() => navigate("/signup")}
+              onClick={() => navigate(ROUTES.SIGNUP)}
               className="text-zinc-900 font-bold hover:underline"
             >
               {CONSTANTS.LABELS.SIGN_UP}

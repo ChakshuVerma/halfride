@@ -10,6 +10,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { NotificationBell } from "./NotificationBell";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { ROUTES } from "@/constants/routes";
 
 const HEADER_CONSTANTS = {
   BRAND: "HalfRide",
@@ -31,7 +32,7 @@ export function Header() {
   const handleLogout = async () => {
     try {
       await logout();
-      navigate("/login");
+      navigate(ROUTES.LOGIN);
     } catch (error) {
       console.error(HEADER_CONSTANTS.ERRORS.LOGOUT_FAILED, error);
     }
@@ -55,7 +56,7 @@ export function Header() {
         {/* --- Left: Brand / Logo --- */}
         <div
           className="flex items-center gap-2.5 cursor-pointer group select-none"
-          onClick={() => navigate("/dashboard")}
+          onClick={() => navigate(ROUTES.DASHBOARD)}
         >
           {/* Logo Icon */}
           <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-primary/25 group-hover:shadow-md">

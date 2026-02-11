@@ -1,12 +1,13 @@
 import { Outlet, Navigate } from "react-router-dom";
 import { useAuth } from "../../contexts/AuthContext";
+import { ROUTES } from "@/constants/routes";
 
 export const AuthLayout = () => {
   const { user } = useAuth();
 
   // If user is already logged in, push them to dashboard
   if (user) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to={ROUTES.DASHBOARD} replace />;
   }
 
   return (

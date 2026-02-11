@@ -7,6 +7,7 @@ import { PageLoader } from "@/components/common/PageLoader";
 // Layouts
 import { AuthLayout } from "@/components/common/AuthLayout";
 import { ProtectedLayout } from "@/components/common/ProtectedLayout";
+import { ROUTES } from "@/constants/routes";
 
 // Components (Lazy Loaded for performance)
 const LandingPage = lazy(() =>
@@ -44,23 +45,23 @@ function AppRoutes() {
     <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* PUBLIC ROUTES */}
-        <Route path="/" element={<LandingPage />} />
+        <Route path={ROUTES.HOME} element={<LandingPage />} />
 
         {/* AUTH ROUTES (Includes redirects if logged in) */}
         <Route element={<AuthLayout />}>
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path={ROUTES.LOGIN} element={<Login />} />
+          <Route path={ROUTES.SIGNUP} element={<Signup />} />
+          <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
         </Route>
 
         {/* PROTECTED ROUTES (Includes redirects if logged out) */}
         <Route element={<ProtectedLayout />}>
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/airport" element={<AirportTravellers />} />
+          <Route path={ROUTES.DASHBOARD} element={<Dashboard />} />
+          <Route path={ROUTES.AIRPORT} element={<AirportTravellers />} />
         </Route>
 
         {/* FALLBACK */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
       </Routes>
     </Suspense>
   );
