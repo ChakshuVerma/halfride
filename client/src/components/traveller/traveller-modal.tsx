@@ -19,7 +19,10 @@ import {
 } from "@/hooks/useFlightTrackerApi";
 import { calculateWaitText } from "./utils";
 import { cn } from "@/lib/utils";
-import { useConnectionApi } from "@/hooks/useConnectionApi";
+import {
+  useConnectionApi,
+  ConnectionResponseAction,
+} from "@/hooks/useConnectionApi";
 
 const CONSTANTS = {
   STATUS_KEYWORDS: {
@@ -82,6 +85,8 @@ const CONSTANTS = {
 type TravellerModalProps = {
   traveller: Traveller;
   isUserInGroup?: boolean;
+  /** Called after successfully accepting or rejecting a connection request. Use to refetch list and/or close modal. */
+  onConnectionResponded?: () => void;
 };
 
 // ... existing code ...
@@ -133,6 +138,7 @@ const getStatusStyles = (info?: FlightArrivalInfo) => {
 export function TravellerModal({
   traveller,
   isUserInGroup,
+  onConnectionResponded,
 }: TravellerModalProps) {
   const { fetchFlightTrackerByFlightNumber, loading: apiLoading } =
     useFlightTrackerApi();
@@ -172,12 +178,16 @@ export function TravellerModal({
 
   const {
     requestConnection,
+    respondToConnection,
     loading: connectionLoading,
     error: connectionError,
   } = useConnectionApi();
   const [connectionSent, setConnectionSent] = useState(
     traveller.connectionStatus === "REQUEST_SENT",
   );
+  const [connectionResponded, setConnectionResponded] = useState<
+    "accepted" | "rejected" | null
+  >(null);
 
   const handleConnect = async () => {
     if (!traveller.flightCarrier || !traveller.flightNumberRaw) {
@@ -193,6 +203,20 @@ export function TravellerModal({
 
     if (response.ok) {
       setConnectionSent(true);
+    }
+  };
+
+  const handleRespondToConnection = async (
+    action: typeof ConnectionResponseAction.ACCEPT | typeof ConnectionResponseAction.REJECT,
+  ) => {
+    const response = await respondToConnection({
+      requesterUserId: traveller.id,
+      action,
+    });
+
+    if (response.ok) {
+      setConnectionResponded(action === ConnectionResponseAction.ACCEPT ? "accepted" : "rejected");
+      onConnectionResponded?.();
     }
   };
 
@@ -468,46 +492,82 @@ export function TravellerModal({
       {/* 3. Footer Action */}
       {!isUserInGroup && (
         <div className="p-6 pt-2 border-t border-zinc-100 bg-white">
-          <button
-            onClick={handleConnect}
-            disabled={
-              connectionLoading ||
-              connectionSent ||
-              traveller.connectionStatus === "REQUEST_SENT" ||
-              traveller.connectionStatus === "REQUEST_RECEIVED"
-            }
-            className={cn(
-              "w-full h-12 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl transition-all hover:scale-[1.01] active:scale-[0.98]",
-              connectionSent || traveller.connectionStatus === "REQUEST_SENT"
-                ? "bg-emerald-500 text-white shadow-emerald-500/20"
-                : traveller.connectionStatus === "REQUEST_RECEIVED"
-                  ? "bg-blue-500 text-white shadow-blue-500/20"
-                  : "bg-zinc-900 hover:bg-black text-white shadow-zinc-900/10",
-              (connectionLoading ||
+          {traveller.connectionStatus === "REQUEST_RECEIVED" &&
+          !connectionResponded ? (
+            <div className="flex gap-3">
+              <button
+                onClick={() => handleRespondToConnection(ConnectionResponseAction.REJECT)}
+                disabled={connectionLoading}
+                className={cn(
+                  "flex-1 h-12 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-2 border-zinc-200 text-zinc-600 hover:bg-zinc-50 hover:border-zinc-300 transition-all active:scale-[0.98]",
+                  connectionLoading && "opacity-60 cursor-not-allowed",
+                )}
+              >
+                {connectionLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Reject"
+                )}
+              </button>
+              <button
+                onClick={() => handleRespondToConnection(ConnectionResponseAction.ACCEPT)}
+                disabled={connectionLoading}
+                className={cn(
+                  "flex-1 h-12 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 bg-emerald-500 text-white shadow-emerald-500/20 shadow-xl hover:bg-emerald-600 transition-all hover:scale-[1.01] active:scale-[0.98]",
+                  connectionLoading && "opacity-60 cursor-not-allowed",
+                )}
+              >
+                {connectionLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    Accept <CheckCircle2 className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </div>
+          ) : connectionResponded === "accepted" ? (
+            <div className="w-full h-12 rounded-xl bg-emerald-500 text-white text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+              Connected <CheckCircle2 className="w-4 h-4" />
+            </div>
+          ) : connectionResponded === "rejected" ? (
+            <div className="w-full h-12 rounded-xl bg-zinc-100 text-zinc-600 text-sm font-bold uppercase tracking-widest flex items-center justify-center">
+              Request declined
+            </div>
+          ) : (
+            <button
+              onClick={handleConnect}
+              disabled={
+                connectionLoading ||
                 connectionSent ||
-                traveller.connectionStatus === "REQUEST_SENT" ||
-                traveller.connectionStatus === "REQUEST_RECEIVED") &&
-                "cursor-not-allowed opacity-80",
-            )}
-          >
-            {connectionLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : connectionSent ||
-              traveller.connectionStatus === "REQUEST_SENT" ? (
-              <>
-                Request Sent <CheckCircle2 className="w-4 h-4" />
-              </>
-            ) : traveller.connectionStatus === "REQUEST_RECEIVED" ? (
-              <>
-                Request Received <Info className="w-4 h-4" />
-              </>
-            ) : (
-              <>
-                {CONSTANTS.MESSAGES.CONNECT} {traveller.name.split(" ")[0]}
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
+                traveller.connectionStatus === "REQUEST_SENT"
+              }
+              className={cn(
+                "w-full h-12 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl transition-all hover:scale-[1.01] active:scale-[0.98]",
+                connectionSent || traveller.connectionStatus === "REQUEST_SENT"
+                  ? "bg-emerald-500 text-white shadow-emerald-500/20"
+                  : "bg-zinc-900 hover:bg-black text-white shadow-zinc-900/10",
+                (connectionLoading ||
+                  connectionSent ||
+                  traveller.connectionStatus === "REQUEST_SENT") &&
+                  "cursor-not-allowed opacity-80",
+              )}
+            >
+              {connectionLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : connectionSent ||
+                traveller.connectionStatus === "REQUEST_SENT" ? (
+                <>
+                  Request Sent <CheckCircle2 className="w-4 h-4" />
+                </>
+              ) : (
+                <>
+                  {CONSTANTS.MESSAGES.CONNECT} {traveller.name.split(" ")[0]}
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          )}
         </div>
       )}
     </div>

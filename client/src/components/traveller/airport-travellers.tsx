@@ -210,6 +210,16 @@ const AirportTravellers = () => {
     [],
   );
 
+  const handleConnectionResponded = useCallback(async () => {
+    if (selectedAirport?.airportCode) {
+      const { travellers: fetchedTravellers, isUserInGroup } =
+        await fetchTravellers(selectedAirport.airportCode);
+      setTravellers(fetchedTravellers);
+      setIsUserInGroup(isUserInGroup);
+    }
+    setSelectedEntity(null);
+  }, [selectedAirport?.airportCode, fetchTravellers]);
+
   const ListSectionWrapper = useCallback(() => {
     if (!selectedAirport) return null;
 
@@ -704,6 +714,7 @@ const AirportTravellers = () => {
                   <TravellerModal
                     traveller={selectedEntity.data}
                     isUserInGroup={isUserInGroup}
+                    onConnectionResponded={handleConnectionResponded}
                   />
                 ) : (
                   selectedEntity && <GroupModal group={selectedEntity.data} />

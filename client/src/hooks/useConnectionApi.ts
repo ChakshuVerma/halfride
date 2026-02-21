@@ -2,6 +2,15 @@ import { useState, useCallback } from "react";
 import { useApi } from "./useApi";
 import { API_ROUTES } from "@/lib/apiRoutes";
 
+/** Actions when responding to a connection request. Matches server enum. */
+export const ConnectionResponseAction = {
+  ACCEPT: "accept",
+  REJECT: "reject",
+} as const;
+
+export type ConnectionResponseActionType =
+  (typeof ConnectionResponseAction)[keyof typeof ConnectionResponseAction];
+
 interface RequestConnectionPayload {
   travellerUid: string;
   flightCarrier: string;
@@ -9,6 +18,18 @@ interface RequestConnectionPayload {
 }
 
 interface RequestConnectionResponse {
+  ok: boolean;
+  message?: string;
+  error?: string;
+  groupId?: string;
+}
+
+interface RespondToConnectionPayload {
+  requesterUserId: string;
+  action: ConnectionResponseActionType;
+}
+
+interface RespondToConnectionResponse {
   ok: boolean;
   message?: string;
   error?: string;
@@ -40,8 +61,40 @@ export function useConnectionApi() {
         }
 
         return response;
-      } catch (err: any) {
-        const message = err.message || "An unexpected error occurred";
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "An unexpected error occurred";
+        setError(message);
+        return { ok: false, error: message };
+      }
+    },
+    [sessionRequest],
+  );
+
+  const respondToConnection = useCallback(
+    async (
+      payload: RespondToConnectionPayload,
+    ): Promise<RespondToConnectionResponse> => {
+      setError(null);
+      try {
+        const response = await sessionRequest<RespondToConnectionResponse>(
+          API_ROUTES.RESPOND_TO_CONNECTION,
+          {
+            method: "POST",
+            body: JSON.stringify(payload),
+          },
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            response.error || "Failed to respond to connection request",
+          );
+        }
+
+        return response;
+      } catch (err: unknown) {
+        const message =
+          err instanceof Error ? err.message : "An unexpected error occurred";
         setError(message);
         return { ok: false, error: message };
       }
@@ -51,6 +104,7 @@ export function useConnectionApi() {
 
   return {
     requestConnection,
+    respondToConnection,
     loading,
     error,
   };
