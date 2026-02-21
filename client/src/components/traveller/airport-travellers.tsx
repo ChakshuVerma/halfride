@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useRef } from "react";
+import { useEffect, useCallback, useMemo, useState, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import {
   Command,
@@ -100,241 +100,29 @@ const filterAirports = (value: string, search: string) => {
   return 0;
 };
 
-const AirportTravellers = () => {
-  const [selectedAirport, setSelectedAirport] = useState<Airport | undefined>(
-    undefined,
-  );
-  const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODE.INDIVIDUAL);
-  const [selectedEntity, setSelectedEntity] = useState<SelectedEntity>(null);
-  const [travellers, setTravellers] = useState<Traveller[]>([]);
-  const [groups, setGroups] = useState<Group[]>([]);
-  const [airports, setAirports] = useState<Airport[]>([]);
-  const [sortBy, setSortBy] = useState<"distance" | "wait_time">(
-    CONSTANTS.VALUES.DISTANCE,
-  );
-  const [filterGender, setFilterGender] = useState<string[]>([
-    CONSTANTS.VALUES.MALE,
-    CONSTANTS.VALUES.FEMALE,
-  ]);
-  const [filterTerminal, setFilterTerminal] = useState<string[]>([]);
-  const [open, setOpen] = useState(false);
-  const [isWaitlistModalOpen, setIsWaitlistModalOpen] = useState(false);
-  const [initialDataFetchCompleted, setInitialDataFetchCompleted] =
-    useState(false);
-  const searchInputRef = useRef<HTMLInputElement>(null);
+type AirportSelectProps = {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  selectedAirport: Airport | undefined;
+  onSelectAirport: (airport: Airport) => void;
+  airports: Airport[];
+  searchInputRef: React.RefObject<HTMLInputElement | null>;
+  large?: boolean;
+  children?: React.ReactNode;
+};
 
-  const {
-    fetchTravellers,
-    fetchGroups,
-    fetchUserDestination,
-    loading: isFetchingList,
-  } = useGetTravellerApi();
-  const {
-    fetchAirports,
-    fetchTerminals,
-    loading: isFetchingCombos,
-  } = useGetAirportsApi();
-  const [terminals, setTerminals] = useState<{ id: string; name: string }[]>(
-    [],
-  );
-
-  useEffect(() => {
-    const loadAirports = async () => {
-      const fetched = await fetchAirports();
-      fetched.sort((a, b) => a.airportName.localeCompare(b.airportName));
-      setAirports(fetched);
-    };
-    void loadAirports();
-  }, []);
-
-  useEffect(() => {
-    if (!selectedAirport) {
-      setTerminals([]);
-      setFilterTerminal([]);
-      return;
-    }
-    const loadData = async () => {
-      const code = selectedAirport?.airportCode;
-      if (!code) return;
-
-      const fetchedTerminals = await fetchTerminals(code);
-      setTerminals(fetchedTerminals);
-      setFilterTerminal(fetchedTerminals.map((t) => t.id));
-    };
-    void loadData();
-  }, [selectedAirport]);
-
-  const [isUserInGroup, setIsUserInGroup] = useState(false);
-
-  useEffect(() => {
-    if (!selectedAirport?.airportCode) return;
-    const loadData = async () => {
-      const code = selectedAirport?.airportCode;
-      if (viewMode === VIEW_MODE.INDIVIDUAL) {
-        const { travellers: fetchedTravellers, isUserInGroup } =
-          await fetchTravellers(code);
-        setTravellers(fetchedTravellers);
-        setIsUserInGroup(isUserInGroup);
-      } else {
-        const fetchedGroups = await fetchGroups(
-          selectedAirport.airportCode,
-          selectedAirport.airportName,
-        );
-        setGroups(fetchedGroups);
-      }
-      setInitialDataFetchCompleted(true);
-    };
-    void loadData();
-  }, [viewMode, selectedAirport]);
-
-  const [userDestination, setUserDestination] = useState<string | null>(null);
-
-  useEffect(() => {
-    const checkUserListing = async () => {
-      if (selectedAirport?.airportCode) {
-        const result = await fetchUserDestination(selectedAirport.airportCode);
-        setUserDestination(result);
-      }
-    };
-    checkUserListing();
-  }, [selectedAirport, fetchUserDestination]);
-
-  const handleFilterToggle = useCallback(
-    (
-      setFilterState: React.Dispatch<React.SetStateAction<string[]>>,
-      value: string,
-    ) => {
-      setFilterState((prev) =>
-        prev.includes(value)
-          ? prev.filter((item) => item !== value)
-          : [...prev, value],
-      );
-    },
-    [],
-  );
-
-  const handleConnectionResponded = useCallback(async () => {
-    if (selectedAirport?.airportCode) {
-      const code = selectedAirport.airportCode;
-      const [travellersResult, fetchedGroups] = await Promise.all([
-        fetchTravellers(code),
-        fetchGroups(code, selectedAirport.airportName),
-      ]);
-      setTravellers(travellersResult.travellers);
-      setIsUserInGroup(travellersResult.isUserInGroup);
-      setGroups(fetchedGroups);
-    }
-    setSelectedEntity(null);
-  }, [selectedAirport?.airportCode, selectedAirport?.airportName, fetchTravellers, fetchGroups]);
-
-  const ListSectionWrapper = useCallback(() => {
-    if (!selectedAirport) return null;
-
-    const isIndividual = viewMode === VIEW_MODE.INDIVIDUAL;
-    const isTerminalVisible = (terminal: string) => {
-      return (
-        filterTerminal.includes(terminal) ||
-        !terminals.some((t) => t.id === terminal)
-      );
-    };
-
-    let processedTravellers = [...travellers].filter(
-      (t) => filterGender.includes(t.gender) && isTerminalVisible(t.terminal),
-    );
-    let processedGroups = groups;
-
-    const sortFn = (a: Traveller | Group, b: Traveller | Group) => {
-      if (sortBy === CONSTANTS.VALUES.DISTANCE) {
-        const aDist = "distanceFromUserKm" in a ? a.distanceFromUserKm : 0;
-        const bDist = "distanceFromUserKm" in b ? b.distanceFromUserKm : 0;
-        return aDist - bDist;
-      }
-      const aTime =
-        "flightDateTime" in a && a.flightDateTime
-          ? new Date(a.flightDateTime).getTime()
-          : "createdAt" in a && a.createdAt
-            ? new Date(a.createdAt).getTime()
-            : 0;
-      const bTime =
-        "flightDateTime" in b && b.flightDateTime
-          ? new Date(b.flightDateTime).getTime()
-          : "createdAt" in b && b.createdAt
-            ? new Date(b.createdAt).getTime()
-            : 0;
-      return aTime - bTime;
-    };
-
-    isIndividual
-      ? processedTravellers.sort(sortFn)
-      : processedGroups.sort(sortFn);
-
-    return (
-      <ListSection
-        title={
-          isIndividual
-            ? CONSTANTS.LABELS.TRAVELLERS_TITLE
-            : CONSTANTS.LABELS.GROUPS_TITLE
-        }
-        subtitle={`${CONSTANTS.LABELS.DEPARTING_FROM} ${selectedAirport.airportName}`}
-        count={
-          isIndividual ? processedTravellers.length : processedGroups.length
-        }
-        emptyMessage={
-          isIndividual
-            ? CONSTANTS.MESSAGES.NO_TRAVELLERS
-            : CONSTANTS.MESSAGES.NO_GROUPS
-        }
-        animation={isIndividual ? "left" : "right"}
-        loading={isFetchingList || !initialDataFetchCompleted}
-        icon={
-          isIndividual ? (
-            <User className="w-5 h-5" />
-          ) : (
-            <UsersRound className="w-5 h-5" />
-          )
-        }
-      >
-        {isIndividual
-          ? processedTravellers.map((t, index) => (
-              <TravellerCard
-                key={`${t.id}-${index}`}
-                traveller={t}
-                onClick={() =>
-                  setSelectedEntity({ type: ENTITY_TYPE.TRAVELLER, data: t })
-                }
-                hasListing={!!userDestination}
-              />
-            ))
-          : processedGroups.map((g, index) => (
-              <GroupCard
-                key={`${g.id}-${index}`}
-                group={g}
-                onClick={() =>
-                  setSelectedEntity({ type: ENTITY_TYPE.GROUP, data: g })
-                }
-              />
-            ))}
-      </ListSection>
-    );
-  }, [
-    selectedAirport,
-    viewMode,
-    travellers,
-    groups,
-    isFetchingList,
-    sortBy,
-    filterGender,
-    filterTerminal,
-  ]);
-
-  const AirportSelect = ({
-    large = false,
-    children,
-  }: {
-    large?: boolean;
-    children?: React.ReactNode;
-  }) => (
-    <Dialog open={open} onOpenChange={setOpen}>
+function AirportSelect({
+  open,
+  onOpenChange,
+  selectedAirport,
+  onSelectAirport,
+  airports,
+  searchInputRef,
+  large = false,
+  children,
+}: AirportSelectProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
         {children || (
           <Button
@@ -405,9 +193,9 @@ const AirportTravellers = () => {
                         if (
                           selectedAirport?.airportCode !== airport.airportCode
                         ) {
-                          setSelectedAirport(airport);
+                          onSelectAirport(airport);
                         }
-                        setOpen(false);
+                        onOpenChange(false);
                       }}
                       className="group flex items-center justify-between py-3 px-4 rounded-xl cursor-pointer hover:bg-zinc-100 data-[selected=true]:bg-zinc-900 data-[selected=true]:text-white transition-all mb-1"
                     >
@@ -444,6 +232,266 @@ const AirportTravellers = () => {
       </DialogContent>
     </Dialog>
   );
+}
+
+const AirportTravellers = () => {
+  const [selectedAirport, setSelectedAirport] = useState<Airport | undefined>(
+    undefined,
+  );
+  const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODE.INDIVIDUAL);
+  const [selectedEntity, setSelectedEntity] = useState<SelectedEntity>(null);
+  const [travellers, setTravellers] = useState<Traveller[]>([]);
+  const [groups, setGroups] = useState<Group[]>([]);
+  const [airports, setAirports] = useState<Airport[]>([]);
+  const [sortBy, setSortBy] = useState<"distance" | "wait_time">(
+    CONSTANTS.VALUES.DISTANCE,
+  );
+  const [filterGender, setFilterGender] = useState<string[]>([
+    CONSTANTS.VALUES.MALE,
+    CONSTANTS.VALUES.FEMALE,
+  ]);
+  const [filterTerminal, setFilterTerminal] = useState<string[]>([]);
+  const [open, setOpen] = useState(false);
+  const [isWaitlistModalOpen, setIsWaitlistModalOpen] = useState(false);
+  const [initialDataFetchCompleted, setInitialDataFetchCompleted] =
+    useState(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const {
+    fetchTravellers,
+    fetchGroups,
+    fetchUserDestination,
+    loading: isFetchingList,
+  } = useGetTravellerApi();
+  const {
+    fetchAirports,
+    fetchTerminals,
+    loading: isFetchingCombos,
+  } = useGetAirportsApi();
+  const [terminals, setTerminals] = useState<{ id: string; name: string }[]>(
+    [],
+  );
+
+  useEffect(() => {
+    const loadAirports = async () => {
+      const fetched = await fetchAirports();
+      fetched.sort((a, b) => a.airportName.localeCompare(b.airportName));
+      setAirports(fetched);
+    };
+    void loadAirports();
+  }, [fetchAirports]);
+
+  useEffect(() => {
+    if (!selectedAirport?.airportCode) return;
+    const code = selectedAirport.airportCode;
+    const loadData = async () => {
+      const fetchedTerminals = await fetchTerminals(code);
+      setTerminals(fetchedTerminals);
+      setFilterTerminal(fetchedTerminals.map((t) => t.id));
+    };
+    void loadData();
+  }, [selectedAirport, fetchTerminals]);
+
+  const effectiveTerminals = useMemo(
+    () => (selectedAirport ? terminals : []),
+    [selectedAirport, terminals],
+  );
+  const effectiveFilterTerminal = useMemo(
+    () => (selectedAirport ? filterTerminal : []),
+    [selectedAirport, filterTerminal],
+  );
+
+  const [isUserInGroup, setIsUserInGroup] = useState(false);
+  const [userGroupId, setUserGroupId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!selectedAirport?.airportCode) return;
+    const loadData = async () => {
+      const code = selectedAirport?.airportCode;
+      if (viewMode === VIEW_MODE.INDIVIDUAL) {
+        const { travellers: fetchedTravellers, isUserInGroup, userGroupId: gid } =
+          await fetchTravellers(code);
+        setTravellers(fetchedTravellers);
+        setIsUserInGroup(isUserInGroup);
+        setUserGroupId(gid);
+      } else {
+        const [travellersResult, fetchedGroups] = await Promise.all([
+          fetchTravellers(code),
+          fetchGroups(
+            selectedAirport.airportCode,
+            selectedAirport.airportName,
+          ),
+        ]);
+        setTravellers(travellersResult.travellers);
+        setIsUserInGroup(travellersResult.isUserInGroup);
+        setUserGroupId(travellersResult.userGroupId);
+        setGroups(fetchedGroups);
+      }
+      setInitialDataFetchCompleted(true);
+    };
+    void loadData();
+  }, [viewMode, selectedAirport, fetchTravellers, fetchGroups]);
+
+  const [userDestination, setUserDestination] = useState<string | null>(null);
+
+  useEffect(() => {
+    const checkUserListing = async () => {
+      if (selectedAirport?.airportCode) {
+        const result = await fetchUserDestination(selectedAirport.airportCode);
+        setUserDestination(result);
+      }
+    };
+    checkUserListing();
+  }, [selectedAirport, fetchUserDestination]);
+
+  const handleFilterToggle = useCallback(
+    (
+      setFilterState: React.Dispatch<React.SetStateAction<string[]>>,
+      value: string,
+    ) => {
+      setFilterState((prev) =>
+        prev.includes(value)
+          ? prev.filter((item) => item !== value)
+          : [...prev, value],
+      );
+    },
+    [],
+  );
+
+  const handleConnectionResponded = useCallback(async () => {
+    if (selectedAirport?.airportCode) {
+      const code = selectedAirport.airportCode;
+      const [travellersResult, fetchedGroups] = await Promise.all([
+        fetchTravellers(code),
+        fetchGroups(code, selectedAirport.airportName),
+      ]);
+      setTravellers(travellersResult.travellers);
+      setIsUserInGroup(travellersResult.isUserInGroup);
+      setUserGroupId(travellersResult.userGroupId);
+      setGroups(fetchedGroups);
+    }
+    setSelectedEntity(null);
+  }, [selectedAirport, fetchTravellers, fetchGroups]);
+
+  const handleLeaveGroup = useCallback(async () => {
+    if (selectedAirport?.airportCode) {
+      const code = selectedAirport.airportCode;
+      const [travellersResult, fetchedGroups] = await Promise.all([
+        fetchTravellers(code),
+        fetchGroups(code, selectedAirport.airportName),
+      ]);
+      setTravellers(travellersResult.travellers);
+      setIsUserInGroup(travellersResult.isUserInGroup);
+      setUserGroupId(travellersResult.userGroupId);
+      setGroups(fetchedGroups);
+    }
+    setSelectedEntity(null);
+  }, [selectedAirport, fetchTravellers, fetchGroups]);
+
+  const listSectionContent = useMemo(() => {
+    if (!selectedAirport) return null;
+
+    const isIndividual = viewMode === VIEW_MODE.INDIVIDUAL;
+    const isTerminalVisible = (terminal: string) => {
+      return (
+        effectiveFilterTerminal.includes(terminal) ||
+        !effectiveTerminals.some((t) => t.id === terminal)
+      );
+    };
+
+    const processedTravellers = [...travellers].filter(
+      (t) => filterGender.includes(t.gender) && isTerminalVisible(t.terminal),
+    );
+    const processedGroups = [...groups];
+
+    const sortFn = (a: Traveller | Group, b: Traveller | Group) => {
+      if (sortBy === CONSTANTS.VALUES.DISTANCE) {
+        const aDist = "distanceFromUserKm" in a ? a.distanceFromUserKm : 0;
+        const bDist = "distanceFromUserKm" in b ? b.distanceFromUserKm : 0;
+        return aDist - bDist;
+      }
+      const aTime =
+        "flightDateTime" in a && a.flightDateTime
+          ? new Date(a.flightDateTime).getTime()
+          : "createdAt" in a && a.createdAt
+            ? new Date(a.createdAt).getTime()
+            : 0;
+      const bTime =
+        "flightDateTime" in b && b.flightDateTime
+          ? new Date(b.flightDateTime).getTime()
+          : "createdAt" in b && b.createdAt
+            ? new Date(b.createdAt).getTime()
+            : 0;
+      return aTime - bTime;
+    };
+
+    if (isIndividual) {
+      processedTravellers.sort(sortFn);
+    } else {
+      processedGroups.sort(sortFn);
+    }
+
+    return (
+      <ListSection
+        title={
+          isIndividual
+            ? CONSTANTS.LABELS.TRAVELLERS_TITLE
+            : CONSTANTS.LABELS.GROUPS_TITLE
+        }
+        subtitle={`${CONSTANTS.LABELS.DEPARTING_FROM} ${selectedAirport.airportName}`}
+        count={
+          isIndividual ? processedTravellers.length : processedGroups.length
+        }
+        emptyMessage={
+          isIndividual
+            ? CONSTANTS.MESSAGES.NO_TRAVELLERS
+            : CONSTANTS.MESSAGES.NO_GROUPS
+        }
+        animation={isIndividual ? "left" : "right"}
+        loading={isFetchingList || !initialDataFetchCompleted}
+        icon={
+          isIndividual ? (
+            <User className="w-5 h-5" />
+          ) : (
+            <UsersRound className="w-5 h-5" />
+          )
+        }
+      >
+        {isIndividual
+          ? processedTravellers.map((t, index) => (
+              <TravellerCard
+                key={`${t.id}-${index}`}
+                traveller={t}
+                onClick={() =>
+                  setSelectedEntity({ type: ENTITY_TYPE.TRAVELLER, data: t })
+                }
+                hasListing={!!userDestination}
+              />
+            ))
+          : processedGroups.map((g, index) => (
+              <GroupCard
+                key={`${g.id}-${index}`}
+                group={g}
+                onClick={() =>
+                  setSelectedEntity({ type: ENTITY_TYPE.GROUP, data: g })
+                }
+              />
+            ))}
+      </ListSection>
+    );
+  }, [
+    selectedAirport,
+    viewMode,
+    travellers,
+    groups,
+    isFetchingList,
+    sortBy,
+    filterGender,
+    effectiveFilterTerminal,
+    effectiveTerminals,
+    initialDataFetchCompleted,
+    userDestination,
+  ]);
 
   if (isFetchingCombos)
     return (
@@ -489,7 +537,14 @@ const AirportTravellers = () => {
                 </div>
 
                 <div className="w-full sm:w-auto">
-                  <AirportSelect>
+                  <AirportSelect
+                    open={open}
+                    onOpenChange={setOpen}
+                    selectedAirport={selectedAirport}
+                    onSelectAirport={setSelectedAirport}
+                    airports={airports}
+                    searchInputRef={searchInputRef}
+                  >
                     <Button
                       variant="outline"
                       className="rounded-full border-zinc-200 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 transition-all group"
@@ -538,7 +593,15 @@ const AirportTravellers = () => {
                 </div>
 
                 <div className="w-full max-w-md transform transition-all hover:scale-[1.02]">
-                  <AirportSelect large />
+                  <AirportSelect
+                    open={open}
+                    onOpenChange={setOpen}
+                    selectedAirport={selectedAirport}
+                    onSelectAirport={setSelectedAirport}
+                    airports={airports}
+                    searchInputRef={searchInputRef}
+                    large
+                  />
                   <div className="flex justify-center gap-6 mt-8 text-[10px] text-zinc-400 font-bold uppercase tracking-[0.2em]">
                     <span className="flex items-center gap-1.5">
                       <Sparkles className="w-3 h-3" /> Safe
@@ -593,7 +656,7 @@ const AirportTravellers = () => {
                     {/* Terminal Scroll Container - Monochrome */}
                     <div className="w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
                       <div className="flex items-center gap-2">
-                        {terminals.map((t) => (
+                        {effectiveTerminals.map((t) => (
                           <button
                             key={t.id}
                             onClick={() =>
@@ -601,7 +664,7 @@ const AirportTravellers = () => {
                             }
                             className={cn(
                               "px-3 py-1.5 text-xs font-bold rounded-lg border transition-all whitespace-nowrap",
-                              filterTerminal.includes(t.id)
+                              effectiveFilterTerminal.includes(t.id)
                                 ? "bg-zinc-900 text-white border-zinc-900 shadow-md shadow-zinc-200"
                                 : "bg-white text-zinc-500 border-zinc-200 hover:border-zinc-300 hover:text-zinc-900",
                             )}
@@ -712,7 +775,7 @@ const AirportTravellers = () => {
 
                 {/* MAIN LIST */}
                 <div className="min-h-[300px]">
-                  <ListSectionWrapper />
+                  {listSectionContent}
                 </div>
               </div>
             )}
@@ -736,7 +799,16 @@ const AirportTravellers = () => {
                     onConnectionResponded={handleConnectionResponded}
                   />
                 ) : (
-                  selectedEntity && <GroupModal group={selectedEntity.data} />
+                  selectedEntity && (
+                    <GroupModal
+                      group={selectedEntity.data}
+                      isCurrentUserInGroup={
+                        userGroupId != null &&
+                        userGroupId === selectedEntity.data.id
+                      }
+                      onLeaveGroup={handleLeaveGroup}
+                    />
+                  )
                 )}
               </DialogContent>
             </Dialog>
@@ -748,7 +820,7 @@ const AirportTravellers = () => {
           currentAirport={selectedAirport}
           open={isWaitlistModalOpen}
           onOpenChange={setIsWaitlistModalOpen}
-          terminals={terminals}
+          terminals={effectiveTerminals}
         />
       )}
     </>

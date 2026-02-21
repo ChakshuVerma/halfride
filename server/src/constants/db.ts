@@ -81,7 +81,6 @@ export interface NotificationSchema {
 
 export interface GroupSchema {
   groupId: string;
-  adminRef: any; // DocumentReference to users
   members: any[]; // Array of DocumentReference to users
   pendingRequests: any[]; // Array of DocumentReference to users
   /** Airport code (e.g. DEL) for querying groups by airport. Members may be from different flights/terminals. */
@@ -155,7 +154,6 @@ export const NOTIFICATION_FIELDS = {
 // [NEW]
 export const GROUP_FIELDS = {
   GROUP_ID: "groupId",
-  ADMIN_REF: "adminRef",
   MEMBERS: "members",
   PENDING_REQUESTS: "pendingRequests",
   FLIGHT_ARRIVAL_AIRPORT: "flightArrivalAirport",

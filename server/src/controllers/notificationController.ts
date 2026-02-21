@@ -102,7 +102,7 @@ export async function notifyUsersNearNewListing(
 }
 
 /**
- * Use Case 2: Join Group Request
+ * Use Case 2: Join Group Request — notify all current group members (no admin).
  */
 export async function notifyGroupAdminOfJoinRequest(
   groupId: string,
@@ -114,29 +114,84 @@ export async function notifyGroupAdminOfJoinRequest(
     if (!groupDoc.exists) return;
 
     const groupData = groupDoc.data();
-    const adminRef = groupData?.[GROUP_FIELDS.ADMIN_REF];
-    const adminId = adminRef?.id;
+    const members: admin.firestore.DocumentReference[] =
+      groupData?.[GROUP_FIELDS.MEMBERS] || [];
 
-    if (adminId) {
-      // Fetch requester name for better message
-      const userSnap = await db
-        .collection(COLLECTIONS.USERS)
-        .doc(requesterUserId)
-        .get();
-      const userName = userSnap.exists
-        ? userSnap.data()?.["FirstName"]
-        : "Someone";
+    const userSnap = await db
+      .collection(COLLECTIONS.USERS)
+      .doc(requesterUserId)
+      .get();
+    const userName = userSnap.exists
+      ? userSnap.data()?.["FirstName"]
+      : "Someone";
 
-      await createNotification({
-        recipientUserId: adminId,
-        type: NotificationType.GROUP_JOIN_REQUEST,
-        title: "New Join Request",
-        body: `${userName} wants to join your group.`,
-        data: { groupId, actorUserId: requesterUserId },
-      });
-    }
+    await Promise.all(
+      members.map((memberRef: admin.firestore.DocumentReference) =>
+        createNotification({
+          recipientUserId: memberRef.id,
+          type: NotificationType.GROUP_JOIN_REQUEST,
+          title: "New Join Request",
+          body: `${userName} wants to join your group.`,
+          data: { groupId, actorUserId: requesterUserId },
+        }),
+      ),
+    );
   } catch (e) {
-    console.error("Notify Group Admin Error:", e);
+    console.error("Notify Group Members (Join Request) Error:", e);
+  }
+}
+
+/**
+ * Notify all other group members that a member left.
+ */
+export async function notifyGroupMembersMemberLeft(
+  memberUserIds: string[],
+  leaverUserId: string,
+  groupId: string,
+) {
+  const db = admin.firestore();
+  try {
+    const leaverSnap = await db
+      .collection(COLLECTIONS.USERS)
+      .doc(leaverUserId)
+      .get();
+    const leaverName = leaverSnap.exists
+      ? leaverSnap.data()?.["FirstName"]
+      : "Someone";
+
+    await Promise.all(
+      memberUserIds.map((recipientId) =>
+        createNotification({
+          recipientUserId: recipientId,
+          type: NotificationType.GROUP_MEMBER_LEFT,
+          title: "Member left group",
+          body: `${leaverName} left the group.`,
+          data: { groupId, actorUserId: leaverUserId },
+        }),
+      ),
+    );
+  } catch (e) {
+    console.error("Notify Group Members (Member Left) Error:", e);
+  }
+}
+
+/**
+ * Notify the last remaining member that the group was disbanded.
+ */
+export async function notifyGroupDisbanded(
+  lastMemberUserId: string,
+  groupId: string,
+) {
+  try {
+    await createNotification({
+      recipientUserId: lastMemberUserId,
+      type: NotificationType.GROUP_DISBANDED,
+      title: "Group disbanded",
+      body: "The group has been disbanded because the other member left.",
+      data: { groupId },
+    });
+  } catch (e) {
+    console.error("Notify Group Disbanded Error:", e);
   }
 }
 

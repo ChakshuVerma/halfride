@@ -3,9 +3,11 @@ import { requireSession } from "../middleware/sessionAuth";
 import {
   getTravellersByAirport,
   getGroupsByAirport,
+  getGroupMembers,
   checkTravellerHasListing,
   requestConnection,
   respondToConnectionRequest,
+  leaveGroup,
 } from "../controllers/travellerController";
 
 export const travellerRouter = Router();
@@ -20,6 +22,11 @@ travellerRouter.get(
   requireSession,
   getGroupsByAirport,
 );
+travellerRouter.get(
+  "/group-members/:groupId",
+  requireSession,
+  getGroupMembers,
+);
 travellerRouter.get("/check-listing", requireSession, checkTravellerHasListing);
 travellerRouter.post("/request-connection", requireSession, requestConnection);
 travellerRouter.post(
@@ -27,3 +34,4 @@ travellerRouter.post(
   requireSession,
   respondToConnectionRequest,
 );
+travellerRouter.post("/leave-group", requireSession, leaveGroup);

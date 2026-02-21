@@ -2,7 +2,6 @@ import { useCallback } from "react";
 import { useApi } from "./useApi";
 import { API_ROUTES } from "@/lib/apiRoutes";
 import type { Traveller, Group } from "@/components/traveller/types";
-import { dummyTravellers } from "@/data/mockTravellerData";
 
 export function useGetTravellerApi() {
   const { sessionRequest, loading } = useApi();
@@ -10,8 +9,13 @@ export function useGetTravellerApi() {
   const fetchTravellers = useCallback(
     async (
       airportCode?: string,
-    ): Promise<{ travellers: Traveller[]; isUserInGroup: boolean }> => {
-      if (!airportCode) return { travellers: [], isUserInGroup: false };
+    ): Promise<{
+      travellers: Traveller[];
+      isUserInGroup: boolean;
+      userGroupId: string | null;
+    }> => {
+      if (!airportCode)
+        return { travellers: [], isUserInGroup: false, userGroupId: null };
 
       try {
         const url = `${API_ROUTES.TRAVELLERS_BY_AIRPORT}/${airportCode}`;
@@ -19,14 +23,16 @@ export function useGetTravellerApi() {
           ok: boolean;
           data: Traveller[];
           isUserInGroup?: boolean;
+          userGroupId?: string;
         }>(url);
 
         const data = response.data || [];
         const isUserInGroup = response.isUserInGroup || false;
-        return { travellers: data, isUserInGroup };
+        const userGroupId = response.userGroupId ?? null;
+        return { travellers: data, isUserInGroup, userGroupId };
       } catch (error) {
         console.error("Failed to fetch travellers:", error);
-        return { travellers: [], isUserInGroup: false };
+        return { travellers: [], isUserInGroup: false, userGroupId: null };
       }
     },
     [sessionRequest],
@@ -88,32 +94,66 @@ export function useGetTravellerApi() {
   );
 
   const fetchGroupMembers = useCallback(
-    async (groupId: string, count?: number): Promise<Traveller[]> => {
-      // TODO: Replace with actual API call
-      await new Promise((resolve) => setTimeout(resolve, 600)); // Fake delay
-      // Return a subset of travellers as group members matching the requested count
-      const requestedCount = count || Math.floor(Math.random() * 3) + 2;
-
-      // If we need more members than we have dummy data for, repeat the list
-      const result: Traveller[] = [];
-      while (result.length < requestedCount) {
-        const remaining = requestedCount - result.length;
-        const slice = dummyTravellers.slice(
-          0,
-          Math.min(remaining, dummyTravellers.length),
-        );
-
-        // Deep clone to provide unique IDs for repeated items
-        const clonedSlice = slice.map((t, idx) => ({
-          ...t,
-          id: `${t.id}_${result.length + idx}`,
-        }));
-
-        result.push(...clonedSlice);
+    async (groupId: string): Promise<Traveller[]> => {
+      if (!groupId) return [];
+      try {
+        const url = `${API_ROUTES.GROUP_MEMBERS}/${encodeURIComponent(groupId)}`;
+        const response = await sessionRequest<{
+          ok: boolean;
+          data: Array<{
+            id: string;
+            name: string;
+            gender: "Male" | "Female" | "Other";
+            destination: string;
+            terminal: string;
+            flightNumber: string;
+          }>;
+        }>(url);
+        const data = response.data ?? [];
+        return data.map((m) => ({
+          id: m.id,
+          name: m.name,
+          gender: m.gender,
+          destination: m.destination,
+          terminal: m.terminal,
+          flightNumber: m.flightNumber,
+          airportName: "",
+          flightDateTime: new Date(),
+          distanceFromUserKm: 0,
+          username: "",
+        })) as Traveller[];
+      } catch (error) {
+        console.error("Failed to fetch group members:", error);
+        return [];
       }
-      return result;
     },
-    [],
+    [sessionRequest],
+  );
+
+  const leaveGroup = useCallback(
+    async (groupId: string): Promise<{ ok: boolean; error?: string }> => {
+      try {
+        const response = await sessionRequest<{
+          ok: boolean;
+          message?: string;
+          error?: string;
+        }>(API_ROUTES.LEAVE_GROUP, {
+          method: "POST",
+          body: JSON.stringify({ groupId }),
+        });
+        if (!response.ok) {
+          return { ok: false, error: response.error ?? "Failed to leave group" };
+        }
+        return { ok: true };
+      } catch (error) {
+        console.error("Leave group error:", error);
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : "Failed to leave group",
+        };
+      }
+    },
+    [sessionRequest],
   );
 
   return {
@@ -121,6 +161,7 @@ export function useGetTravellerApi() {
     fetchGroups,
     fetchGroupMembers,
     fetchUserDestination,
+    leaveGroup,
     loading,
   };
 }

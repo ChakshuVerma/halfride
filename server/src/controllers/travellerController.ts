@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { admin } from "../firebase/admin";
 import {
   COLLECTIONS,
+  FLIGHT_FIELDS,
   GROUP_FIELDS,
   TRAVELLER_FIELDS,
   USER_FIELDS,
@@ -14,6 +15,8 @@ import { roadDistanceBetweenTwoPoints } from "../utils/controllerUtils";
 import {
   notifyUserOfConnectionRequest,
   notifyConnectionRequestResponded,
+  notifyGroupMembersMemberLeft,
+  notifyGroupDisbanded,
 } from "./notificationController";
 
 export async function getTravellersByAirport(req: Request, res: Response) {
@@ -36,6 +39,7 @@ export async function getTravellersByAirport(req: Request, res: Response) {
     // 1. Fetch current user data to check if they are already in a group
     let currentUserTravellerData: any = null;
     let isUserInGroup = false;
+    let userGroupId: string | null = null;
 
     if (uid) {
       const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
@@ -53,8 +57,10 @@ export async function getTravellersByAirport(req: Request, res: Response) {
 
       if (!currentUserSnapshot.empty) {
         currentUserTravellerData = currentUserSnapshot.docs[0].data();
-        if (currentUserTravellerData[TRAVELLER_FIELDS.GROUP_REF]) {
+        const groupRef = currentUserTravellerData[TRAVELLER_FIELDS.GROUP_REF];
+        if (groupRef?.id) {
           isUserInGroup = true;
+          userGroupId = groupRef.id;
         }
       }
     }
@@ -72,7 +78,12 @@ export async function getTravellersByAirport(req: Request, res: Response) {
       .get();
 
     if (snapshot.empty) {
-      return res.json({ ok: true, data: [], isUserInGroup });
+      return res.json({
+        ok: true,
+        data: [],
+        isUserInGroup,
+        userGroupId: userGroupId ?? undefined,
+      });
     }
 
     // 3. Resolve Relationships (Fetch User and Flight data for each record)
@@ -149,7 +160,12 @@ export async function getTravellersByAirport(req: Request, res: Response) {
     );
 
     const filteredResults = results.filter((result) => result.id !== uid);
-    return res.json({ ok: true, data: filteredResults, isUserInGroup }); // Added isUserInGroup
+    return res.json({
+      ok: true,
+      data: filteredResults,
+      isUserInGroup,
+      userGroupId: userGroupId ?? undefined,
+    });
   } catch (error: any) {
     console.error("Fetch Travellers Error:", error.message);
     return res.status(500).json({ ok: false, error: "Internal Server Error" });
@@ -484,7 +500,6 @@ export async function respondToConnectionRequest(req: Request, res: Response) {
     const groupRef = db.collection(COLLECTIONS.GROUPS).doc();
     await groupRef.set({
       [GROUP_FIELDS.GROUP_ID]: groupRef.id,
-      [GROUP_FIELDS.ADMIN_REF]: recipientUserRef,
       [GROUP_FIELDS.MEMBERS]: [recipientUserRef, requesterUserRef],
       [GROUP_FIELDS.PENDING_REQUESTS]: [],
       [GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT]: flightArrival,
@@ -617,6 +632,198 @@ export async function getGroupsByAirport(req: Request, res: Response) {
     return res.json({ ok: true, data: results });
   } catch (error: any) {
     console.error("Get groups by airport error:", error.message);
+    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+  }
+}
+
+/**
+ * GET /group-members/:groupId
+ * Returns the list of group members as traveller-like objects (id, name, gender, destination, flightNumber, terminal).
+ */
+export async function getGroupMembers(req: Request, res: Response) {
+  const rawId = req.params.groupId;
+  const groupId =
+    typeof rawId === "string" ? rawId.trim() : Array.isArray(rawId) ? rawId[0]?.trim() ?? "" : "";
+
+  if (!groupId) {
+    return res
+      .status(400)
+      .json({ ok: false, message: "Group ID is required" });
+  }
+
+  const db = admin.firestore();
+  const groupRef = db.collection(COLLECTIONS.GROUPS).doc(groupId);
+
+  try {
+    const groupSnap = await groupRef.get();
+    if (!groupSnap.exists) {
+      return res.status(404).json({ ok: false, error: "Group not found" });
+    }
+
+    const data = groupSnap.data();
+    const members: admin.firestore.DocumentReference[] =
+      data?.[GROUP_FIELDS.MEMBERS] || [];
+
+    if (members.length === 0) {
+      return res.json({ ok: true, data: [] });
+    }
+
+    const memberDetails = await Promise.all(
+      members.map(
+        async (userRef: admin.firestore.DocumentReference) => {
+          const travellerSnap = await db
+            .collection(COLLECTIONS.TRAVELLER_DATA)
+            .where(TRAVELLER_FIELDS.USER_REF, "==", userRef)
+            .where(TRAVELLER_FIELDS.GROUP_REF, "==", groupRef)
+            .limit(1)
+            .get();
+
+          if (travellerSnap.empty) {
+            const userSnap = await userRef.get();
+            const user = userSnap.data();
+            return {
+              id: userRef.id,
+              name: `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim() || "Unknown",
+              gender: user?.[USER_FIELDS.IS_FEMALE] ? "Female" : "Male",
+              destination: "N/A",
+              terminal: "N/A",
+              flightNumber: "—",
+            };
+          }
+
+          const trav = travellerSnap.docs[0].data();
+          const [userSnap, flightSnap] = await Promise.all([
+            (trav[TRAVELLER_FIELDS.USER_REF] as admin.firestore.DocumentReference).get(),
+            (trav[TRAVELLER_FIELDS.FLIGHT_REF] as admin.firestore.DocumentReference).get(),
+          ]);
+          const user = userSnap.data();
+          const flight = flightSnap.data();
+          const dest = trav[TRAVELLER_FIELDS.DESTINATION];
+          const destinationAddress =
+            typeof dest === "string"
+              ? dest
+              : (dest?.address ?? "N/A");
+
+          return {
+            id: userRef.id,
+            name: `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim() || "Unknown",
+            gender: user?.[USER_FIELDS.IS_FEMALE] ? "Female" : "Male",
+            destination: destinationAddress,
+            terminal: trav[TRAVELLER_FIELDS.TERMINAL] || "N/A",
+            flightNumber:
+              `${flight?.[FLIGHT_FIELDS.CARRIER] ?? ""} ${flight?.[FLIGHT_FIELDS.FLIGHT_NUMBER] ?? ""}`.trim() || "—",
+          };
+        },
+      ),
+    );
+
+    return res.json({ ok: true, data: memberDetails });
+  } catch (error: any) {
+    console.error("Get group members error:", error.message);
+    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+  }
+}
+
+/**
+ * Clear groupRef from a user's active traveller_data that points to the given group.
+ */
+async function clearUserGroupRef(
+  db: admin.firestore.Firestore,
+  userRef: admin.firestore.DocumentReference,
+  groupRef: admin.firestore.DocumentReference,
+): Promise<void> {
+  const snapshot = await db
+    .collection(COLLECTIONS.TRAVELLER_DATA)
+    .where(TRAVELLER_FIELDS.USER_REF, "==", userRef)
+    .where(TRAVELLER_FIELDS.GROUP_REF, "==", groupRef)
+    .limit(1)
+    .get();
+  if (!snapshot.empty) {
+    await snapshot.docs[0].ref.update({
+      [TRAVELLER_FIELDS.GROUP_REF]: null,
+    });
+  }
+}
+
+/**
+ * POST /leave-group
+ * Body: { groupId: string }
+ * Leaves the group, notifies other members. If size becomes 1, disbands and notifies the last member.
+ */
+export async function leaveGroup(req: Request, res: Response) {
+  const { groupId } = req.body as { groupId?: string };
+  const uid = req.auth?.uid;
+
+  if (!uid) {
+    return res.status(401).json({ ok: false, error: "Unauthorized" });
+  }
+
+  if (!groupId || typeof groupId !== "string" || !groupId.trim()) {
+    return res
+      .status(400)
+      .json({ ok: false, error: "groupId is required" });
+  }
+
+  const db = admin.firestore();
+  const groupRef = db.collection(COLLECTIONS.GROUPS).doc(groupId.trim());
+
+  try {
+    const groupSnap = await groupRef.get();
+    if (!groupSnap.exists) {
+      return res.status(404).json({ ok: false, error: "Group not found" });
+    }
+
+    const data = groupSnap.data();
+    const members: admin.firestore.DocumentReference[] =
+      data?.[GROUP_FIELDS.MEMBERS] || [];
+
+    const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
+    const isMember = members.some((ref: admin.firestore.DocumentReference) => ref.id === uid);
+    if (!isMember) {
+      return res
+        .status(403)
+        .json({ ok: false, error: "You are not a member of this group" });
+    }
+
+    const remainingMembers = members.filter(
+      (ref: admin.firestore.DocumentReference) => ref.id !== uid,
+    );
+
+    await clearUserGroupRef(db, userRef, groupRef);
+
+    // If 0 or 1 remaining: delete group. If 1 remaining, clear their groupRef and send disband notification.
+    if (remainingMembers.length <= 1) {
+      if (remainingMembers.length === 1) {
+        const lastMemberRef = remainingMembers[0];
+        await clearUserGroupRef(db, lastMemberRef, groupRef);
+        await notifyGroupDisbanded(lastMemberRef.id, groupId.trim());
+      }
+      await groupRef.delete();
+      return res.json({
+        ok: true,
+        message:
+          remainingMembers.length === 1
+            ? "Left group. Group disbanded."
+            : "Left group. Group removed.",
+      });
+    }
+
+    await groupRef.update({
+      [GROUP_FIELDS.MEMBERS]: remainingMembers,
+      [GROUP_FIELDS.UPDATED_AT]: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    const remainingIds = remainingMembers.map(
+      (ref: admin.firestore.DocumentReference) => ref.id,
+    );
+    await notifyGroupMembersMemberLeft(remainingIds, uid, groupId.trim());
+
+    return res.json({
+      ok: true,
+      message: "Left group. Other members notified.",
+    });
+  } catch (error: any) {
+    console.error("Leave group error:", error.message);
     return res.status(500).json({ ok: false, error: "Internal Server Error" });
   }
 }

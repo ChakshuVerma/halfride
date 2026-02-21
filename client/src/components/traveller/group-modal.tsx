@@ -3,7 +3,6 @@ import { DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import {
   UsersRound,
   User,
-  MapPin,
   Users,
   ArrowRight,
   Loader2,
@@ -21,6 +20,7 @@ const CONSTANTS = {
     FLIGHT_PREFIX: "Flight",
     SEPARATOR_DOT: " • ",
     JOIN: "Join Group",
+    LEAVE_GROUP: "Leave Group",
     MEMBERS: "Members",
     NO_MEMBERS: "No members found",
     USERS_Lower: "users",
@@ -43,12 +43,22 @@ const CONSTANTS = {
 
 type GroupModalProps = {
   group: Group;
+  /** True when the current user is a member of this group. */
+  isCurrentUserInGroup?: boolean;
+  /** Called after user successfully leaves the group. Use to close modal and refetch list. */
+  onLeaveGroup?: () => void;
 };
 
-export function GroupModal({ group }: GroupModalProps) {
-  const { fetchGroupMembers, loading } = useGetTravellerApi();
+export function GroupModal({
+  group,
+  isCurrentUserInGroup = false,
+  onLeaveGroup,
+}: GroupModalProps) {
+  const { fetchGroupMembers, leaveGroup } = useGetTravellerApi();
   const [members, setMembers] = useState<Traveller[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [leaveLoading, setLeaveLoading] = useState(false);
+  const [leaveError, setLeaveError] = useState<string | null>(null);
 
   const capacityPercentage = Math.round(
     (group.groupSize / group.maxUsers) * 100,
@@ -59,7 +69,7 @@ export function GroupModal({ group }: GroupModalProps) {
     const loadMembers = async () => {
       setIsLoadingMembers(true);
       try {
-        const data = await fetchGroupMembers(group.id, group.groupSize);
+        const data = await fetchGroupMembers(group.id);
         setMembers(data);
       } catch (err) {
         console.error(CONSTANTS.LOGS.LOAD_FAILED, err);
@@ -177,19 +187,6 @@ export function GroupModal({ group }: GroupModalProps) {
           </div>
         </div>
 
-        {/* Destinations */}
-        <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-muted/10 border border-border/10">
-          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
-            <MapPin className="w-3 h-3" />
-            Destinations
-          </div>
-          <p className="text-sm font-medium text-foreground">
-            {group.destinations?.length
-              ? group.destinations.join(", ")
-              : "—"}
-          </p>
-        </div>
-
         {/* Gender Distribution */}
         <div className="rounded-xl bg-muted/5 border border-border/10 p-3 space-y-2.5">
           <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest block">
@@ -248,30 +245,61 @@ export function GroupModal({ group }: GroupModalProps) {
           </div>
         </div>
 
-        {/* Action Button */}
-        <div className="pt-1">
-          <button
-            disabled={isFull}
-            className={`w-full group relative overflow-hidden rounded-xl px-4 py-2.5 transition-all
-              ${
-                isFull
-                  ? "bg-muted text-muted-foreground cursor-not-allowed"
-                  : "bg-primary text-primary-foreground hover:shadow-lg hover:shadow-primary/25 active:scale-[0.99]"
-              }`}
-            onClick={() => {
-              console.log(CONSTANTS.LOGS.JOIN_CLICKED, group.name);
-            }}
-          >
-            {!isFull && (
-              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+        {/* Action Buttons */}
+        <div className="pt-1 space-y-2">
+          {leaveError && (
+            <p className="text-sm text-destructive font-medium">{leaveError}</p>
+          )}
+          <div className="flex gap-2">
+            {isCurrentUserInGroup && (
+              <button
+                type="button"
+                className="flex-1 border border-border rounded-xl px-4 py-2.5 text-sm font-bold text-muted-foreground hover:bg-muted/50 transition-all disabled:opacity-50"
+                disabled={leaveLoading}
+                onClick={async () => {
+                  setLeaveError(null);
+                  setLeaveLoading(true);
+                  const result = await leaveGroup(group.id);
+                  setLeaveLoading(false);
+                  if (result.ok) {
+                    onLeaveGroup?.();
+                  } else {
+                    setLeaveError(result.error ?? "Failed to leave group");
+                  }
+                }}
+              >
+                {leaveLoading ? (
+                  <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                ) : (
+                  CONSTANTS.LABELS.LEAVE_GROUP
+                )}
+              </button>
             )}
-            <span className="relative flex items-center justify-center gap-2 font-bold text-sm tracking-wide">
-              {isFull ? CONSTANTS.LABELS.GROUP_FULL : CONSTANTS.LABELS.JOIN}
-              {!isFull && (
-                <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-              )}
-            </span>
-          </button>
+            {!isCurrentUserInGroup && (
+              <button
+                disabled={isFull}
+                className={`flex-1 group relative overflow-hidden rounded-xl px-4 py-2.5 transition-all
+                ${
+                  isFull
+                    ? "bg-muted text-muted-foreground cursor-not-allowed"
+                    : "bg-primary text-primary-foreground hover:shadow-lg hover:shadow-primary/25 active:scale-[0.99]"
+                }`}
+                onClick={() => {
+                  console.log(CONSTANTS.LOGS.JOIN_CLICKED, group.name);
+                }}
+              >
+                {!isFull && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                )}
+                <span className="relative flex items-center justify-center gap-2 font-bold text-sm tracking-wide">
+                  {isFull ? CONSTANTS.LABELS.GROUP_FULL : CONSTANTS.LABELS.JOIN}
+                  {!isFull && (
+                    <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                  )}
+                </span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

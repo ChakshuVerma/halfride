@@ -23,9 +23,11 @@ export const API_ROUTES = {
   // Traveller routes
   TRAVELLERS_BY_AIRPORT: `${API_BASE_URL}/travellers-by-airport`,
   GROUPS_BY_AIRPORT: `${API_BASE_URL}/groups-by-airport`,
+  GROUP_MEMBERS: `${API_BASE_URL}/group-members`,
   CHECK_LISTING: `${API_BASE_URL}/check-listing`,
   REQUEST_CONNECTION: `${API_BASE_URL}/request-connection`,
   RESPOND_TO_CONNECTION: `${API_BASE_URL}/respond-to-connection`,
+  LEAVE_GROUP: `${API_BASE_URL}/leave-group`,
 
   // Airport routes
   AIRPORTS: `${API_BASE_URL}/airports`,
