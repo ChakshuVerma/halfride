@@ -84,8 +84,8 @@ export interface GroupSchema {
   adminRef: any; // DocumentReference to users
   members: any[]; // Array of DocumentReference to users
   pendingRequests: any[]; // Array of DocumentReference to users
-  flightId?: string;
-  destination?: string;
+  /** Airport code (e.g. DEL) for querying groups by airport. Members may be from different flights/terminals. */
+  flightArrivalAirport?: string;
   createdAt: any;
   updatedAt: any;
 }
@@ -158,8 +158,7 @@ export const GROUP_FIELDS = {
   ADMIN_REF: "adminRef",
   MEMBERS: "members",
   PENDING_REQUESTS: "pendingRequests",
-  FLIGHT_ID: "flightId",
-  DESTINATION: "destination",
+  FLIGHT_ARRIVAL_AIRPORT: "flightArrivalAirport",
   CREATED_AT: "createdAt",
   UPDATED_AT: "updatedAt",
 } as const;

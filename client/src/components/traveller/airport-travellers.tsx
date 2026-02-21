@@ -176,7 +176,10 @@ const AirportTravellers = () => {
         setTravellers(fetchedTravellers);
         setIsUserInGroup(isUserInGroup);
       } else {
-        const fetchedGroups = await fetchGroups(selectedAirport.airportCode);
+        const fetchedGroups = await fetchGroups(
+          selectedAirport.airportCode,
+          selectedAirport.airportName,
+        );
         setGroups(fetchedGroups);
       }
       setInitialDataFetchCompleted(true);
@@ -212,13 +215,17 @@ const AirportTravellers = () => {
 
   const handleConnectionResponded = useCallback(async () => {
     if (selectedAirport?.airportCode) {
-      const { travellers: fetchedTravellers, isUserInGroup } =
-        await fetchTravellers(selectedAirport.airportCode);
-      setTravellers(fetchedTravellers);
-      setIsUserInGroup(isUserInGroup);
+      const code = selectedAirport.airportCode;
+      const [travellersResult, fetchedGroups] = await Promise.all([
+        fetchTravellers(code),
+        fetchGroups(code, selectedAirport.airportName),
+      ]);
+      setTravellers(travellersResult.travellers);
+      setIsUserInGroup(travellersResult.isUserInGroup);
+      setGroups(fetchedGroups);
     }
     setSelectedEntity(null);
-  }, [selectedAirport?.airportCode, fetchTravellers]);
+  }, [selectedAirport?.airportCode, selectedAirport?.airportName, fetchTravellers, fetchGroups]);
 
   const ListSectionWrapper = useCallback(() => {
     if (!selectedAirport) return null;
@@ -236,13 +243,25 @@ const AirportTravellers = () => {
     );
     let processedGroups = groups;
 
-    const sortFn = (a: any, b: any) => {
-      if (sortBy === CONSTANTS.VALUES.DISTANCE)
-        return a.distanceFromUserKm - b.distanceFromUserKm;
-      return (
-        new Date(a.flightDateTime).getTime() -
-        new Date(b.flightDateTime).getTime()
-      );
+    const sortFn = (a: Traveller | Group, b: Traveller | Group) => {
+      if (sortBy === CONSTANTS.VALUES.DISTANCE) {
+        const aDist = "distanceFromUserKm" in a ? a.distanceFromUserKm : 0;
+        const bDist = "distanceFromUserKm" in b ? b.distanceFromUserKm : 0;
+        return aDist - bDist;
+      }
+      const aTime =
+        "flightDateTime" in a && a.flightDateTime
+          ? new Date(a.flightDateTime).getTime()
+          : "createdAt" in a && a.createdAt
+            ? new Date(a.createdAt).getTime()
+            : 0;
+      const bTime =
+        "flightDateTime" in b && b.flightDateTime
+          ? new Date(b.flightDateTime).getTime()
+          : "createdAt" in b && b.createdAt
+            ? new Date(b.createdAt).getTime()
+            : 0;
+      return aTime - bTime;
     };
 
     isIndividual

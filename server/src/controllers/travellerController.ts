@@ -1,6 +1,11 @@
 import type { Request, Response } from "express";
 import { admin } from "../firebase/admin";
-import { COLLECTIONS, GROUP_FIELDS, TRAVELLER_FIELDS } from "../constants/db";
+import {
+  COLLECTIONS,
+  GROUP_FIELDS,
+  TRAVELLER_FIELDS,
+  USER_FIELDS,
+} from "../constants/db";
 import {
   ConnectionResponseAction,
   parseConnectionResponseAction,
@@ -231,9 +236,10 @@ export async function requestConnection(req: Request, res: Response) {
   }
 
   if (!isNonEmptyString(travellerUid)) {
-    return res
-      .status(400)
-      .json({ ok: false, error: "Traveller UID is required and must be a non-empty string" });
+    return res.status(400).json({
+      ok: false,
+      error: "Traveller UID is required and must be a non-empty string",
+    });
   }
   const travellerUidTrimmed = travellerUid.trim();
   if (travellerUidTrimmed.length > UID_MAX_LENGTH) {
@@ -243,14 +249,16 @@ export async function requestConnection(req: Request, res: Response) {
   }
 
   if (!isNonEmptyString(flightCarrier)) {
-    return res
-      .status(400)
-      .json({ ok: false, error: "Flight carrier is required and must be a non-empty string" });
+    return res.status(400).json({
+      ok: false,
+      error: "Flight carrier is required and must be a non-empty string",
+    });
   }
   if (!isNonEmptyString(flightNumber)) {
-    return res
-      .status(400)
-      .json({ ok: false, error: "Flight number is required and must be a non-empty string" });
+    return res.status(400).json({
+      ok: false,
+      error: "Flight number is required and must be a non-empty string",
+    });
   }
   const flightCarrierTrimmed = (flightCarrier as string).trim();
   const flightNumberTrimmed = (flightNumber as string).trim();
@@ -261,12 +269,19 @@ export async function requestConnection(req: Request, res: Response) {
       .json({ ok: false, error: "Cannot connect with yourself" });
   }
 
-  console.log(travellerUidTrimmed, flightCarrierTrimmed, flightNumberTrimmed, requesterUid);
+  console.log(
+    travellerUidTrimmed,
+    flightCarrierTrimmed,
+    flightNumberTrimmed,
+    requesterUid,
+  );
 
   const db = admin.firestore();
 
   try {
-    const travellerUserRef = db.collection(COLLECTIONS.USERS).doc(travellerUidTrimmed);
+    const travellerUserRef = db
+      .collection(COLLECTIONS.USERS)
+      .doc(travellerUidTrimmed);
     const requesterUserRef = db.collection(COLLECTIONS.USERS).doc(requesterUid);
 
     const travellerUserSnap = await travellerUserRef.get();
@@ -355,23 +370,19 @@ export async function respondToConnectionRequest(req: Request, res: Response) {
   }
 
   if (!isNonEmptyString(rawRequesterUserId)) {
-    return res
-      .status(400)
-      .json({
-        ok: false,
-        error: "requesterUserId is required and must be a non-empty string",
-      });
+    return res.status(400).json({
+      ok: false,
+      error: "requesterUserId is required and must be a non-empty string",
+    });
   }
   const requesterUserId = (rawRequesterUserId as string).trim();
 
   const action = parseConnectionResponseAction(rawAction);
   if (action === null) {
-    return res
-      .status(400)
-      .json({
-        ok: false,
-        error: `action must be '${ConnectionResponseAction.ACCEPT}' or '${ConnectionResponseAction.REJECT}' (case-insensitive)`,
-      });
+    return res.status(400).json({
+      ok: false,
+      error: `action must be '${ConnectionResponseAction.ACCEPT}' or '${ConnectionResponseAction.REJECT}' (case-insensitive)`,
+    });
   }
 
   if (requesterUserId === recipientUid) {
@@ -381,7 +392,9 @@ export async function respondToConnectionRequest(req: Request, res: Response) {
   }
 
   const db = admin.firestore();
-  const requesterUserRef = db.collection(COLLECTIONS.USERS).doc(requesterUserId);
+  const requesterUserRef = db
+    .collection(COLLECTIONS.USERS)
+    .doc(requesterUserId);
   const recipientUserRef = db.collection(COLLECTIONS.USERS).doc(recipientUid);
 
   try {
@@ -402,9 +415,10 @@ export async function respondToConnectionRequest(req: Request, res: Response) {
       .get();
 
     if (recipientSnapshot.empty) {
-      return res
-        .status(404)
-        .json({ ok: false, error: "No active traveller listing found for you" });
+      return res.status(404).json({
+        ok: false,
+        error: "No active traveller listing found for you",
+      });
     }
 
     const recipientDoc = recipientSnapshot.docs[0];
@@ -458,19 +472,22 @@ export async function respondToConnectionRequest(req: Request, res: Response) {
     if (requesterSnapshot.empty) {
       return res.status(404).json({
         ok: false,
-        error: "Requester's trip not found for this airport (may have been removed)",
+        error:
+          "Requester's trip not found for this airport (may have been removed)",
       });
     }
 
     const requesterTravellerDoc = requesterSnapshot.docs[0];
 
-    // 3. Create group with both users
+    // 3. Create group with both users. Groups can have members from different
+    // flights/terminals, so we only store the airport (flightArrivalAirport) for querying.
     const groupRef = db.collection(COLLECTIONS.GROUPS).doc();
     await groupRef.set({
       [GROUP_FIELDS.GROUP_ID]: groupRef.id,
       [GROUP_FIELDS.ADMIN_REF]: recipientUserRef,
       [GROUP_FIELDS.MEMBERS]: [recipientUserRef, requesterUserRef],
       [GROUP_FIELDS.PENDING_REQUESTS]: [],
+      [GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT]: flightArrival,
       [GROUP_FIELDS.CREATED_AT]: admin.firestore.FieldValue.serverTimestamp(),
       [GROUP_FIELDS.UPDATED_AT]: admin.firestore.FieldValue.serverTimestamp(),
     });
@@ -501,6 +518,105 @@ export async function respondToConnectionRequest(req: Request, res: Response) {
     });
   } catch (error: any) {
     console.error("Respond to connection request error:", error.message);
+    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+  }
+}
+
+/**
+ * GET /groups-by-airport/:airportCode
+ * Returns groups at the given airport. Members can be from different flights/terminals.
+ */
+export async function getGroupsByAirport(req: Request, res: Response) {
+  const { airportCode } = req.params;
+
+  if (!airportCode) {
+    return res
+      .status(400)
+      .json({ ok: false, message: "Airport code is required" });
+  }
+
+  const db = admin.firestore();
+  const code = String(airportCode).toUpperCase();
+
+  try {
+    const snapshot = await db
+      .collection(COLLECTIONS.GROUPS)
+      .where(GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT, "==", code)
+      .get();
+
+    if (snapshot.empty) {
+      return res.json({ ok: true, data: [] });
+    }
+
+    const results = await Promise.all(
+      snapshot.docs.map(async (doc) => {
+        const data = doc.data();
+        const members: admin.firestore.DocumentReference[] =
+          data[GROUP_FIELDS.MEMBERS] || [];
+        const groupSize = members.length;
+
+        let male = 0;
+        let female = 0;
+        const destinations: string[] = [];
+
+        if (members.length > 0) {
+          const [userSnaps, ...travellerSnaps] = await Promise.all([
+            Promise.all(
+              members.map((ref: admin.firestore.DocumentReference) => ref.get()),
+            ),
+            ...members.map((memberRef: admin.firestore.DocumentReference) =>
+              db
+                .collection(COLLECTIONS.TRAVELLER_DATA)
+                .where(TRAVELLER_FIELDS.USER_REF, "==", memberRef)
+                .where(TRAVELLER_FIELDS.FLIGHT_ARRIVAL, "==", code)
+                .limit(1)
+                .get(),
+            ),
+          ]);
+
+          (userSnaps as admin.firestore.DocumentSnapshot[]).forEach((snap) => {
+            const userData = snap.data();
+            if (userData?.[USER_FIELDS.IS_FEMALE]) female++;
+            else male++;
+          });
+
+          (travellerSnaps as admin.firestore.QuerySnapshot[]).forEach(
+            (tSnap) => {
+              if (!tSnap.empty) {
+                const tData = tSnap.docs[0].data();
+                const dest = tData[TRAVELLER_FIELDS.DESTINATION];
+                const addr =
+                  typeof dest === "string"
+                    ? dest
+                    : (dest?.address ?? "N/A");
+                destinations.push(addr);
+              } else {
+                destinations.push("N/A");
+              }
+            },
+          );
+        }
+
+        const createdAt = data[GROUP_FIELDS.CREATED_AT];
+        const createdAtISO =
+          createdAt?.toDate?.()?.toISOString?.() ?? new Date().toISOString();
+
+        return {
+          id: doc.id,
+          name: `Group of ${groupSize}`,
+          airportCode: code,
+          destinations,
+          groupSize,
+          maxUsers: 6,
+          genderBreakdown: { male, female },
+          createdAt: createdAtISO,
+        };
+      }),
+    );
+
+    return res.json({ ok: true, data: results });
+  } catch (error: any) {
+    console.error("Get groups by airport error:", error.message);
     return res.status(500).json({ ok: false, error: "Internal Server Error" });
   }
 }

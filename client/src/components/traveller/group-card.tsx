@@ -1,17 +1,14 @@
-import { Users, MapPin, CalendarRange, ArrowRight } from "lucide-react";
+import { Users, MapPin, ArrowRight } from "lucide-react";
 import type { Group } from "./types";
-import { formatWaitTime } from "./utils";
 
 const CONSTANTS = {
   LABELS: {
     SEATS: "seats",
     CAPACITY: "Capacity",
-    TERMINAL: "Terminal",
-    DESTINATION: "Destination",
-    WAIT_TIME: "Wait",
+    DESTINATIONS: "Destinations",
+    CREATED: "Created",
   },
   UNITS: {
-    KM: "km",
     PERCENT: "%",
   },
   SUFFIX: {
@@ -111,50 +108,41 @@ export function GroupCard({ group, onClick }: GroupCardProps) {
       {/* Bottom Section - White Background */}
       <div className="flex-1 p-0 bg-white dark:bg-black/20">
         {/* Info Grid */}
-        <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {/* Terminal */}
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Destinations */}
           <div className="flex flex-col gap-1">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
-              <MapPin className="w-3 h-3" /> {CONSTANTS.LABELS.TERMINAL}
+              <MapPin className="w-3 h-3" /> {CONSTANTS.LABELS.DESTINATIONS}
             </span>
             <span
               className="text-xs font-bold text-foreground truncate"
-              title={group.terminal}
+              title={group.destinations?.join(", ") ?? ""}
             >
-              {group.terminal}
+              {group.destinations?.length
+                ? group.destinations.join(", ")
+                : "—"}
             </span>
           </div>
 
-          {/* Destination */}
+          {/* Created */}
           <div className="flex flex-col gap-1 sm:border-l border-zinc-100 sm:pl-3 pt-2 sm:pt-0 border-t sm:border-t-0 dark:border-white/5">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
-              <MapPin className="w-3 h-3" /> {CONSTANTS.LABELS.DESTINATION}
-            </span>
-            <span
-              className="text-xs font-bold text-foreground truncate"
-              title={group.destination}
-            >
-              {group.destination}
-            </span>
-          </div>
-
-          {/* Wait */}
-          <div className="flex flex-col gap-1 sm:border-l border-zinc-100 sm:pl-3 pt-2 sm:pt-0 border-t sm:border-t-0 dark:border-white/5">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
-              <CalendarRange className="w-3 h-3" /> {CONSTANTS.LABELS.WAIT_TIME}
+              {CONSTANTS.LABELS.CREATED}
             </span>
             <span className="text-xs font-bold text-foreground">
-              {formatWaitTime(group.flightDateTime)}
+              {group.createdAt
+                ? new Date(group.createdAt).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : "—"}
             </span>
           </div>
         </div>
 
         {/* Action Footer */}
-        <div className="px-4 py-3 bg-zinc-50/30 border-t border-zinc-100 dark:bg-zinc-900/30 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0 transition-colors duration-300">
-          <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 w-full sm:w-auto justify-center sm:justify-start">
-            <MapPin className="w-3.5 h-3.5 text-primary" />
-            {group.distanceFromUserKm} {CONSTANTS.UNITS.KM}
-          </span>
+        <div className="px-4 py-3 bg-zinc-50/30 border-t border-zinc-100 dark:bg-zinc-900/30 dark:border-white/5 flex flex-col sm:flex-row items-center justify-end gap-3 sm:gap-0 transition-colors duration-300">
           <button
             onClick={(e) => {
               e.stopPropagation();

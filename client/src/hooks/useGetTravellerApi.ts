@@ -2,10 +2,10 @@ import { useCallback } from "react";
 import { useApi } from "./useApi";
 import { API_ROUTES } from "@/lib/apiRoutes";
 import type { Traveller, Group } from "@/components/traveller/types";
-import { dummyTravellers, dummyGroups } from "@/data/mockTravellerData";
+import { dummyTravellers } from "@/data/mockTravellerData";
 
 export function useGetTravellerApi() {
-  const { sessionRequest, loading, dummyReq } = useApi();
+  const { sessionRequest, loading } = useApi();
 
   const fetchTravellers = useCallback(
     async (
@@ -33,21 +33,41 @@ export function useGetTravellerApi() {
   );
 
   const fetchGroups = useCallback(
-    async (airportName?: string): Promise<Group[]> => {
-      // TODO: Replace with actual API call
-      // return sessionRequest<Group[]>(API_ROUTES.GROUPS, { params: { airportName } })
+    async (airportCode: string, airportName?: string): Promise<Group[]> => {
+      if (!airportCode) return [];
 
-      // Note: Since we are using useApi, we don't manually control loading here.
-      // This dummy delay won't trigger the global loading state from useApi.
-      await dummyReq();
-      let data = dummyGroups;
-      // if (airportName) {
-      //   data = data.filter((g) => g.airportName === airportName);
-      // }
-      console.log(data);
-      return data;
+      try {
+        const url = `${API_ROUTES.GROUPS_BY_AIRPORT}/${encodeURIComponent(airportCode)}`;
+        const response = await sessionRequest<{
+          ok: boolean;
+          data: Array<{
+            id: string;
+            name: string;
+            airportCode: string;
+            destinations: string[];
+            groupSize: number;
+            maxUsers: number;
+            genderBreakdown: { male: number; female: number };
+            createdAt: string;
+          }>;
+        }>(url);
+
+        const data = response.data || [];
+        const name = airportName ?? airportCode;
+        return data.map((g) => ({
+          ...g,
+          airportName: name,
+          createdAt:
+            typeof g.createdAt === "string"
+              ? g.createdAt
+              : new Date(g.createdAt).toISOString(),
+        })) as Group[];
+      } catch (error) {
+        console.error("Failed to fetch groups:", error);
+        return [];
+      }
     },
-    [],
+    [sessionRequest],
   );
 
   const fetchUserDestination = useCallback(

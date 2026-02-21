@@ -4,14 +4,12 @@ import {
   UsersRound,
   User,
   MapPin,
-  Clock,
   Users,
   ArrowRight,
   Loader2,
 } from "lucide-react";
 import { useGetTravellerApi } from "@/hooks/useGetTravellerApi";
 import type { Group, Traveller } from "./types";
-import { formatWaitTime } from "./utils";
 
 const CONSTANTS = {
   LABELS: {
@@ -138,7 +136,14 @@ export function GroupModal({ group }: GroupModalProps) {
               </span>
               <span className="text-muted-foreground/40">•</span>
               <span>
-                {CONSTANTS.LABELS.TERM} {group.terminal}
+                Created{" "}
+                {group.createdAt
+                  ? new Date(group.createdAt).toLocaleDateString(undefined, {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })
+                  : "—"}
               </span>
             </DialogDescription>
           </div>
@@ -172,30 +177,17 @@ export function GroupModal({ group }: GroupModalProps) {
           </div>
         </div>
 
-        {/* Metrics Grid */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/10 border border-border/10">
-            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
-              <MapPin className="w-3 h-3" />
-              {CONSTANTS.LABELS.MIN_DISTANCE}
-            </div>
-            <span className="text-lg font-bold text-foreground">
-              {group.distanceFromUserKm}{" "}
-              <span className="text-xs font-medium text-muted-foreground">
-                {CONSTANTS.UNITS.KM_MIN}
-              </span>
-            </span>
+        {/* Destinations */}
+        <div className="flex flex-col gap-1.5 p-3 rounded-xl bg-muted/10 border border-border/10">
+          <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
+            <MapPin className="w-3 h-3" />
+            Destinations
           </div>
-
-          <div className="flex flex-col gap-1 p-3 rounded-xl bg-muted/10 border border-border/10">
-            <div className="flex items-center gap-1.5 text-[10px] font-semibold text-muted-foreground/60 uppercase tracking-wider">
-              <Clock className="w-3 h-3" />
-              {CONSTANTS.LABELS.WAIT_TIME}
-            </div>
-            <span className="text-lg font-bold text-foreground">
-              {formatWaitTime(group.flightDateTime)}
-            </span>
-          </div>
+          <p className="text-sm font-medium text-foreground">
+            {group.destinations?.length
+              ? group.destinations.join(", ")
+              : "—"}
+          </p>
         </div>
 
         {/* Gender Distribution */}
