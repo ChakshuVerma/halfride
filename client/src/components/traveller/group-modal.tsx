@@ -119,33 +119,30 @@ export function GroupModal({
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-5">
+    <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 min-w-0 max-w-full">
       {/* Header Section */}
       <DialogHeader className="space-y-0 pb-4 border-b border-border/10">
-        <div className="flex items-start gap-4">
+        <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 min-w-0">
           <div className="relative shrink-0">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 border border-black/5 dark:border-white/10 shadow-lg">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 border border-black/5 dark:border-white/10 shadow-lg">
               <UsersRound
-                className="w-6 h-6 text-violet-600 dark:text-violet-400"
+                className="w-5 h-5 sm:w-6 sm:h-6 text-violet-600 dark:text-violet-400"
                 strokeWidth={1.5}
               />
             </div>
           </div>
 
-          <div className="flex-1 min-w-0 space-y-1">
-            <div className="flex items-center justify-between gap-3">
-              <DialogTitle className="text-xl sm:text-2xl font-bold tracking-tight text-foreground/90 truncate">
-                {group.name}
-              </DialogTitle>
-            </div>
-
-            <DialogDescription className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground/80 font-medium">
-              <span className="inline-flex items-center gap-1 bg-muted/30 px-2 py-0.5 rounded-md border border-border/40">
-                <Users className="w-3 h-3" />
+          <div className="flex-1 min-w-0 space-y-1 w-full">
+            <DialogTitle className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-foreground/90 truncate break-words">
+              {group.name}
+            </DialogTitle>
+            <DialogDescription className="flex flex-wrap items-center gap-1.5 text-[11px] sm:text-xs text-muted-foreground/80 font-medium">
+              <span className="inline-flex items-center gap-1 bg-muted/30 px-2 py-0.5 rounded-md border border-border/40 shrink-0">
+                <Users className="w-3 h-3 shrink-0" />
                 {group.groupSize} {CONSTANTS.LABELS.USERS_Lower}
               </span>
-              <span className="text-muted-foreground/40">•</span>
-              <span>
+              <span className="text-muted-foreground/40 shrink-0">•</span>
+              <span className="truncate min-w-0">
                 Created{" "}
                 {group.createdAt
                   ? new Date(group.createdAt).toLocaleDateString(undefined, {
@@ -188,22 +185,22 @@ export function GroupModal({
         </div>
 
         {/* Gender Distribution */}
-        <div className="rounded-xl bg-muted/5 border border-border/10 p-3 space-y-2.5">
+        <div className="rounded-xl bg-muted/5 border border-border/10 p-2.5 sm:p-3 space-y-2 sm:space-y-2.5 min-w-0 overflow-hidden">
           <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest block">
             {CONSTANTS.LABELS.GENDER_DIST}
           </span>
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-1 sm:gap-1.5 min-w-0">
             {renderGenderBar("Male")}
             {renderGenderBar("Female")}
           </div>
         </div>
 
         {/* Group Members List */}
-        <div className="space-y-2.5 pt-2 border-t border-border/10">
+        <div className="space-y-2 sm:space-y-2.5 pt-2 border-t border-border/10 min-w-0">
           <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest block">
             {CONSTANTS.LABELS.MEMBERS} ({members.length})
           </span>
-          <div className="space-y-2 max-h-[160px] overflow-y-auto pr-1">
+          <div className="space-y-2 max-h-[120px] sm:max-h-[160px] overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin">
             {isLoadingMembers ? (
               <div className="flex items-center justify-center py-6 text-primary/80">
                 <Loader2 className="w-6 h-6 animate-spin" />
@@ -212,27 +209,27 @@ export function GroupModal({
               members.map((member) => (
                 <div
                   key={member.id}
-                  className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted/10 transition-colors border border-transparent hover:border-border/5"
+                  className="flex items-center gap-2 sm:gap-3 p-2 rounded-xl hover:bg-muted/10 transition-colors border border-transparent hover:border-border/5 min-w-0"
                 >
                   <div
-                    className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 border shadow-sm ${
+                    className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0 border shadow-sm ${
                       member.gender === CONSTANTS.GENDER.MALE
                         ? "bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/10 text-blue-600"
                         : "bg-gradient-to-br from-pink-500/10 to-pink-500/5 border-pink-500/10 text-pink-600"
                     }`}
                   >
-                    <User className="w-4 h-4" />
+                    <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-foreground truncate">
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <p className="text-xs sm:text-sm font-semibold text-foreground truncate">
                       {member.name}
                     </p>
-                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium">
-                      <span className="bg-muted/30 px-1.5 py-0.5 rounded-md border border-border/20 text-foreground/80">
+                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-zinc-300 scrollbar-track-transparent min-w-0">
+                      <span className="bg-muted/30 px-1.5 py-0.5 rounded-md border border-border/20 text-foreground/80 shrink-0">
                         {member.flightNumber}
                       </span>
-                      <span>•</span>
-                      <span className="truncate">{member.destination}</span>
+                      <span className="shrink-0">•</span>
+                      <span className="whitespace-nowrap">{member.destination}</span>
                     </div>
                   </div>
                 </div>
@@ -246,15 +243,15 @@ export function GroupModal({
         </div>
 
         {/* Action Buttons */}
-        <div className="pt-1 space-y-2">
+        <div className="pt-1 space-y-2 min-w-0">
           {leaveError && (
-            <p className="text-sm text-destructive font-medium">{leaveError}</p>
+            <p className="text-xs sm:text-sm text-destructive font-medium break-words">{leaveError}</p>
           )}
-          <div className="flex gap-2">
+          <div className="flex flex-col-reverse sm:flex-row gap-2">
             {isCurrentUserInGroup && (
               <button
                 type="button"
-                className="flex-1 border border-border rounded-xl px-4 py-2.5 text-sm font-bold text-muted-foreground hover:bg-muted/50 transition-all disabled:opacity-50"
+                className="flex-1 min-w-0 rounded-xl px-4 py-2.5 sm:py-2.5 text-sm font-bold text-white bg-zinc-600 hover:bg-zinc-700 active:bg-zinc-800 transition-colors disabled:opacity-50 disabled:pointer-events-none"
                 disabled={leaveLoading}
                 onClick={async () => {
                   setLeaveError(null);
@@ -278,7 +275,7 @@ export function GroupModal({
             {!isCurrentUserInGroup && (
               <button
                 disabled={isFull}
-                className={`flex-1 group relative overflow-hidden rounded-xl px-4 py-2.5 transition-all
+                className={`flex-1 min-w-0 group relative overflow-hidden rounded-xl px-4 py-2.5 transition-all
                 ${
                   isFull
                     ? "bg-muted text-muted-foreground cursor-not-allowed"

@@ -63,6 +63,8 @@ const MODAL_CONTENT = {
 interface JoinWaitlistModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Called after successfully joining the waitlist. Use to refresh user listing state and traveller list without extra navigation. */
+  onSuccess?: () => void;
   terminals: { id: string; name: string }[];
   currentAirport: { airportName: string; airportCode: string } | undefined;
 }
@@ -70,6 +72,7 @@ interface JoinWaitlistModalProps {
 export function JoinWaitlistModal({
   open,
   onOpenChange,
+  onSuccess,
   terminals,
   currentAirport,
 }: JoinWaitlistModalProps) {
@@ -126,6 +129,7 @@ export function JoinWaitlistModal({
       });
 
       setSuccess(true);
+      onSuccess?.();
       setTimeout(() => {
         onOpenChange(false);
         setSuccess(false);

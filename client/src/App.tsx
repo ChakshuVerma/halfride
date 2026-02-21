@@ -58,6 +58,7 @@ function AppRoutes() {
         <Route element={<ProtectedLayout />}>
           <Route path={ROUTES.DASHBOARD} element={<Dashboard />} />
           <Route path={ROUTES.AIRPORT} element={<AirportTravellers />} />
+          <Route path={ROUTES.AIRPORT_BY_CODE} element={<AirportTravellers />} />
         </Route>
 
         {/* FALLBACK */}

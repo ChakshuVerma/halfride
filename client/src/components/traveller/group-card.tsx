@@ -27,9 +27,11 @@ const CONSTANTS = {
 type GroupCardProps = {
   group: Group;
   onClick: () => void;
+  /** When true, shows "Your group" badge and highlight styling. */
+  isYourGroup?: boolean;
 };
 
-export function GroupCard({ group, onClick }: GroupCardProps) {
+export function GroupCard({ group, onClick, isYourGroup = false }: GroupCardProps) {
   const percentFull = Math.round((group.groupSize / group.maxUsers) * 100);
 
   // Monochromatic/Neutral gradient for group cards (Light Gray)
@@ -38,7 +40,13 @@ export function GroupCard({ group, onClick }: GroupCardProps) {
   const accentColor = "text-violet-600 dark:text-violet-400";
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-[2rem] border border-white/60 shadow-sm transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-white/80 hover:-translate-y-1 dark:border-white/5">
+    <div
+      className={`group flex flex-col overflow-hidden rounded-[2rem] border shadow-sm transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 dark:border-white/5 ${
+        isYourGroup
+          ? "border-violet-400 dark:border-violet-500 ring-2 ring-violet-200 dark:ring-violet-900/50 bg-violet-50/30 dark:bg-violet-950/20"
+          : "border-white/60 hover:border-white/80 dark:border-white/5"
+      }`}
+    >
       {/* Top Section - Gray Background */}
       <div className="relative p-4 sm:p-5 bg-zinc-200/70 dark:bg-zinc-800 border-b border-black/5 dark:border-white/5 transition-colors duration-300">
         {/* Header */}
@@ -51,9 +59,16 @@ export function GroupCard({ group, onClick }: GroupCardProps) {
             </div>
 
             <div className="flex flex-col pt-1">
-              <h3 className="text-lg font-bold text-foreground leading-tight group-hover:text-primary transition-colors line-clamp-1">
-                {group.name}
-              </h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-lg font-bold text-foreground leading-tight group-hover:text-primary transition-colors line-clamp-1">
+                  {group.name}
+                </h3>
+                {isYourGroup && (
+                  <span className="px-2 py-0.5 rounded-full bg-violet-600 text-white text-[10px] font-bold shadow-sm">
+                    Your group
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-2 mt-1">
                 {/* Capacity Pill */}
                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white text-violet-600 border border-zinc-200 text-[10px] font-bold dark:bg-zinc-800 dark:border-zinc-700 dark:text-violet-400 shadow-sm">
