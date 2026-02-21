@@ -22,9 +22,20 @@ export const API_ROUTES = {
 
   // Traveller routes
   TRAVELLERS_BY_AIRPORT: `${API_BASE_URL}/travellers-by-airport`,
+  GROUPS_BY_AIRPORT: `${API_BASE_URL}/groups-by-airport`,
+  GROUP_MEMBERS: `${API_BASE_URL}/group-members`,
   CHECK_LISTING: `${API_BASE_URL}/check-listing`,
+  REQUEST_CONNECTION: `${API_BASE_URL}/request-connection`,
+  RESPOND_TO_CONNECTION: `${API_BASE_URL}/respond-to-connection`,
+  LEAVE_GROUP: `${API_BASE_URL}/leave-group`,
 
   // Airport routes
   AIRPORTS: `${API_BASE_URL}/airports`,
   GET_TERMINALS: `${API_BASE_URL}/terminals`,
+
+  // Notification routes
+  NOTIFICATIONS_SEED: `${API_BASE_URL}/notifications/seed`,
+  NOTIFICATIONS: `${API_BASE_URL}/notifications`,
+  NOTIFICATIONS_UNREAD: `${API_BASE_URL}/notifications/unread-count`,
+  NOTIFICATIONS_READ_ALL: `${API_BASE_URL}/notifications/read-all`,
 } as const;

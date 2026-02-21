@@ -1,45 +1,20 @@
-import { useEffect, useCallback, useState, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-
+import { useEffect, useCallback, useMemo, useState, useRef } from "react";
+import { Card, CardContent } from "../ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select";
 import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogTrigger,
-  DialogTitle,
-  DialogDescription,
-} from "../ui/dialog";
-import {
-  UsersRound,
-  Loader2,
-  ArrowUpDown,
-  User,
-  ChevronsUpDown,
-  Plane,
-  Pencil,
-  Mars,
-  Venus,
-  MapPin,
-  Search,
-  Sparkles,
-} from "lucide-react";
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from "../ui/dialog";
+import { UsersRound, Loader2, ArrowUpDown, User, Plane, Mars, Venus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGetTravellerApi } from "@/hooks/useGetTravellerApi";
 import { useGetAirportsApi, type Airport } from "@/hooks/useGetAirportApi";
+import { useAirportFromUrl } from "@/hooks/useAirportFromUrl";
 import { TravellerCard } from "./traveller-card";
 import { GroupCard } from "./group-card";
 import { TravellerModal } from "./traveller-modal";
 import { GroupModal } from "./group-modal";
 import { JoinWaitlistModal } from "./join-waitlist-modal";
+import { AirportHeader } from "./airport-header";
+import { AirportPickerHero } from "./airport-picker-hero";
 import {
   type Traveller,
   type Group,
@@ -56,8 +31,6 @@ const CONSTANTS = {
     REFRESH_FLIGHT_ERROR: "Could not refresh flight arrival time.",
   },
   LABELS: {
-    AIRPORT: "Airport",
-    SELECT_PLACEHOLDER: "Select airport",
     VIEW: "View",
     INDIVIDUAL: "Individual",
     GROUP: "Group",
@@ -66,13 +39,7 @@ const CONSTANTS = {
     DEPARTING_FROM: "Departing from",
     MIN_DISTANCE: "Distance",
     WAIT_TIME: "Wait Time",
-    SELECT_AIRPORT_TITLE: "Select Airport",
-    SEARCH_AIRPORT_PLACEHOLDER: "Search by city or code...",
     JOIN_WAITLIST: "Post Your Flight",
-    HERO_TITLE: "Find your travel companion",
-    HERO_SUBTITLE:
-      "Select your departure airport to connect with fellow travellers and share the ride.",
-    SELECT_AIRPORT_DESC: "Choose your departure airport.",
     DETAILS: "Details",
     VIEW_MORE_INFO: "View more information.",
     DIST_SHORT: "Dist.",
@@ -81,7 +48,6 @@ const CONSTANTS = {
   MESSAGES: {
     NO_TRAVELLERS: "No active travellers found right now.",
     NO_GROUPS: "No active groups found right now.",
-    NO_AIRPORT_FOUND: "No airport found.",
   },
   LOADING: "Loading...",
   VALUES: {
@@ -95,15 +61,7 @@ const CONSTANTS = {
   },
 } as const;
 
-const filterAirports = (value: string, search: string) => {
-  if (value.toLowerCase().includes(search.toLowerCase())) return 1;
-  return 0;
-};
-
 const AirportTravellers = () => {
-  const [selectedAirport, setSelectedAirport] = useState<Airport | undefined>(
-    undefined,
-  );
   const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODE.INDIVIDUAL);
   const [selectedEntity, setSelectedEntity] = useState<SelectedEntity>(null);
   const [travellers, setTravellers] = useState<Traveller[]>([]);
@@ -122,6 +80,9 @@ const AirportTravellers = () => {
   const [initialDataFetchCompleted, setInitialDataFetchCompleted] =
     useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
+
+  const { selectedAirport, invalidAirportCode, handleSelectAirport } =
+    useAirportFromUrl(airports);
 
   const {
     fetchTravellers,
@@ -145,40 +106,58 @@ const AirportTravellers = () => {
       setAirports(fetched);
     };
     void loadAirports();
-  }, []);
+  }, [fetchAirports]);
 
   useEffect(() => {
-    if (!selectedAirport) {
-      setTerminals([]);
-      setFilterTerminal([]);
-      return;
-    }
+    if (!selectedAirport?.airportCode) return;
+    const code = selectedAirport.airportCode;
     const loadData = async () => {
-      const code = selectedAirport?.airportCode;
-      if (!code) return;
-
       const fetchedTerminals = await fetchTerminals(code);
       setTerminals(fetchedTerminals);
       setFilterTerminal(fetchedTerminals.map((t) => t.id));
     };
     void loadData();
-  }, [selectedAirport]);
+  }, [selectedAirport, fetchTerminals]);
+
+  const effectiveTerminals = useMemo(
+    () => (selectedAirport ? terminals : []),
+    [selectedAirport, terminals],
+  );
+  const effectiveFilterTerminal = useMemo(
+    () => (selectedAirport ? filterTerminal : []),
+    [selectedAirport, filterTerminal],
+  );
+
+  const [isUserInGroup, setIsUserInGroup] = useState(false);
+  const [userGroupId, setUserGroupId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!selectedAirport?.airportCode) return;
     const loadData = async () => {
       const code = selectedAirport?.airportCode;
       if (viewMode === VIEW_MODE.INDIVIDUAL) {
-        const fetchedTravellers = await fetchTravellers(code);
+        const { travellers: fetchedTravellers, isUserInGroup, userGroupId: gid } =
+          await fetchTravellers(code);
         setTravellers(fetchedTravellers);
+        setIsUserInGroup(isUserInGroup);
+        setUserGroupId(gid);
       } else {
-        const fetchedGroups = await fetchGroups(selectedAirport.airportCode);
+        const [travellersResult, fetchedGroups] = await Promise.all([
+          fetchTravellers(code),
+          fetchGroups(
+            selectedAirport.airportCode,
+            selectedAirport.airportName,
+          ),
+        ]);
+        setTravellers(travellersResult.travellers);
+        setIsUserInGroup(travellersResult.isUserInGroup);
+        setUserGroupId(travellersResult.userGroupId);
         setGroups(fetchedGroups);
       }
       setInitialDataFetchCompleted(true);
     };
     void loadData();
-  }, [viewMode, selectedAirport]);
+  }, [viewMode, selectedAirport, fetchTravellers, fetchGroups]);
 
   const [userDestination, setUserDestination] = useState<string | null>(null);
 
@@ -206,34 +185,94 @@ const AirportTravellers = () => {
     [],
   );
 
-  const ListSectionWrapper = useCallback(() => {
+  const refreshAirportData = useCallback(async () => {
+    if (!selectedAirport?.airportCode) return;
+    const code = selectedAirport.airportCode;
+    const [travellersResult, fetchedGroups] = await Promise.all([
+      fetchTravellers(code),
+      fetchGroups(code, selectedAirport.airportName),
+    ]);
+    setTravellers(travellersResult.travellers);
+    setIsUserInGroup(travellersResult.isUserInGroup);
+    setUserGroupId(travellersResult.userGroupId);
+    setGroups(fetchedGroups);
+  }, [selectedAirport, fetchTravellers, fetchGroups]);
+
+  const handleConnectionResponded = useCallback(async () => {
+    await refreshAirportData();
+    setSelectedEntity(null);
+  }, [refreshAirportData]);
+
+  const handleLeaveGroup = useCallback(async () => {
+    await refreshAirportData();
+    setSelectedEntity(null);
+  }, [refreshAirportData]);
+
+  const handleWaitlistSuccess = useCallback(async () => {
+    if (!selectedAirport?.airportCode) return;
+    const code = selectedAirport.airportCode;
+    const [destination, travellersResult] = await Promise.all([
+      fetchUserDestination(code),
+      fetchTravellers(code),
+    ]);
+    setUserDestination(destination);
+    setTravellers(travellersResult.travellers);
+    setIsUserInGroup(travellersResult.isUserInGroup);
+    setUserGroupId(travellersResult.userGroupId);
+  }, [selectedAirport, fetchUserDestination, fetchTravellers]);
+
+  const listSectionContent = useMemo(() => {
     if (!selectedAirport) return null;
 
     const isIndividual = viewMode === VIEW_MODE.INDIVIDUAL;
     const isTerminalVisible = (terminal: string) => {
       return (
-        filterTerminal.includes(terminal) ||
-        !terminals.some((t) => t.id === terminal)
+        effectiveFilterTerminal.includes(terminal) ||
+        !effectiveTerminals.some((t) => t.id === terminal)
       );
     };
 
-    let processedTravellers = [...travellers].filter(
+    const processedTravellers = [...travellers].filter(
       (t) => filterGender.includes(t.gender) && isTerminalVisible(t.terminal),
     );
-    let processedGroups = groups;
 
-    const sortFn = (a: any, b: any) => {
-      if (sortBy === CONSTANTS.VALUES.DISTANCE)
-        return a.distanceFromUserKm - b.distanceFromUserKm;
-      return (
-        new Date(a.flightDateTime).getTime() -
-        new Date(b.flightDateTime).getTime()
-      );
+    const sortFn = (a: Traveller | Group, b: Traveller | Group) => {
+      if (sortBy === CONSTANTS.VALUES.DISTANCE) {
+        const aDist = "distanceFromUserKm" in a ? a.distanceFromUserKm : 0;
+        const bDist = "distanceFromUserKm" in b ? b.distanceFromUserKm : 0;
+        return aDist - bDist;
+      }
+      const aTime =
+        "flightDateTime" in a && a.flightDateTime
+          ? new Date(a.flightDateTime).getTime()
+          : "createdAt" in a && a.createdAt
+            ? new Date(a.createdAt).getTime()
+            : 0;
+      const bTime =
+        "flightDateTime" in b && b.flightDateTime
+          ? new Date(b.flightDateTime).getTime()
+          : "createdAt" in b && b.createdAt
+            ? new Date(b.createdAt).getTime()
+            : 0;
+      return aTime - bTime;
     };
 
-    isIndividual
-      ? processedTravellers.sort(sortFn)
-      : processedGroups.sort(sortFn);
+    let processedGroups: Group[];
+    if (isIndividual) {
+      processedTravellers.sort(sortFn);
+      processedGroups = [];
+    } else {
+      const userGroup = userGroupId
+        ? groups.find((g) => g.id === userGroupId)
+        : null;
+      const otherGroups = userGroupId
+        ? groups.filter((g) => g.id !== userGroupId)
+        : [...groups];
+      otherGroups.sort(sortFn);
+      processedGroups = userGroup
+        ? [userGroup, ...otherGroups]
+        : otherGroups;
+    }
 
     return (
       <ListSection
@@ -279,6 +318,7 @@ const AirportTravellers = () => {
                 onClick={() =>
                   setSelectedEntity({ type: ENTITY_TYPE.GROUP, data: g })
                 }
+                isYourGroup={userGroupId != null && g.id === userGroupId}
               />
             ))}
       </ListSection>
@@ -288,129 +328,15 @@ const AirportTravellers = () => {
     viewMode,
     travellers,
     groups,
+    userGroupId,
     isFetchingList,
     sortBy,
     filterGender,
-    filterTerminal,
+    effectiveFilterTerminal,
+    effectiveTerminals,
+    initialDataFetchCompleted,
+    userDestination,
   ]);
-
-  const AirportSelect = ({
-    large = false,
-    children,
-  }: {
-    large?: boolean;
-    children?: React.ReactNode;
-  }) => (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {children || (
-          <Button
-            variant="outline"
-            className={cn(
-              "justify-between w-full rounded-2xl border-zinc-200 bg-white hover:bg-zinc-50 hover:border-zinc-300 transition-all duration-300 text-zinc-900",
-              large
-                ? "h-16 text-lg px-6 shadow-xl shadow-zinc-200/50"
-                : "h-10 text-sm",
-              open && "opacity-50",
-            )}
-          >
-            <div className="flex items-center gap-3 overflow-hidden">
-              <Search
-                className={cn(
-                  "shrink-0 text-zinc-400",
-                  large ? "w-5 h-5" : "w-4 h-4",
-                )}
-              />
-              <span className="truncate">
-                {selectedAirport?.airportName ||
-                  CONSTANTS.LABELS.SELECT_PLACEHOLDER}
-              </span>
-            </div>
-            <ChevronsUpDown
-              className={cn(
-                "ml-2 shrink-0 text-zinc-400",
-                large ? "h-5 w-5" : "h-4 w-4",
-              )}
-            />
-          </Button>
-        )}
-      </DialogTrigger>
-      <DialogContent className="p-0 overflow-hidden bg-white/95 backdrop-blur-2xl border-zinc-200 shadow-2xl rounded-3xl w-[95vw] max-w-2xl gap-0">
-        <div className="flex flex-col h-[70vh] sm:h-[600px]">
-          <div className="px-4 py-4 border-b border-zinc-100">
-            <DialogTitle className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-2 mb-2">
-              {CONSTANTS.LABELS.SELECT_AIRPORT_TITLE}
-            </DialogTitle>
-            <DialogDescription className="sr-only">
-              {CONSTANTS.LABELS.SELECT_AIRPORT_DESC}
-            </DialogDescription>
-            <Command className="flex-1 bg-transparent" filter={filterAirports}>
-              <div className="flex items-center gap-2 bg-zinc-100 px-3 rounded-xl border border-transparent focus-within:border-zinc-300 focus-within:bg-white transition-all">
-                <Search className="w-5 h-5 text-zinc-400" />
-                <CommandInput
-                  ref={searchInputRef}
-                  placeholder={CONSTANTS.LABELS.SEARCH_AIRPORT_PLACEHOLDER}
-                  className="border-none focus:ring-0 text-lg h-12 bg-transparent w-full placeholder:text-zinc-400 text-zinc-900"
-                />
-              </div>
-
-              <CommandList className="max-h-full p-2 mt-4 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-zinc-200">
-                <CommandEmpty className="py-12 text-center flex flex-col items-center gap-3">
-                  <div className="p-4 rounded-full bg-zinc-100">
-                    <Plane className="w-8 h-8 text-zinc-300" />
-                  </div>
-                  <span className="text-zinc-500 font-medium">
-                    {CONSTANTS.MESSAGES.NO_AIRPORT_FOUND}
-                  </span>
-                </CommandEmpty>
-                <CommandGroup>
-                  {airports.map((airport) => (
-                    <CommandItem
-                      key={airport.airportCode}
-                      value={`${airport.airportName} ${airport.airportCode}`}
-                      onSelect={() => {
-                        if (
-                          selectedAirport?.airportCode !== airport.airportCode
-                        ) {
-                          setSelectedAirport(airport);
-                        }
-                        setOpen(false);
-                      }}
-                      className="group flex items-center justify-between py-3 px-4 rounded-xl cursor-pointer hover:bg-zinc-100 data-[selected=true]:bg-zinc-900 data-[selected=true]:text-white transition-all mb-1"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div
-                          className={cn(
-                            "w-10 h-10 rounded-full flex items-center justify-center border transition-colors",
-                            selectedAirport?.airportCode === airport.airportCode
-                              ? "bg-white text-black border-transparent"
-                              : "bg-white border-zinc-200 group-hover:border-zinc-300 group-data-[selected=true]:bg-zinc-800 group-data-[selected=true]:border-zinc-700",
-                          )}
-                        >
-                          <Plane className="w-4 h-4" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-base font-semibold group-data-[selected=true]:text-white">
-                            {airport.airportName}
-                          </span>
-                          <span className="text-xs text-zinc-500 group-data-[selected=true]:text-zinc-400">
-                            International Airport
-                          </span>
-                        </div>
-                      </div>
-                      <span className="text-xs font-bold font-mono px-2 py-1 rounded-md bg-zinc-100 border border-zinc-200 group-data-[selected=true]:bg-zinc-800 group-data-[selected=true]:text-zinc-300 group-data-[selected=true]:border-zinc-700">
-                        {airport.airportCode}
-                      </span>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
 
   if (isFetchingCombos)
     return (
@@ -436,38 +362,14 @@ const AirportTravellers = () => {
           )}
         >
           {selectedAirport && (
-            <CardHeader className="pt-8 pb-6 px-6 sm:px-10 border-b border-zinc-100">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-6 justify-between">
-                <div className="flex items-center gap-5">
-                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center text-white bg-zinc-900 shadow-lg shadow-zinc-200">
-                    <span className="text-xl sm:text-2xl font-black tracking-tighter">
-                      {selectedAirport.airportCode}
-                    </span>
-                  </div>
-                  <div className="flex flex-col gap-1">
-                    <CardTitle className="text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900">
-                      {selectedAirport.airportName}
-                    </CardTitle>
-                    <div className="flex items-center gap-2 text-sm text-zinc-500 font-medium">
-                      <MapPin className="w-4 h-4" />
-                      <span>Viewing active travellers</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="w-full sm:w-auto">
-                  <AirportSelect>
-                    <Button
-                      variant="outline"
-                      className="rounded-full border-zinc-200 text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 transition-all group"
-                    >
-                      Change Airport
-                      <Pencil className="w-3.5 h-3.5 ml-2 text-zinc-400 group-hover:text-zinc-900 transition-colors" />
-                    </Button>
-                  </AirportSelect>
-                </div>
-              </div>
-            </CardHeader>
+            <AirportHeader
+              selectedAirport={selectedAirport}
+              airports={airports}
+              onSelectAirport={handleSelectAirport}
+              selectOpen={open}
+              onSelectOpenChange={setOpen}
+              searchInputRef={searchInputRef}
+            />
           )}
 
           <CardContent
@@ -478,47 +380,15 @@ const AirportTravellers = () => {
           >
             {/* EMPTY STATE / HERO */}
             {!selectedAirport && (
-              <div className="flex flex-col items-center justify-center text-center space-y-10 max-w-2xl mx-auto animate-in fade-in zoom-in-95 duration-700">
-                <div className="relative group cursor-pointer">
-                  {/* Glow effect - Monochrome */}
-                  <div className="absolute inset-0 bg-zinc-200 rounded-full blur-3xl opacity-50 group-hover:opacity-80 transition-opacity duration-1000"></div>
-
-                  <div className="w-28 h-28 rounded-[2.5rem] bg-white border border-zinc-100 shadow-2xl flex items-center justify-center relative z-10 group-hover:scale-105 transition-transform duration-500">
-                    <div className="w-24 h-24 rounded-[2rem] bg-zinc-900 flex items-center justify-center text-white shadow-inner">
-                      <Plane className="w-12 h-12 transform -rotate-45 group-hover:rotate-0 transition-transform duration-500" />
-                    </div>
-                  </div>
-                  {/* Decor elements */}
-                  <div className="absolute -top-4 -right-4 w-12 h-12 bg-white border border-zinc-100 rounded-full flex items-center justify-center shadow-lg animate-bounce delay-100 z-20">
-                    <UsersRound className="w-6 h-6 text-zinc-900" />
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <h2 className="text-4xl sm:text-6xl font-bold tracking-tighter text-zinc-900">
-                    Find your <br className="sm:hidden" />
-                    <span className="text-zinc-400">travel buddy.</span>
-                  </h2>
-                  <p className="text-zinc-500 text-lg sm:text-xl max-w-md mx-auto leading-relaxed">
-                    {CONSTANTS.LABELS.HERO_SUBTITLE}
-                  </p>
-                </div>
-
-                <div className="w-full max-w-md transform transition-all hover:scale-[1.02]">
-                  <AirportSelect large />
-                  <div className="flex justify-center gap-6 mt-8 text-[10px] text-zinc-400 font-bold uppercase tracking-[0.2em]">
-                    <span className="flex items-center gap-1.5">
-                      <Sparkles className="w-3 h-3" /> Safe
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Sparkles className="w-3 h-3" /> Verified
-                    </span>
-                    <span className="flex items-center gap-1.5">
-                      <Sparkles className="w-3 h-3" /> Split Cost
-                    </span>
-                  </div>
-                </div>
-              </div>
+              <AirportPickerHero
+                selectedAirport={selectedAirport}
+                invalidAirportCode={invalidAirportCode}
+                airports={airports}
+                onSelectAirport={handleSelectAirport}
+                selectOpen={open}
+                onSelectOpenChange={setOpen}
+                searchInputRef={searchInputRef}
+              />
             )}
 
             {/* DASHBOARD CONTENT */}
@@ -555,36 +425,40 @@ const AirportTravellers = () => {
                       )}
                     </div>
 
-                    <div className="hidden sm:block w-px h-8 bg-zinc-200" />
+                    {viewMode === VIEW_MODE.INDIVIDUAL && (
+                      <>
+                        <div className="hidden sm:block w-px h-8 bg-zinc-200" />
 
-                    {/* Terminal Scroll Container - Monochrome */}
-                    <div className="w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
-                      <div className="flex items-center gap-2">
-                        {terminals.map((t) => (
-                          <button
-                            key={t.id}
-                            onClick={() =>
-                              handleFilterToggle(setFilterTerminal, t.id)
-                            }
-                            className={cn(
-                              "px-3 py-1.5 text-xs font-bold rounded-lg border transition-all whitespace-nowrap",
-                              filterTerminal.includes(t.id)
-                                ? "bg-zinc-900 text-white border-zinc-900 shadow-md shadow-zinc-200"
-                                : "bg-white text-zinc-500 border-zinc-200 hover:border-zinc-300 hover:text-zinc-900",
-                            )}
-                          >
-                            {/* Short name for mobile, full for desktop */}
-                            <span className="sm:hidden">
-                              {t.name.replace(
-                                CONSTANTS.REGEX.TERMINAL_PREFIX,
-                                "T",
-                              )}
-                            </span>
-                            <span className="hidden sm:inline">{t.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
+                        {/* Terminal Scroll Container - Monochrome */}
+                        <div className="w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
+                          <div className="flex items-center gap-2">
+                            {effectiveTerminals.map((t) => (
+                              <button
+                                key={t.id}
+                                onClick={() =>
+                                  handleFilterToggle(setFilterTerminal, t.id)
+                                }
+                                className={cn(
+                                  "px-3 py-1.5 text-xs font-bold rounded-lg border transition-all whitespace-nowrap",
+                                  effectiveFilterTerminal.includes(t.id)
+                                    ? "bg-zinc-900 text-white border-zinc-900 shadow-md shadow-zinc-200"
+                                    : "bg-white text-zinc-500 border-zinc-200 hover:border-zinc-300 hover:text-zinc-900",
+                                )}
+                              >
+                                {/* Short name for mobile, full for desktop */}
+                                <span className="sm:hidden">
+                                  {t.name.replace(
+                                    CONSTANTS.REGEX.TERMINAL_PREFIX,
+                                    "T",
+                                  )}
+                                </span>
+                                <span className="hidden sm:inline">{t.name}</span>
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* RIGHT: SORT & VIEW */}
@@ -679,7 +553,7 @@ const AirportTravellers = () => {
 
                 {/* MAIN LIST */}
                 <div className="min-h-[300px]">
-                  <ListSectionWrapper />
+                  {listSectionContent}
                 </div>
               </div>
             )}
@@ -697,9 +571,22 @@ const AirportTravellers = () => {
                   {CONSTANTS.LABELS.VIEW_MORE_INFO}
                 </DialogDescription>
                 {selectedEntity?.type === ENTITY_TYPE.TRAVELLER ? (
-                  <TravellerModal traveller={selectedEntity.data} />
+                  <TravellerModal
+                    traveller={selectedEntity.data}
+                    isUserInGroup={isUserInGroup}
+                    onConnectionResponded={handleConnectionResponded}
+                  />
                 ) : (
-                  selectedEntity && <GroupModal group={selectedEntity.data} />
+                  selectedEntity && (
+                    <GroupModal
+                      group={selectedEntity.data}
+                      isCurrentUserInGroup={
+                        userGroupId != null &&
+                        userGroupId === selectedEntity.data.id
+                      }
+                      onLeaveGroup={handleLeaveGroup}
+                    />
+                  )
                 )}
               </DialogContent>
             </Dialog>
@@ -711,7 +598,8 @@ const AirportTravellers = () => {
           currentAirport={selectedAirport}
           open={isWaitlistModalOpen}
           onOpenChange={setIsWaitlistModalOpen}
-          terminals={terminals}
+          onSuccess={handleWaitlistSuccess}
+          terminals={effectiveTerminals}
         />
       )}
     </>

@@ -9,28 +9,28 @@ export type Traveller = {
   terminal: string;
   flightNumber: string;
   distanceFromUserKm: number;
+  flightCarrier?: string;
+  flightNumberRaw?: string;
   bio?: string;
   tags?: string[];
   isVerified?: boolean;
   username: string;
+  connectionStatus?: "SEND_REQUEST" | "REQUEST_SENT" | "REQUEST_RECEIVED";
 };
 
 export type Group = {
   id: string;
   name: string;
-  gender: "Male" | "Female" | "Other";
-  destination: string;
-  airportName: string;
-  flightDateTime: Date;
-  terminal: string;
-  flightNumber: string;
-  distanceFromUserKm: number;
+  airportName?: string; // set by frontend when mapping from API (airportCode + name)
+  airportCode?: string;
+  destinations: string[];
   groupSize: number;
   maxUsers: number;
   genderBreakdown: {
     male: number;
     female: number;
   };
+  createdAt: string | Date;
 };
 
 export const ENTITY_TYPE = {

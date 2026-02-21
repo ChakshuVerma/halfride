@@ -1,17 +1,14 @@
-import { Users, MapPin, CalendarRange, ArrowRight } from "lucide-react";
+import { Users, MapPin, ArrowRight } from "lucide-react";
 import type { Group } from "./types";
-import { formatWaitTime } from "./utils";
 
 const CONSTANTS = {
   LABELS: {
     SEATS: "seats",
     CAPACITY: "Capacity",
-    TERMINAL: "Terminal",
-    DESTINATION: "Destination",
-    WAIT_TIME: "Wait",
+    DESTINATIONS: "Destinations",
+    CREATED: "Created",
   },
   UNITS: {
-    KM: "km",
     PERCENT: "%",
   },
   SUFFIX: {
@@ -30,9 +27,11 @@ const CONSTANTS = {
 type GroupCardProps = {
   group: Group;
   onClick: () => void;
+  /** When true, shows "Your group" badge and highlight styling. */
+  isYourGroup?: boolean;
 };
 
-export function GroupCard({ group, onClick }: GroupCardProps) {
+export function GroupCard({ group, onClick, isYourGroup = false }: GroupCardProps) {
   const percentFull = Math.round((group.groupSize / group.maxUsers) * 100);
 
   // Monochromatic/Neutral gradient for group cards (Light Gray)
@@ -41,7 +40,13 @@ export function GroupCard({ group, onClick }: GroupCardProps) {
   const accentColor = "text-violet-600 dark:text-violet-400";
 
   return (
-    <div className="group flex flex-col overflow-hidden rounded-[2rem] border border-white/60 shadow-sm transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:border-white/80 hover:-translate-y-1 dark:border-white/5">
+    <div
+      className={`group flex flex-col overflow-hidden rounded-[2rem] border shadow-sm transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 dark:border-white/5 ${
+        isYourGroup
+          ? "border-violet-400 dark:border-violet-500 ring-2 ring-violet-200 dark:ring-violet-900/50 bg-violet-50/30 dark:bg-violet-950/20"
+          : "border-white/60 hover:border-white/80 dark:border-white/5"
+      }`}
+    >
       {/* Top Section - Gray Background */}
       <div className="relative p-4 sm:p-5 bg-zinc-200/70 dark:bg-zinc-800 border-b border-black/5 dark:border-white/5 transition-colors duration-300">
         {/* Header */}
@@ -54,9 +59,16 @@ export function GroupCard({ group, onClick }: GroupCardProps) {
             </div>
 
             <div className="flex flex-col pt-1">
-              <h3 className="text-lg font-bold text-foreground leading-tight group-hover:text-primary transition-colors line-clamp-1">
-                {group.name}
-              </h3>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-lg font-bold text-foreground leading-tight group-hover:text-primary transition-colors line-clamp-1">
+                  {group.name}
+                </h3>
+                {isYourGroup && (
+                  <span className="px-2 py-0.5 rounded-full bg-violet-600 text-white text-[10px] font-bold shadow-sm">
+                    Your group
+                  </span>
+                )}
+              </div>
               <div className="flex items-center gap-2 mt-1">
                 {/* Capacity Pill */}
                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white text-violet-600 border border-zinc-200 text-[10px] font-bold dark:bg-zinc-800 dark:border-zinc-700 dark:text-violet-400 shadow-sm">
@@ -111,50 +123,41 @@ export function GroupCard({ group, onClick }: GroupCardProps) {
       {/* Bottom Section - White Background */}
       <div className="flex-1 p-0 bg-white dark:bg-black/20">
         {/* Info Grid */}
-        <div className="p-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
-          {/* Terminal */}
+        <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+          {/* Destinations */}
           <div className="flex flex-col gap-1">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
-              <MapPin className="w-3 h-3" /> {CONSTANTS.LABELS.TERMINAL}
+              <MapPin className="w-3 h-3" /> {CONSTANTS.LABELS.DESTINATIONS}
             </span>
             <span
               className="text-xs font-bold text-foreground truncate"
-              title={group.terminal}
+              title={group.destinations?.join(", ") ?? ""}
             >
-              {group.terminal}
+              {group.destinations?.length
+                ? group.destinations.join(", ")
+                : "—"}
             </span>
           </div>
 
-          {/* Destination */}
+          {/* Created */}
           <div className="flex flex-col gap-1 sm:border-l border-zinc-100 sm:pl-3 pt-2 sm:pt-0 border-t sm:border-t-0 dark:border-white/5">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
-              <MapPin className="w-3 h-3" /> {CONSTANTS.LABELS.DESTINATION}
-            </span>
-            <span
-              className="text-xs font-bold text-foreground truncate"
-              title={group.destination}
-            >
-              {group.destination}
-            </span>
-          </div>
-
-          {/* Wait */}
-          <div className="flex flex-col gap-1 sm:border-l border-zinc-100 sm:pl-3 pt-2 sm:pt-0 border-t sm:border-t-0 dark:border-white/5">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
-              <CalendarRange className="w-3 h-3" /> {CONSTANTS.LABELS.WAIT_TIME}
+              {CONSTANTS.LABELS.CREATED}
             </span>
             <span className="text-xs font-bold text-foreground">
-              {formatWaitTime(group.flightDateTime)}
+              {group.createdAt
+                ? new Date(group.createdAt).toLocaleDateString(undefined, {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })
+                : "—"}
             </span>
           </div>
         </div>
 
         {/* Action Footer */}
-        <div className="px-4 py-3 bg-zinc-50/30 border-t border-zinc-100 dark:bg-zinc-900/30 dark:border-white/5 flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-0 transition-colors duration-300">
-          <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5 w-full sm:w-auto justify-center sm:justify-start">
-            <MapPin className="w-3.5 h-3.5 text-primary" />
-            {group.distanceFromUserKm} {CONSTANTS.UNITS.KM}
-          </span>
+        <div className="px-4 py-3 bg-zinc-50/30 border-t border-zinc-100 dark:bg-zinc-900/30 dark:border-white/5 flex flex-col sm:flex-row items-center justify-end gap-3 sm:gap-0 transition-colors duration-300">
           <button
             onClick={(e) => {
               e.stopPropagation();

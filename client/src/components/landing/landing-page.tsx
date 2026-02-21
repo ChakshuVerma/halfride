@@ -12,6 +12,7 @@ import {
   MessageCircle,
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
+import { ROUTES } from "@/constants/routes";
 
 const LANDING_CONTENT = {
   navigation: {
@@ -129,13 +130,13 @@ export function LandingPage() {
               <Button
                 variant="ghost"
                 className="hidden md:inline-flex"
-                onClick={() => navigate("/login")}
+                onClick={() => navigate(ROUTES.LOGIN)}
               >
                 {LANDING_CONTENT.navigation.signIn}
               </Button>
             )}
             <Button
-              onClick={() => navigate("/dashboard")}
+              onClick={() => navigate(ROUTES.DASHBOARD)}
               className="rounded-full px-6"
             >
               {LANDING_CONTENT.navigation.getStarted}
@@ -177,7 +178,7 @@ export function LandingPage() {
                 <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto pt-4">
                   <Button
                     size="lg"
-                    onClick={() => navigate("/airport")}
+                    onClick={() => navigate(ROUTES.AIRPORT)}
                     className="text-lg px-8 h-14 rounded-full shadow-xl shadow-primary/20 hover:translate-y-[-2px] transition-all"
                   >
                     {LANDING_CONTENT.hero.findRide}
@@ -449,7 +450,7 @@ export function LandingPage() {
                 </p>
                 <Button
                   size="lg"
-                  onClick={() => navigate("/airport")}
+                  onClick={() => navigate(ROUTES.AIRPORT)}
                   className="bg-white text-black hover:bg-gray-200 text-lg h-14 px-10 rounded-full"
                 >
                   {LANDING_CONTENT.cta.button}

@@ -35,6 +35,7 @@ import { CountrySelect } from "./country-select";
 import { calculatePasswordStrength, validatePassword } from "./utils";
 import { cn } from "@/lib/utils";
 import { useAuthApi } from "../../hooks/useAuthApi";
+import { ROUTES } from "@/constants/routes";
 
 // Constants
 const CONSTANTS = {
@@ -233,7 +234,7 @@ export function ForgotPassword() {
       });
 
       toast.success(CONSTANTS.TOASTS.PASSWORD_UPDATED);
-      navigate("/login");
+      navigate(ROUTES.LOGIN);
     } catch (e) {
       console.error(e);
       // @ts-ignore
@@ -255,7 +256,7 @@ export function ForgotPassword() {
       setCredentialsValidated(false);
       return;
     }
-    navigate("/login");
+    navigate(ROUTES.LOGIN);
   };
 
   return (
@@ -519,7 +520,7 @@ export function ForgotPassword() {
           <button
             type="button"
             className="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors"
-            onClick={() => navigate("/login")}
+            onClick={() => navigate(ROUTES.LOGIN)}
           >
             {CONSTANTS.LABELS.BACK_TO_LOGIN}
           </button>

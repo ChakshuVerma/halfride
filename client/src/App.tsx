@@ -1,105 +1,80 @@
-import { Routes, Route, Navigate, Outlet } from "react-router-dom";
-import { Login } from "./components/login/login";
-import { Signup } from "./components/login/signup";
-import { ForgotPassword } from "./components/login/forgot-password";
-import Dashboard from "./components/home/dashboard";
-import AirportTravellers from "./components/traveller/airport-travellers";
+import { Suspense, lazy } from "react";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "@/components/ui/sonner";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
-import { Spinner } from "@/components/ui/spinner";
-import { LandingPage } from "./components/landing/landing-page";
+import { PageLoader } from "@/components/common/PageLoader";
 
-const LoadingText = "Loading...";
+// Layouts
+import { AuthLayout } from "@/components/common/AuthLayout";
+import { ProtectedLayout } from "@/components/common/ProtectedLayout";
+import { ROUTES } from "@/constants/routes";
 
-// 1. Create a Layout for Auth pages (Login, Signup)
-// This keeps the nice blobs and centering ONLY for these pages
-const AuthLayout = () => {
+// Components (Lazy Loaded for performance)
+const LandingPage = lazy(() =>
+  import("./components/landing/landing-page").then((module) => ({
+    default: module.LandingPage,
+  })),
+);
+
+const Login = lazy(() =>
+  import("./components/login/login").then((module) => ({
+    default: module.Login,
+  })),
+);
+const Signup = lazy(() =>
+  import("./components/login/signup").then((module) => ({
+    default: module.Signup,
+  })),
+);
+const ForgotPassword = lazy(() =>
+  import("./components/login/forgot-password").then((module) => ({
+    default: module.ForgotPassword,
+  })),
+);
+const Dashboard = lazy(() => import("./components/home/dashboard"));
+const AirportTravellers = lazy(
+  () => import("./components/traveller/airport-travellers"),
+);
+
+function AppRoutes() {
+  const { loading } = useAuth();
+
+  if (loading) return <PageLoader />;
+
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen relative overflow-hidden sm:p-2 bg-background selection:bg-primary/20">
-      {/* Decorative ambient background for Auth pages */}
-      <div className="fixed inset-0 -z-10 h-full w-full bg-background bg-[radial-gradient(ellipse_80%_80%_at_50%_-20%,rgba(120,119,198,0.1),rgba(255,255,255,0))]" />
-      <div className="fixed top-0 left-0 w-full h-full overflow-hidden -z-10 pointer-events-none">
-        <div className="absolute -top-[20%] -left-[10%] w-[70vw] h-[70vw] rounded-full bg-zinc-300/30 dark:bg-zinc-800/20 blur-[120px] mix-blend-multiply dark:mix-blend-overlay animate-blob" />
-        <div
-          className="absolute top-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-slate-300/30 dark:bg-slate-800/20 blur-[100px] mix-blend-multiply dark:mix-blend-overlay animate-blob"
-          style={{ animationDelay: "2s" }}
-        />
-        <div
-          className="absolute -bottom-[20%] left-[20%] w-[50vw] h-[50vw] rounded-full bg-stone-300/30 dark:bg-stone-800/20 blur-[120px] mix-blend-multiply dark:mix-blend-overlay animate-blob"
-          style={{ animationDelay: "4s" }}
-        />
-      </div>
-      {/* This renders the child route (Login/Signup) */}
-      <Outlet />
-    </div>
-  );
-};
-
-function AppContent() {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <Spinner size="xl" className="text-primary" />
-          <p className="text-sm text-muted-foreground animate-pulse">
-            {LoadingText}
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  // 2. Main Container is now clean (No global padding/centering)
-  return (
-    <div className="min-h-screen bg-background font-sans antialiased">
+    <Suspense fallback={<PageLoader />}>
       <Routes>
         {/* PUBLIC ROUTES */}
-        <Route path="/" element={<LandingPage />} />
+        <Route path={ROUTES.HOME} element={<LandingPage />} />
 
-        {/* AUTH ROUTES - Wrapped in AuthLayout for styling */}
+        {/* AUTH ROUTES (Includes redirects if logged in) */}
         <Route element={<AuthLayout />}>
-          <Route
-            path="/login"
-            element={user ? <Navigate to="/dashboard" replace /> : <Login />}
-          />
-          <Route
-            path="/signup"
-            element={user ? <Navigate to="/dashboard" replace /> : <Signup />}
-          />
-          <Route
-            path="/forgot-password"
-            element={
-              user ? <Navigate to="/dashboard" replace /> : <ForgotPassword />
-            }
-          />
+          <Route path={ROUTES.LOGIN} element={<Login />} />
+          <Route path={ROUTES.SIGNUP} element={<Signup />} />
+          <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
         </Route>
 
-        {/* PROTECTED ROUTES - These usually have their own sidebar/navbar layout */}
-        <Route
-          path="/dashboard"
-          element={user ? <Dashboard /> : <Navigate to="/login" replace />}
-        />
-        <Route
-          path="/airport"
-          element={
-            user ? <AirportTravellers /> : <Navigate to="/login" replace />
-          }
-        />
+        {/* PROTECTED ROUTES (Includes redirects if logged out) */}
+        <Route element={<ProtectedLayout />}>
+          <Route path={ROUTES.DASHBOARD} element={<Dashboard />} />
+          <Route path={ROUTES.AIRPORT} element={<AirportTravellers />} />
+          <Route path={ROUTES.AIRPORT_BY_CODE} element={<AirportTravellers />} />
+        </Route>
 
         {/* FALLBACK */}
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path="*" element={<Navigate to={ROUTES.HOME} replace />} />
       </Routes>
-      <Toaster position="top-center" richColors />
-    </div>
+    </Suspense>
   );
 }
 
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <div className="min-h-screen bg-background font-sans antialiased">
+        <AppRoutes />
+        <Toaster position="top-center" richColors />
+      </div>
     </AuthProvider>
   );
 }
