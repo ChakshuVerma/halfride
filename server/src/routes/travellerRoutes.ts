@@ -4,6 +4,7 @@ import {
   getTravellersByAirport,
   checkTravellerHasListing,
   requestConnection,
+  respondToConnectionRequest,
 } from "../controllers/travellerController";
 
 export const travellerRouter = Router();
@@ -15,3 +16,8 @@ travellerRouter.get(
 );
 travellerRouter.get("/check-listing", requireSession, checkTravellerHasListing);
 travellerRouter.post("/request-connection", requireSession, requestConnection);
+travellerRouter.post(
+  "/respond-to-connection",
+  requireSession,
+  respondToConnectionRequest,
+);

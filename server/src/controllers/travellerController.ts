@@ -1,8 +1,15 @@
 import type { Request, Response } from "express";
 import { admin } from "../firebase/admin";
-import { COLLECTIONS, TRAVELLER_FIELDS } from "../constants/db";
+import { COLLECTIONS, GROUP_FIELDS, TRAVELLER_FIELDS } from "../constants/db";
+import {
+  ConnectionResponseAction,
+  parseConnectionResponseAction,
+} from "../types/connection";
 import { roadDistanceBetweenTwoPoints } from "../utils/controllerUtils";
-import { notifyUserOfConnectionRequest } from "./notificationController";
+import {
+  notifyUserOfConnectionRequest,
+  notifyConnectionRequestResponded,
+} from "./notificationController";
 
 export async function getTravellersByAirport(req: Request, res: Response) {
   const { airportCode } = req.params; // e.g., "DEL"
@@ -211,6 +218,11 @@ const getCurrentUserDestination = async (uid: string, airportCode: string) => {
   }
 };
 
+const isNonEmptyString = (v: unknown): v is string =>
+  typeof v === "string" && v.trim().length > 0;
+
+const UID_MAX_LENGTH = 128;
+
 export async function requestConnection(req: Request, res: Response) {
   const { travellerUid, flightCarrier, flightNumber } = req.body;
   const requesterUid = req.auth?.uid;
@@ -218,31 +230,51 @@ export async function requestConnection(req: Request, res: Response) {
     return res.status(401).json({ ok: false, error: "Unauthorized" });
   }
 
-  if (!travellerUid) {
+  if (!isNonEmptyString(travellerUid)) {
     return res
       .status(400)
-      .json({ ok: false, error: "Traveller UID is required" });
+      .json({ ok: false, error: "Traveller UID is required and must be a non-empty string" });
   }
-
-  if (!flightCarrier || !flightNumber) {
+  const travellerUidTrimmed = travellerUid.trim();
+  if (travellerUidTrimmed.length > UID_MAX_LENGTH) {
     return res
       .status(400)
-      .json({ ok: false, error: "Flight details required" });
+      .json({ ok: false, error: "Traveller UID is too long" });
   }
 
-  if (requesterUid === travellerUid) {
+  if (!isNonEmptyString(flightCarrier)) {
+    return res
+      .status(400)
+      .json({ ok: false, error: "Flight carrier is required and must be a non-empty string" });
+  }
+  if (!isNonEmptyString(flightNumber)) {
+    return res
+      .status(400)
+      .json({ ok: false, error: "Flight number is required and must be a non-empty string" });
+  }
+  const flightCarrierTrimmed = (flightCarrier as string).trim();
+  const flightNumberTrimmed = (flightNumber as string).trim();
+
+  if (requesterUid === travellerUidTrimmed) {
     return res
       .status(400)
       .json({ ok: false, error: "Cannot connect with yourself" });
   }
 
-  console.log(travellerUid, flightCarrier, flightNumber, requesterUid);
+  console.log(travellerUidTrimmed, flightCarrierTrimmed, flightNumberTrimmed, requesterUid);
 
   const db = admin.firestore();
 
   try {
-    const travellerUserRef = db.collection(COLLECTIONS.USERS).doc(travellerUid);
+    const travellerUserRef = db.collection(COLLECTIONS.USERS).doc(travellerUidTrimmed);
     const requesterUserRef = db.collection(COLLECTIONS.USERS).doc(requesterUid);
+
+    const travellerUserSnap = await travellerUserRef.get();
+    if (!travellerUserSnap.exists) {
+      return res
+        .status(404)
+        .json({ ok: false, error: "Traveller user not found" });
+    }
 
     const travellerSnapshot = await db
       .collection(COLLECTIONS.TRAVELLER_DATA)
@@ -268,7 +300,8 @@ export async function requestConnection(req: Request, res: Response) {
     const fData = fSnap.data();
     if (
       fData &&
-      (fData.carrier === flightCarrier || fData.flightNumber === flightNumber)
+      (fData.carrier === flightCarrierTrimmed ||
+        fData.flightNumber === flightNumberTrimmed)
     ) {
       targetTravellerDoc = travellerSnapshot.docs[0];
       flightRef = fRef;
@@ -297,5 +330,177 @@ export async function requestConnection(req: Request, res: Response) {
   } catch (error: any) {
     console.error("Request Connection Error:", error.message);
     return res.status(500).json({ ok: false, error: error.message });
+  }
+}
+
+/**
+ * Accept or reject a connection request received by the current user.
+ * Body: { requesterUserId: string, action: ConnectionResponseAction }
+ * - requesterUserId: the user who sent the connection request
+ * - action: ConnectionResponseAction.ACCEPT or ConnectionResponseAction.REJECT
+ */
+export async function respondToConnectionRequest(req: Request, res: Response) {
+  const body = req.body;
+  if (!body || typeof body !== "object") {
+    return res
+      .status(400)
+      .json({ ok: false, error: "Request body must be a JSON object" });
+  }
+
+  const { requesterUserId: rawRequesterUserId, action: rawAction } = body;
+  const recipientUid = req.auth?.uid;
+
+  if (!recipientUid) {
+    return res.status(401).json({ ok: false, error: "Unauthorized" });
+  }
+
+  if (!isNonEmptyString(rawRequesterUserId)) {
+    return res
+      .status(400)
+      .json({
+        ok: false,
+        error: "requesterUserId is required and must be a non-empty string",
+      });
+  }
+  const requesterUserId = (rawRequesterUserId as string).trim();
+
+  const action = parseConnectionResponseAction(rawAction);
+  if (action === null) {
+    return res
+      .status(400)
+      .json({
+        ok: false,
+        error: `action must be '${ConnectionResponseAction.ACCEPT}' or '${ConnectionResponseAction.REJECT}' (case-insensitive)`,
+      });
+  }
+
+  if (requesterUserId === recipientUid) {
+    return res
+      .status(400)
+      .json({ ok: false, error: "Cannot respond to your own request" });
+  }
+
+  const db = admin.firestore();
+  const requesterUserRef = db.collection(COLLECTIONS.USERS).doc(requesterUserId);
+  const recipientUserRef = db.collection(COLLECTIONS.USERS).doc(recipientUid);
+
+  try {
+    const requesterUserSnap = await requesterUserRef.get();
+    if (!requesterUserSnap.exists) {
+      return res
+        .status(404)
+        .json({ ok: false, error: "Requester user not found" });
+    }
+
+    // 1. Get recipient's active traveller doc (the one who received the request)
+    const recipientSnapshot = await db
+      .collection(COLLECTIONS.TRAVELLER_DATA)
+      .where(TRAVELLER_FIELDS.USER_REF, "==", recipientUserRef)
+      .where(TRAVELLER_FIELDS.IS_COMPLETED, "==", false)
+      .where(TRAVELLER_FIELDS.GROUP_REF, "==", null)
+      .limit(1)
+      .get();
+
+    if (recipientSnapshot.empty) {
+      return res
+        .status(404)
+        .json({ ok: false, error: "No active traveller listing found for you" });
+    }
+
+    const recipientDoc = recipientSnapshot.docs[0];
+    const recipientData = recipientDoc.data();
+    const connectionRequests: admin.firestore.DocumentReference[] =
+      recipientData[TRAVELLER_FIELDS.CONNECTION_REQUESTS] || [];
+
+    const hasRequest = connectionRequests.some(
+      (ref: admin.firestore.DocumentReference) => ref.id === requesterUserId,
+    );
+    if (!hasRequest) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "No connection request from this user" });
+    }
+
+    if (action === ConnectionResponseAction.REJECT) {
+      await recipientDoc.ref.update({
+        [TRAVELLER_FIELDS.CONNECTION_REQUESTS]:
+          admin.firestore.FieldValue.arrayRemove(requesterUserRef),
+      });
+      await notifyConnectionRequestResponded(
+        requesterUserId,
+        recipientUid,
+        "rejected",
+      );
+      return res.json({
+        ok: true,
+        message: "Connection request rejected",
+      });
+    }
+
+    // action === ConnectionResponseAction.ACCEPT
+    const flightArrival = recipientData[TRAVELLER_FIELDS.FLIGHT_ARRIVAL];
+    if (!flightArrival) {
+      return res
+        .status(500)
+        .json({ ok: false, error: "Traveller listing missing flight arrival" });
+    }
+
+    // 2. Get requester's active traveller doc for the same airport
+    const requesterSnapshot = await db
+      .collection(COLLECTIONS.TRAVELLER_DATA)
+      .where(TRAVELLER_FIELDS.USER_REF, "==", requesterUserRef)
+      .where(TRAVELLER_FIELDS.FLIGHT_ARRIVAL, "==", flightArrival)
+      .where(TRAVELLER_FIELDS.IS_COMPLETED, "==", false)
+      .where(TRAVELLER_FIELDS.GROUP_REF, "==", null)
+      .limit(1)
+      .get();
+
+    if (requesterSnapshot.empty) {
+      return res.status(404).json({
+        ok: false,
+        error: "Requester's trip not found for this airport (may have been removed)",
+      });
+    }
+
+    const requesterTravellerDoc = requesterSnapshot.docs[0];
+
+    // 3. Create group with both users
+    const groupRef = db.collection(COLLECTIONS.GROUPS).doc();
+    await groupRef.set({
+      [GROUP_FIELDS.GROUP_ID]: groupRef.id,
+      [GROUP_FIELDS.ADMIN_REF]: recipientUserRef,
+      [GROUP_FIELDS.MEMBERS]: [recipientUserRef, requesterUserRef],
+      [GROUP_FIELDS.PENDING_REQUESTS]: [],
+      [GROUP_FIELDS.CREATED_AT]: admin.firestore.FieldValue.serverTimestamp(),
+      [GROUP_FIELDS.UPDATED_AT]: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // 4. Update both traveller docs: set groupRef and remove requester from recipient's connectionRequests
+    await Promise.all([
+      recipientDoc.ref.update({
+        [TRAVELLER_FIELDS.GROUP_REF]: groupRef,
+        [TRAVELLER_FIELDS.CONNECTION_REQUESTS]:
+          admin.firestore.FieldValue.arrayRemove(requesterUserRef),
+      }),
+      requesterTravellerDoc.ref.update({
+        [TRAVELLER_FIELDS.GROUP_REF]: groupRef,
+      }),
+    ]);
+
+    await notifyConnectionRequestResponded(
+      requesterUserId,
+      recipientUid,
+      "accepted",
+      groupRef.id,
+    );
+
+    return res.json({
+      ok: true,
+      message: "Connection request accepted",
+      groupId: groupRef.id,
+    });
+  } catch (error: any) {
+    console.error("Respond to connection request error:", error.message);
+    return res.status(500).json({ ok: false, error: "Internal Server Error" });
   }
 }

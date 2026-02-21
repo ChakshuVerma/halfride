@@ -205,6 +205,47 @@ export async function notifyUserOfConnectionRequest(
 }
 
 /**
+ * Notify the requester that their connection request was accepted or rejected.
+ */
+export async function notifyConnectionRequestResponded(
+  requesterUserId: string,
+  recipientUserId: string,
+  status: "accepted" | "rejected",
+  groupId?: string,
+) {
+  const db = admin.firestore();
+  try {
+    const recipientSnap = await db
+      .collection(COLLECTIONS.USERS)
+      .doc(recipientUserId)
+      .get();
+    const recipientName = recipientSnap.exists
+      ? recipientSnap.data()?.["FirstName"]
+      : "Someone";
+
+    if (status === "accepted" && groupId) {
+      await createNotification({
+        recipientUserId: requesterUserId,
+        type: NotificationType.CONNECTION_ACCEPTED,
+        title: "Connection request accepted",
+        body: `${recipientName} accepted your connection request. You're now in a group together.`,
+        data: { groupId, actorUserId: recipientUserId },
+      });
+    } else if (status === "rejected") {
+      await createNotification({
+        recipientUserId: requesterUserId,
+        type: NotificationType.CONNECTION_REJECTED,
+        title: "Connection request declined",
+        body: `${recipientName} declined your connection request.`,
+        data: { actorUserId: recipientUserId },
+      });
+    }
+  } catch (e) {
+    console.error("Notify connection request responded error:", e);
+  }
+}
+
+/**
  * Get notifications for the authenticated user with Pagination.
  */
 export async function getMyNotifications(req: Request, res: Response) {
