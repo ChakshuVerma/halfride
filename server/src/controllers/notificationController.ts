@@ -51,12 +51,6 @@ export async function createNotification(payload: CreateNotificationPayload) {
         .doc(data.actorUserId);
       delete data.actorUserId;
     }
-    if (data.flightId) {
-      data.flightRef = db
-        .collection(COLLECTIONS.FLIGHT_DETAIL)
-        .doc(data.flightId);
-      delete data.flightId;
-    }
     // Handle specific fields if needed
     if (data.listingId) {
       // Assuming listingId is just a string or you want a ref to TravellerData?
@@ -348,7 +342,6 @@ export async function getMyNotifications(req: Request, res: Response) {
           flightRef: undefined,
           groupId: d.data?.groupRef?.id,
           actorUserId: d.data?.actorUserRef?.id,
-          flightId: d.data?.flightRef?.id,
         },
       };
     });
@@ -469,7 +462,7 @@ export async function seedDummyNotifications(req: Request, res: Response) {
         type: NotificationType.NEW_LISTING,
         title: "New Traveller Detected",
         body: "A traveller matching your criteria has arrived at JFK.",
-        data: { listingId: "dummy_listing_123", flightId: "AA_100" },
+        data: { listingId: "dummy_listing_123" },
       },
       {
         recipientUserId: uid,
@@ -485,13 +478,6 @@ export async function seedDummyNotifications(req: Request, res: Response) {
         body: "Your request to join 'Bali Squad' has been accepted.",
         data: { groupId: "dummy_group_789" },
       },
-      {
-        recipientUserId: uid,
-        type: NotificationType.FLIGHT_STATUS,
-        title: "Flight Delayed",
-        body: "Flight AA 100 is delayed by 45 minutes.",
-        data: { flightId: "AA_100", metadata: { delayMinutes: 45 } },
-      },
     ];
 
     const results = [];
@@ -502,7 +488,7 @@ export async function seedDummyNotifications(req: Request, res: Response) {
 
     return res.json({
       ok: true,
-      message: "Seeded 4 dummy notifications",
+      message: "Seeded 3 dummy notifications",
       results,
     });
   } catch (error: any) {
