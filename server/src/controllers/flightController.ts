@@ -321,6 +321,26 @@ export async function createFlightTracker(req: Request, res: Response) {
       .collection(COLLECTIONS.TRAVELLER_DATA)
       .doc(travellerDocId);
 
+    // Enforce at most one active listing per user: reject if they have an active listing for a different flight
+    const activeListingSnap = await db
+      .collection(COLLECTIONS.TRAVELLER_DATA)
+      .where(TRAVELLER_FIELDS.USER_REF, "==", userRef)
+      .where(TRAVELLER_FIELDS.IS_COMPLETED, "==", false)
+      .limit(2)
+      .get();
+
+    if (!activeListingSnap.empty) {
+      const otherActive = activeListingSnap.docs.find((d) => d.id !== travellerRef.id);
+      if (otherActive) {
+        return res.status(400).json({
+          ok: false,
+          error: "Bad Request",
+          message:
+            "You already have an active listing. Complete or remove it before adding another.",
+        });
+      }
+    }
+
     const travellerSnap = await travellerRef.get();
     const isNewTraveller = !travellerSnap.exists;
 
