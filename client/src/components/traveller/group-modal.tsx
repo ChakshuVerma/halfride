@@ -101,21 +101,22 @@ export function GroupModal({
     fetchGroupJoinRequests,
     respondToJoinRequest,
     updateGroupName,
+    fetchGroupMembersLoading,
+    fetchGroupJoinRequestsLoading,
+    leaveGroupLoading,
+    updateGroupNameLoading,
+    requestJoinGroupLoading,
+    respondToJoinRequestLoading,
   } = useGetTravellerApi();
   const [members, setMembers] = useState<Traveller[]>([]);
-  const [isLoadingMembers, setIsLoadingMembers] = useState(false);
-  const [leaveLoading, setLeaveLoading] = useState(false);
   const [leaveError, setLeaveError] = useState<string | null>(null);
   const [joinRequests, setJoinRequests] = useState<JoinRequestUser[]>([]);
-  const [isLoadingJoinRequests, setIsLoadingJoinRequests] = useState(false);
-  const [joinLoading, setJoinLoading] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [respondingId, setRespondingId] = useState<string | null>(null);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
   const [editingName, setEditingName] = useState(false);
   const [editNameValue, setEditNameValue] = useState(group.name);
   const [nameUpdateError, setNameUpdateError] = useState<string | null>(null);
-  const [nameUpdateLoading, setNameUpdateLoading] = useState(false);
   const [displayName, setDisplayName] = useState(group.name);
 
   const capacityPercentage = Math.round(
@@ -153,9 +154,7 @@ export function GroupModal({
       return;
     }
     setNameUpdateError(null);
-    setNameUpdateLoading(true);
     const result = await updateGroupName(group.id, trimmed);
-    setNameUpdateLoading(false);
     if (result.ok) {
       setDisplayName(trimmed);
       setEditingName(false);
@@ -171,14 +170,11 @@ export function GroupModal({
 
   useEffect(() => {
     const loadMembers = async () => {
-      setIsLoadingMembers(true);
       try {
         const data = await fetchGroupMembers(group.id);
         setMembers(data);
       } catch (err) {
         console.error(CONSTANTS.LOGS.LOAD_FAILED, err);
-      } finally {
-        setIsLoadingMembers(false);
       }
     };
     void loadMembers();
@@ -187,14 +183,11 @@ export function GroupModal({
   useEffect(() => {
     if (!isCurrentUserInGroup) return;
     const loadJoinRequests = async () => {
-      setIsLoadingJoinRequests(true);
       try {
         const data = await fetchGroupJoinRequests(group.id);
         setJoinRequests(data);
       } catch (err) {
         console.error("Failed to load join requests", err);
-      } finally {
-        setIsLoadingJoinRequests(false);
       }
     };
     void loadJoinRequests();
@@ -268,7 +261,7 @@ export function GroupModal({
                   maxLength={GROUP_NAME_MAX_LENGTH}
                   className="w-full text-lg sm:text-xl font-bold tracking-tight bg-muted/30 border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
                   autoFocus
-                  disabled={nameUpdateLoading}
+                  disabled={updateGroupNameLoading}
                 />
                 <div className="flex items-baseline justify-between gap-2 flex-wrap">
                   <p className="text-[10px] text-muted-foreground">
@@ -293,18 +286,18 @@ export function GroupModal({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    disabled={nameUpdateLoading}
+                    disabled={updateGroupNameLoading}
                     onClick={handleSaveName}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50"
                   >
-                    {nameUpdateLoading ? (
+                    {updateGroupNameLoading ? (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
                     ) : null}
                     {CONSTANTS.LABELS.SAVE}
                   </button>
                   <button
                     type="button"
-                    disabled={nameUpdateLoading}
+                    disabled={updateGroupNameLoading}
                     onClick={handleCancelEditName}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-muted/30 text-sm font-medium hover:bg-muted/50"
                   >
@@ -399,7 +392,7 @@ export function GroupModal({
             {CONSTANTS.LABELS.MEMBERS} ({members.length})
           </span>
           <div className="space-y-2 max-h-[120px] sm:max-h-[160px] overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin">
-            {isLoadingMembers ? (
+            {fetchGroupMembersLoading ? (
               <div className="flex items-center justify-center py-6 text-primary/80">
                 <Loader2 className="w-6 h-6 animate-spin" />
               </div>
@@ -450,7 +443,7 @@ export function GroupModal({
               {CONSTANTS.LABELS.JOIN_REQUESTS} ({joinRequests.length})
             </span>
             <div className="space-y-2 max-h-[140px] overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin">
-              {isLoadingJoinRequests ? (
+              {fetchGroupJoinRequestsLoading ? (
                 <div className="flex items-center justify-center py-4 text-primary/80">
                   <Loader2 className="w-5 h-5 animate-spin" />
                 </div>
@@ -486,7 +479,7 @@ export function GroupModal({
                     <div className="flex items-center gap-1 shrink-0">
                       <button
                         type="button"
-                        disabled={respondingId === req.id}
+                        disabled={respondToJoinRequestLoading || respondingId === req.id}
                         className="p-2 rounded-lg bg-green-500/15 text-green-700 hover:bg-green-500/25 border border-green-500/20 transition-colors disabled:opacity-50"
                         title={CONSTANTS.LABELS.ACCEPT}
                         onClick={async () => {
@@ -516,7 +509,7 @@ export function GroupModal({
                       </button>
                       <button
                         type="button"
-                        disabled={respondingId === req.id}
+                        disabled={respondToJoinRequestLoading || respondingId === req.id}
                         className="p-2 rounded-lg bg-red-500/15 text-red-700 hover:bg-red-500/25 border border-red-500/20 transition-colors disabled:opacity-50"
                         title={CONSTANTS.LABELS.REJECT}
                         onClick={async () => {
@@ -565,10 +558,10 @@ export function GroupModal({
                 <button
                   type="button"
                   className="flex-1 min-w-0 rounded-xl px-4 py-2.5 sm:py-2.5 text-sm font-bold text-white bg-zinc-600 hover:bg-zinc-700 active:bg-zinc-800 transition-colors disabled:opacity-50 disabled:pointer-events-none"
-                  disabled={leaveLoading}
+                  disabled={leaveGroupLoading}
                   onClick={() => setShowLeaveConfirm(true)}
                 >
-                  {leaveLoading ? (
+                  {leaveGroupLoading ? (
                     <Loader2 className="w-4 h-4 animate-spin mx-auto" />
                   ) : (
                     CONSTANTS.LABELS.LEAVE_GROUP
@@ -583,9 +576,7 @@ export function GroupModal({
                   variant="secondary"
                   onConfirm={async () => {
                     setLeaveError(null);
-                    setLeaveLoading(true);
                     const result = await leaveGroup(group.id);
-                    setLeaveLoading(false);
                     if (result.ok) {
                       onLeaveGroup?.();
                     } else {
@@ -603,7 +594,7 @@ export function GroupModal({
                   </p>
                 ) : hasListingAtThisAirport ? (
                   <button
-                    disabled={isFull || joinLoading}
+                    disabled={isFull || requestJoinGroupLoading}
                     className={`flex-1 min-w-0 group relative overflow-hidden rounded-xl px-4 py-2.5 transition-all
                     ${
                       isFull
@@ -612,9 +603,7 @@ export function GroupModal({
                     }`}
                     onClick={async () => {
                       setJoinError(null);
-                      setJoinLoading(true);
                       const result = await requestJoinGroup(group.id);
-                      setJoinLoading(false);
                       if (result.ok) {
                         onJoinRequestSuccess?.();
                       } else {
@@ -628,7 +617,7 @@ export function GroupModal({
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                     )}
                     <span className="relative flex items-center justify-center gap-2 font-bold text-sm tracking-wide">
-                      {joinLoading ? (
+                      {requestJoinGroupLoading ? (
                         <Loader2 className="w-4 h-4 animate-spin" />
                       ) : isFull ? (
                         CONSTANTS.LABELS.GROUP_FULL

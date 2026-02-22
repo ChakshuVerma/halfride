@@ -83,7 +83,6 @@ const CONSTANTS = {
 export function ForgotPassword() {
   const navigate = useNavigate();
   const [isSendingOtp, setIsSendingOtp] = useState(false);
-  const [isResettingPassword, setIsResettingPassword] = useState(false);
 
   const [username, setUsername] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -101,7 +100,8 @@ export function ForgotPassword() {
   const [otp, setOtp] = useState("");
   const [resetKey, setResetKey] = useState(0);
   const recaptchaRef = useRef<RecaptchaVerifier | null>(null);
-  const { completeForgotPassword } = useAuthApi();
+  const { completeForgotPassword, completeForgotPasswordLoading } =
+    useAuthApi();
   const usernameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -212,7 +212,7 @@ export function ForgotPassword() {
 
   const resetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!confirmation || isResettingPassword) return;
+    if (!confirmation || completeForgotPasswordLoading) return;
     if (!username || !newPassword)
       return toast.error(CONSTANTS.ERRORS.USERNAME_PASSWORD_REQUIRED);
 
@@ -222,7 +222,6 @@ export function ForgotPassword() {
       return;
     }
 
-    setIsResettingPassword(true);
     try {
       const cred = await confirmation.confirm(otp);
       const firebaseIdToken = await cred.user.getIdToken();
@@ -239,8 +238,6 @@ export function ForgotPassword() {
       console.error(e);
       // @ts-ignore
       toast.error(e?.message || CONSTANTS.ERRORS.RESET_FAILED);
-    } finally {
-      setIsResettingPassword(false);
     }
   };
 
@@ -465,7 +462,7 @@ export function ForgotPassword() {
                   maxLength={CONSTANTS.OTP_LENGTH}
                   value={otp}
                   onChange={setOtp}
-                  disabled={isResettingPassword}
+                  disabled={completeForgotPasswordLoading}
                 >
                   <InputOTPGroup className="gap-3">
                     {[...Array(CONSTANTS.OTP_LENGTH)].map((_, i) => (
@@ -484,9 +481,9 @@ export function ForgotPassword() {
             <Button
               type="submit"
               className="w-full h-12 rounded-xl bg-zinc-900 hover:bg-black text-white font-bold text-sm uppercase tracking-widest shadow-lg shadow-zinc-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
-              disabled={isSendingOtp || isResettingPassword}
+              disabled={isSendingOtp || completeForgotPasswordLoading}
             >
-              {isResettingPassword ? (
+              {completeForgotPasswordLoading ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin" />{" "}
                   {CONSTANTS.BUTTONS.RESETTING}

@@ -90,7 +90,6 @@ const AirportTravellers = () => {
   const [filterTerminal, setFilterTerminal] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const [isWaitlistModalOpen, setIsWaitlistModalOpen] = useState(false);
-  const [isRevoking, setIsRevoking] = useState(false);
   const [initialDataFetchCompleted, setInitialDataFetchCompleted] =
     useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -103,22 +102,32 @@ const AirportTravellers = () => {
     fetchGroups,
     fetchUserDestination,
     revokeListing,
-    loading: isFetchingList,
+    fetchTravellersLoading,
+    fetchGroupsLoading,
+    revokeListingLoading,
   } = useGetTravellerApi();
   const {
     fetchAirports,
     fetchTerminals,
-    loading: isFetchingCombos,
+    fetchAirportsLoading,
+    fetchTerminalsLoading,
   } = useGetAirportsApi();
   const [terminals, setTerminals] = useState<{ id: string; name: string }[]>(
     [],
   );
+  const [airportsLoaded, setAirportsLoaded] = useState(false);
+  const isFetchingCombos =
+    !airportsLoaded ||
+    fetchAirportsLoading ||
+    fetchTerminalsLoading;
+  const isFetchingList = fetchTravellersLoading || fetchGroupsLoading;
 
   useEffect(() => {
     const loadAirports = async () => {
       const fetched = await fetchAirports();
       fetched.sort((a, b) => a.airportName.localeCompare(b.airportName));
       setAirports(fetched);
+      setAirportsLoaded(true);
     };
     void loadAirports();
   }, [fetchAirports]);
@@ -150,26 +159,30 @@ const AirportTravellers = () => {
     if (!selectedAirport?.airportCode) return;
     const loadData = async () => {
       const code = selectedAirport?.airportCode;
-      if (viewMode === VIEW_MODE.INDIVIDUAL) {
-        const {
-          travellers: fetchedTravellers,
-          isUserInGroup,
-          userGroupId: gid,
-        } = await fetchTravellers(code);
-        setTravellers(fetchedTravellers);
-        setIsUserInGroup(isUserInGroup);
-        setUserGroupId(gid);
-      } else {
-        const [travellersResult, fetchedGroups] = await Promise.all([
-          fetchTravellers(code),
-          fetchGroups(selectedAirport.airportCode, selectedAirport.airportName),
-        ]);
-        setTravellers(travellersResult.travellers);
-        setIsUserInGroup(travellersResult.isUserInGroup);
-        setUserGroupId(travellersResult.userGroupId);
-        setGroups(fetchedGroups);
+      try {
+        if (viewMode === VIEW_MODE.INDIVIDUAL) {
+          const {
+            travellers: fetchedTravellers,
+            isUserInGroup,
+            userGroupId: gid,
+          } = await fetchTravellers(code);
+          setTravellers(fetchedTravellers);
+          setIsUserInGroup(isUserInGroup);
+          setUserGroupId(gid);
+        } else {
+          const [travellersResult, fetchedGroups] = await Promise.all([
+            fetchTravellers(code),
+            fetchGroups(selectedAirport.airportCode, selectedAirport.airportName),
+          ]);
+          setTravellers(travellersResult.travellers);
+          setIsUserInGroup(travellersResult.isUserInGroup);
+          setUserGroupId(travellersResult.userGroupId);
+          setGroups(fetchedGroups);
+        }
+        setInitialDataFetchCompleted(true);
+      } catch {
+        // loading state is handled by hooks
       }
-      setInitialDataFetchCompleted(true);
     };
     void loadData();
   }, [viewMode, selectedAirport, fetchTravellers, fetchGroups]);
@@ -243,10 +256,8 @@ const AirportTravellers = () => {
 
   const handleRevokeListing = useCallback(
     async (closeModalAfter?: boolean): Promise<boolean> => {
-      if (!selectedAirport?.airportCode || isRevoking) return false;
-      setIsRevoking(true);
+      if (!selectedAirport?.airportCode || revokeListingLoading) return false;
       const result = await revokeListing(selectedAirport.airportCode);
-      setIsRevoking(false);
       if (result.ok) {
         setUserDestination(null);
         setIsUserInGroup(false);
@@ -263,7 +274,7 @@ const AirportTravellers = () => {
       }
       return false;
     },
-    [selectedAirport, revokeListing, isRevoking, fetchTravellers, fetchGroups],
+    [selectedAirport, revokeListing, revokeListingLoading, fetchTravellers, fetchGroups],
   );
 
   const listSectionContent = useMemo(() => {
@@ -640,7 +651,7 @@ const AirportTravellers = () => {
                           }
                         : undefined
                     }
-                    isRevokingListing={isRevoking}
+                    isRevokingListing={revokeListingLoading}
                   />
                 ) : (
                   selectedEntity && (

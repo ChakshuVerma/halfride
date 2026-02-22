@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useApi } from "./useApi";
 import { API_ROUTES } from "@/lib/apiRoutes";
 
@@ -174,23 +174,29 @@ function parseFlightArrivalInfo(
 }
 
 export function useFlightTrackerApi() {
-  const { loading, sessionRequest } = useApi();
+  const { sessionRequest } = useApi();
+  const [loading, setLoading] = useState(false);
 
   const fetchFlightTracker = useCallback(
     async (params: FlightParams): Promise<FlightArrivalInfo> => {
       const { carrier, flightNum, year, month, day } = params;
       const url = API_ROUTES.FLIGHT_TRACKER;
-      const json = await sessionRequest<FlightTrackerResponse>(url, {
-        method: "PUT",
-        body: JSON.stringify({
-          carrier,
-          flightNumber: flightNum,
-          year,
-          month,
-          day,
-        }),
-      });
-      return parseFlightArrivalInfo(json);
+      setLoading(true);
+      try {
+        const json = await sessionRequest<FlightTrackerResponse>(url, {
+          method: "PUT",
+          body: JSON.stringify({
+            carrier,
+            flightNumber: flightNum,
+            year,
+            month,
+            day,
+          }),
+        });
+        return parseFlightArrivalInfo(json);
+      } finally {
+        setLoading(false);
+      }
     },
     [sessionRequest],
   );
@@ -222,13 +228,18 @@ export function useFlightTrackerApi() {
       airportCode: string;
     }) => {
       const url = API_ROUTES.NEW_FLIGHT_TRACKER;
-      return await sessionRequest(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
+      setLoading(true);
+      try {
+        return await sessionRequest(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        });
+      } finally {
+        setLoading(false);
+      }
     },
     [sessionRequest],
   );

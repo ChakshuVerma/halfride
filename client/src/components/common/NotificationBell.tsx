@@ -64,23 +64,20 @@ function renderNotificationBody(
 }
 
 export function NotificationBell() {
-  const { fetchNotifications, getUnreadCount, markRead, markAllRead } =
-    useNotificationApi();
+  const {
+    fetchNotifications,
+    getUnreadCount,
+    markRead,
+    markAllRead,
+    loadMoreLoading,
+  } = useNotificationApi();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [hasMore, setHasMore] = useState(false);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterType>(
     NOTIFICATION_CONSTANTS.FILTERS.ALL,
   );
-
-  // Initial load & Polling
-  useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 15000);
-    return () => clearInterval(interval);
-  }, []);
 
   const loadData = async () => {
     try {
@@ -91,16 +88,22 @@ export function NotificationBell() {
       setNotifications(msgs);
       setHasMore(more);
       setUnreadCount(count);
-    } catch (e) {
-      console.error(NOTIFICATION_CONSTANTS.ERRORS.LOAD_FAILED, e);
+    } catch (err) {
+      console.error(NOTIFICATION_CONSTANTS.ERRORS.LOAD_FAILED, err);
     }
   };
 
+  // Initial load & Polling
+  useEffect(() => {
+    loadData();
+    const interval = setInterval(loadData, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
   const loadMore = async () => {
-    if (!notifications.length || !hasMore || isLoadingMore) return;
+    if (!notifications.length || !hasMore || loadMoreLoading) return;
     const lastId = notifications[notifications.length - 1]?.notificationId;
     if (!lastId) return;
-    setIsLoadingMore(true);
     try {
       const { data: nextPage, hasMore: more } = await fetchNotifications(
         NOTIFICATIONS_PAGE_SIZE,
@@ -110,8 +113,6 @@ export function NotificationBell() {
       setHasMore(more);
     } catch (e) {
       console.error(NOTIFICATION_CONSTANTS.ERRORS.LOAD_FAILED, e);
-    } finally {
-      setIsLoadingMore(false);
     }
   };
 
@@ -309,9 +310,9 @@ export function NotificationBell() {
                     size="sm"
                     className="w-full text-xs text-muted-foreground hover:text-foreground"
                     onClick={loadMore}
-                    disabled={isLoadingMore}
+                    disabled={loadMoreLoading}
                   >
-                    {isLoadingMore ? "Loading…" : "Load more"}
+                    {loadMoreLoading ? "Loading…" : "Load more"}
                   </Button>
                 </div>
               )}

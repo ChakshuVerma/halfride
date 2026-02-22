@@ -1,10 +1,20 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useApi } from "./useApi";
 import { API_ROUTES } from "@/lib/apiRoutes";
 import type { Traveller, Group } from "@/components/traveller/types";
 
 export function useGetTravellerApi() {
-  const { sessionRequest, loading } = useApi();
+  const { sessionRequest } = useApi();
+  const [fetchTravellersLoading, setFetchTravellersLoading] = useState(false);
+  const [fetchGroupsLoading, setFetchGroupsLoading] = useState(false);
+  const [fetchUserDestinationLoading, setFetchUserDestinationLoading] = useState(false);
+  const [fetchGroupMembersLoading, setFetchGroupMembersLoading] = useState(false);
+  const [fetchGroupJoinRequestsLoading, setFetchGroupJoinRequestsLoading] = useState(false);
+  const [leaveGroupLoading, setLeaveGroupLoading] = useState(false);
+  const [revokeListingLoading, setRevokeListingLoading] = useState(false);
+  const [requestJoinGroupLoading, setRequestJoinGroupLoading] = useState(false);
+  const [respondToJoinRequestLoading, setRespondToJoinRequestLoading] = useState(false);
+  const [updateGroupNameLoading, setUpdateGroupNameLoading] = useState(false);
 
   const fetchTravellers = useCallback(
     async (
@@ -16,7 +26,7 @@ export function useGetTravellerApi() {
     }> => {
       if (!airportCode)
         return { travellers: [], isUserInGroup: false, userGroupId: null };
-
+      setFetchTravellersLoading(true);
       try {
         const url = `${API_ROUTES.TRAVELLERS_BY_AIRPORT}/${airportCode}`;
         const response = await sessionRequest<{
@@ -25,7 +35,6 @@ export function useGetTravellerApi() {
           isUserInGroup?: boolean;
           userGroupId?: string;
         }>(url);
-
         const data = response.data || [];
         const isUserInGroup = response.isUserInGroup || false;
         const userGroupId = response.userGroupId ?? null;
@@ -33,6 +42,8 @@ export function useGetTravellerApi() {
       } catch (error) {
         console.error("Failed to fetch travellers:", error);
         return { travellers: [], isUserInGroup: false, userGroupId: null };
+      } finally {
+        setFetchTravellersLoading(false);
       }
     },
     [sessionRequest],
@@ -41,7 +52,7 @@ export function useGetTravellerApi() {
   const fetchGroups = useCallback(
     async (airportCode: string, airportName?: string): Promise<Group[]> => {
       if (!airportCode) return [];
-
+      setFetchGroupsLoading(true);
       try {
         const url = `${API_ROUTES.GROUPS_BY_AIRPORT}/${encodeURIComponent(airportCode)}`;
         const response = await sessionRequest<{
@@ -58,7 +69,6 @@ export function useGetTravellerApi() {
             hasPendingJoinRequest?: boolean;
           }>;
         }>(url);
-
         const data = response.data || [];
         const name = airportName ?? airportCode;
         return data.map((g) => ({
@@ -73,6 +83,8 @@ export function useGetTravellerApi() {
       } catch (error) {
         console.error("Failed to fetch groups:", error);
         return [];
+      } finally {
+        setFetchGroupsLoading(false);
       }
     },
     [sessionRequest],
@@ -80,6 +92,7 @@ export function useGetTravellerApi() {
 
   const fetchUserDestination = useCallback(
     async (airportCode: string): Promise<string | null> => {
+      setFetchUserDestinationLoading(true);
       try {
         const url = `${API_ROUTES.CHECK_LISTING}?airportCode=${airportCode}`;
         const response = await sessionRequest<{
@@ -90,6 +103,8 @@ export function useGetTravellerApi() {
       } catch (error) {
         console.error("Failed to check listing:", error);
         return null;
+      } finally {
+        setFetchUserDestinationLoading(false);
       }
     },
     [sessionRequest],
@@ -98,6 +113,7 @@ export function useGetTravellerApi() {
   const fetchGroupMembers = useCallback(
     async (groupId: string): Promise<Traveller[]> => {
       if (!groupId) return [];
+      setFetchGroupMembersLoading(true);
       try {
         const url = `${API_ROUTES.GROUP_MEMBERS}/${encodeURIComponent(groupId)}`;
         const response = await sessionRequest<{
@@ -127,6 +143,8 @@ export function useGetTravellerApi() {
       } catch (error) {
         console.error("Failed to fetch group members:", error);
         return [];
+      } finally {
+        setFetchGroupMembersLoading(false);
       }
     },
     [sessionRequest],
@@ -134,6 +152,7 @@ export function useGetTravellerApi() {
 
   const leaveGroup = useCallback(
     async (groupId: string): Promise<{ ok: boolean; error?: string }> => {
+      setLeaveGroupLoading(true);
       try {
         const response = await sessionRequest<{
           ok: boolean;
@@ -157,6 +176,8 @@ export function useGetTravellerApi() {
           error:
             error instanceof Error ? error.message : "Failed to leave group",
         };
+      } finally {
+        setLeaveGroupLoading(false);
       }
     },
     [sessionRequest],
@@ -164,6 +185,7 @@ export function useGetTravellerApi() {
 
   const revokeListing = useCallback(
     async (airportCode: string): Promise<{ ok: boolean; error?: string }> => {
+      setRevokeListingLoading(true);
       try {
         const response = await sessionRequest<{
           ok: boolean;
@@ -189,6 +211,8 @@ export function useGetTravellerApi() {
               ? error.message
               : "Failed to revoke listing",
         };
+      } finally {
+        setRevokeListingLoading(false);
       }
     },
     [sessionRequest],
@@ -196,6 +220,7 @@ export function useGetTravellerApi() {
 
   const requestJoinGroup = useCallback(
     async (groupId: string): Promise<{ ok: boolean; error?: string }> => {
+      setRequestJoinGroupLoading(true);
       try {
         const response = await sessionRequest<{
           ok: boolean;
@@ -221,6 +246,8 @@ export function useGetTravellerApi() {
               ? error.message
               : "Failed to send join request",
         };
+      } finally {
+        setRequestJoinGroupLoading(false);
       }
     },
     [sessionRequest],
@@ -238,6 +265,7 @@ export function useGetTravellerApi() {
   const fetchGroupJoinRequests = useCallback(
     async (groupId: string): Promise<JoinRequestUser[]> => {
       if (!groupId) return [];
+      setFetchGroupJoinRequestsLoading(true);
       try {
         const url = `${API_ROUTES.GROUP_JOIN_REQUESTS}/${encodeURIComponent(groupId)}`;
         const response = await sessionRequest<{
@@ -248,6 +276,8 @@ export function useGetTravellerApi() {
       } catch (error) {
         console.error("Fetch group join requests error:", error);
         return [];
+      } finally {
+        setFetchGroupJoinRequestsLoading(false);
       }
     },
     [sessionRequest],
@@ -259,6 +289,7 @@ export function useGetTravellerApi() {
       requesterUserId: string,
       action: "accept" | "reject",
     ): Promise<{ ok: boolean; error?: string }> => {
+      setRespondToJoinRequestLoading(true);
       try {
         const response = await sessionRequest<{
           ok: boolean;
@@ -278,6 +309,8 @@ export function useGetTravellerApi() {
           ok: false,
           error: error instanceof Error ? error.message : "Action failed",
         };
+      } finally {
+        setRespondToJoinRequestLoading(false);
       }
     },
     [sessionRequest],
@@ -288,6 +321,7 @@ export function useGetTravellerApi() {
       groupId: string,
       name: string,
     ): Promise<{ ok: boolean; error?: string; name?: string }> => {
+      setUpdateGroupNameLoading(true);
       try {
         const response = await sessionRequest<{
           ok: boolean;
@@ -314,6 +348,8 @@ export function useGetTravellerApi() {
               ? error.message
               : "Failed to update group name",
         };
+      } finally {
+        setUpdateGroupNameLoading(false);
       }
     },
     [sessionRequest],
@@ -330,6 +366,15 @@ export function useGetTravellerApi() {
     fetchGroupJoinRequests,
     respondToJoinRequest,
     updateGroupName,
-    loading,
+    fetchTravellersLoading,
+    fetchGroupsLoading,
+    fetchUserDestinationLoading,
+    fetchGroupMembersLoading,
+    fetchGroupJoinRequestsLoading,
+    leaveGroupLoading,
+    revokeListingLoading,
+    requestJoinGroupLoading,
+    respondToJoinRequestLoading,
+    updateGroupNameLoading,
   };
 }

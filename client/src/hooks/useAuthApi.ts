@@ -1,4 +1,4 @@
-import { useCallback } from "react"
+import { useCallback, useState } from "react"
 import { useApi } from "./useApi"
 import { API_ROUTES } from "@/lib/apiRoutes"
 
@@ -24,34 +24,52 @@ type ForgotPasswordCompletePayload = {
 }
 
 export function useAuthApi() {
-  const { loading, publicRequest, sessionRequest } = useApi()
+  const { publicRequest, sessionRequest } = useApi()
+  const [loginLoading, setLoginLoading] = useState(false)
+  const [completeSignupLoading, setCompleteSignupLoading] = useState(false)
+  const [completeForgotPasswordLoading, setCompleteForgotPasswordLoading] = useState(false)
 
   const login = useCallback(
     async ({ username, password }: LoginPayload) => {
-      await publicRequest(API_ROUTES.AUTH_LOGIN, {
-        method: "POST",
-        body: JSON.stringify({ username, password }),
-      })
+      setLoginLoading(true)
+      try {
+        await publicRequest(API_ROUTES.AUTH_LOGIN, {
+          method: "POST",
+          body: JSON.stringify({ username, password }),
+        })
+      } finally {
+        setLoginLoading(false)
+      }
     },
     [publicRequest]
   )
 
   const completeSignup = useCallback(
     async (payload: SignupCompletePayload) => {
-      await publicRequest(API_ROUTES.AUTH_SIGNUP_COMPLETE, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      })
+      setCompleteSignupLoading(true)
+      try {
+        await publicRequest(API_ROUTES.AUTH_SIGNUP_COMPLETE, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        })
+      } finally {
+        setCompleteSignupLoading(false)
+      }
     },
     [publicRequest]
   )
 
   const completeForgotPassword = useCallback(
     async (payload: ForgotPasswordCompletePayload) => {
-      await publicRequest(API_ROUTES.AUTH_FORGOT_PASSWORD_COMPLETE, {
-        method: "POST",
-        body: JSON.stringify(payload),
-      })
+      setCompleteForgotPasswordLoading(true)
+      try {
+        await publicRequest(API_ROUTES.AUTH_FORGOT_PASSWORD_COMPLETE, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        })
+      } finally {
+        setCompleteForgotPasswordLoading(false)
+      }
     },
     [publicRequest]
   )
@@ -67,7 +85,9 @@ export function useAuthApi() {
     completeSignup,
     completeForgotPassword,
     logout,
-    loading,
+    loginLoading,
+    completeSignupLoading,
+    completeForgotPasswordLoading,
   }
 }
 

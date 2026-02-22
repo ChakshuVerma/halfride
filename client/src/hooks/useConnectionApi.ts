@@ -37,14 +37,19 @@ interface RespondToConnectionResponse {
 }
 
 export function useConnectionApi() {
-  const { sessionRequest, loading } = useApi();
+  const { sessionRequest } = useApi();
   const [error, setError] = useState<string | null>(null);
+  const [requestConnectionLoading, setRequestConnectionLoading] =
+    useState(false);
+  const [respondToConnectionLoading, setRespondToConnectionLoading] =
+    useState(false);
 
   const requestConnection = useCallback(
     async (
       payload: RequestConnectionPayload,
     ): Promise<RequestConnectionResponse> => {
       setError(null);
+      setRequestConnectionLoading(true);
       try {
         const response = await sessionRequest<RequestConnectionResponse>(
           API_ROUTES.REQUEST_CONNECTION,
@@ -66,6 +71,8 @@ export function useConnectionApi() {
           err instanceof Error ? err.message : "An unexpected error occurred";
         setError(message);
         return { ok: false, error: message };
+      } finally {
+        setRequestConnectionLoading(false);
       }
     },
     [sessionRequest],
@@ -76,6 +83,7 @@ export function useConnectionApi() {
       payload: RespondToConnectionPayload,
     ): Promise<RespondToConnectionResponse> => {
       setError(null);
+      setRespondToConnectionLoading(true);
       try {
         const response = await sessionRequest<RespondToConnectionResponse>(
           API_ROUTES.RESPOND_TO_CONNECTION,
@@ -97,6 +105,8 @@ export function useConnectionApi() {
           err instanceof Error ? err.message : "An unexpected error occurred";
         setError(message);
         return { ok: false, error: message };
+      } finally {
+        setRespondToConnectionLoading(false);
       }
     },
     [sessionRequest],
@@ -105,7 +115,8 @@ export function useConnectionApi() {
   return {
     requestConnection,
     respondToConnection,
-    loading,
+    requestConnectionLoading,
+    respondToConnectionLoading,
     error,
   };
 }

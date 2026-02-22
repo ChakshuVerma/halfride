@@ -60,9 +60,8 @@ export function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string>("");
-  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuthApi();
+  const { login, loginLoading } = useAuthApi();
   const usernameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -76,9 +75,8 @@ export function Login() {
 
   const doLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLoading) return;
+    if (loginLoading) return;
 
-    setIsLoading(true);
     setError("");
     try {
       await login({ username, password });
@@ -87,8 +85,6 @@ export function Login() {
       window.location.reload();
     } catch {
       showError(CONSTANTS.ERRORS.LOGIN_FAILED);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -128,7 +124,7 @@ export function Login() {
                   placeholder={CONSTANTS.PLACEHOLDERS.USERNAME}
                   className="h-12 bg-zinc-50/50 hover:bg-zinc-50 focus:bg-white rounded-xl border-zinc-200 focus:border-zinc-400 focus:ring-0 pl-10 transition-all font-medium"
                   required
-                  disabled={isLoading}
+                  disabled={loginLoading}
                 />
               </div>
             </div>
@@ -164,7 +160,7 @@ export function Login() {
                   className="h-12 bg-zinc-50/50 hover:bg-zinc-50 focus:bg-white rounded-xl border-zinc-200 focus:border-zinc-400 focus:ring-0 pl-10 pr-10 transition-all font-medium"
                   placeholder={CONSTANTS.PLACEHOLDERS.PASSWORD}
                   required
-                  disabled={isLoading}
+                  disabled={loginLoading}
                 />
                 <button
                   type="button"
@@ -191,11 +187,11 @@ export function Login() {
               type="submit"
               className={cn(
                 "w-full h-12 rounded-xl bg-zinc-900 hover:bg-black text-white font-bold text-sm uppercase tracking-widest shadow-lg shadow-zinc-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]",
-                isLoading && "opacity-80 scale-100",
+                loginLoading && "opacity-80 scale-100",
               )}
-              disabled={isLoading}
+              disabled={loginLoading}
             >
-              {isLoading ? (
+              {loginLoading ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   {CONSTANTS.LABELS.LOGGING_IN}

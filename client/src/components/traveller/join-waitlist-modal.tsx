@@ -76,8 +76,7 @@ export function JoinWaitlistModal({
   terminals,
   currentAirport,
 }: JoinWaitlistModalProps) {
-  const { createFlightTracker } = useFlightTrackerApi();
-  const [loading, setLoading] = useState(false);
+  const { createFlightTracker, loading } = useFlightTrackerApi();
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -101,7 +100,6 @@ export function JoinWaitlistModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
-    setLoading(true);
 
     try {
       if (
@@ -143,8 +141,6 @@ export function JoinWaitlistModal({
       }, 2500);
     } catch (err: any) {
       setError(err.message || MODAL_CONTENT.FORM.ERRORS.UNEXPECTED);
-    } finally {
-      setLoading(false);
     }
   };
 
