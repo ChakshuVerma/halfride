@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { DialogHeader, DialogTitle } from "../ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   Plane,
   User,
@@ -155,6 +156,7 @@ export function TravellerModal({
   );
   const [flightError, setFlightError] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
+  const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
 
   const isLoading = apiLoading || (!flightInfo && !flightError);
 
@@ -504,19 +506,28 @@ export function TravellerModal({
             This is your listing. Others can send you connection requests from here.
           </div>
           {onRevokeListing && (
-            <button
-              onClick={async () => {
-                await onRevokeListing();
-              }}
-              disabled={isRevokingListing}
-              className="w-full h-12 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-2 border-zinc-200 text-zinc-600 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
-            >
-              {isRevokingListing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                "Revoke listing"
-              )}
-            </button>
+            <>
+              <button
+                onClick={() => setShowRevokeConfirm(true)}
+                disabled={isRevokingListing}
+                className="w-full h-12 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-2 border-zinc-200 text-zinc-600 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+              >
+                {isRevokingListing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Revoke listing"
+                )}
+              </button>
+              <ConfirmDialog
+                open={showRevokeConfirm}
+                onOpenChange={setShowRevokeConfirm}
+                title="Revoke listing?"
+                description="Are you sure you want to revoke your listing at this airport? You will no longer be visible to other travellers here."
+                confirmLabel="Revoke listing"
+                variant="destructive"
+                onConfirm={onRevokeListing}
+              />
+            </>
           )}
         </div>
       ) : isUserInGroup ? (
