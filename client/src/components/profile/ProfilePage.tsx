@@ -28,11 +28,8 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfileByUsername } from "@/hooks/useProfileByUsername";
 import { useUserProfileApi } from "@/hooks/useUserProfileApi";
-import {
-  ROUTES,
-  getAirportGroupPath,
-  getAirportTravellerPath,
-} from "@/constants/routes";
+import { ROUTES } from "@/constants/routes";
+import { useEntityModal } from "@/contexts/EntityModalContext";
 import { cn } from "@/lib/utils";
 
 function formatDate(dateStr: string) {
@@ -54,6 +51,7 @@ function formatDate(dateStr: string) {
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
+  const { openEntityModal } = useEntityModal();
   const { user, userProfile, setUserProfile } = useAuth();
   const { data, loading, error, fetchProfile } = useProfileByUsername(username);
   const { uploadProfilePhoto, fetchProfile: fetchMeProfile } = useUserProfileApi();
@@ -353,12 +351,11 @@ export default function ProfilePage() {
                     size="sm"
                     className="gap-2"
                     onClick={() =>
-                      navigate(
-                        getAirportGroupPath(
-                          data.currentGroup!.flightArrivalAirport!,
-                          data.currentGroup!.groupId,
-                        ),
-                      )
+                      openEntityModal({
+                        type: "group",
+                        airportCode: data.currentGroup!.flightArrivalAirport!,
+                        entityId: data.currentGroup!.groupId,
+                      })
                     }
                   >
                     View group
@@ -399,12 +396,11 @@ export default function ProfilePage() {
                     size="sm"
                     className="gap-2"
                     onClick={() =>
-                      navigate(
-                        getAirportTravellerPath(
-                          data.activeTrip!.flightArrival,
-                          profileUser.userID,
-                        ),
-                      )
+                      openEntityModal({
+                        type: "traveller",
+                        airportCode: data.activeTrip!.flightArrival,
+                        entityId: profileUser.userID,
+                      })
                     }
                   >
                     View listing
