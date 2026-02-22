@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { Bell, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -39,6 +39,28 @@ const NOTIFICATION_CONSTANTS = {
     UNREAD: "unread" as const,
   },
 };
+
+function renderNotificationBody(
+  body: string,
+  groupName: string | undefined,
+): ReactNode {
+  if (
+    !groupName ||
+    typeof groupName !== "string" ||
+    !body.includes(groupName)
+  ) {
+    return body;
+  }
+  const idx = body.indexOf(groupName);
+  if (idx === -1) return body;
+  return (
+    <>
+      {body.slice(0, idx)}
+      <strong className="font-semibold text-foreground">{groupName}</strong>
+      {body.slice(idx + groupName.length)}
+    </>
+  );
+}
 
 export function NotificationBell() {
   const { fetchNotifications, getUnreadCount, markRead, markAllRead } =
@@ -251,7 +273,7 @@ export function NotificationBell() {
                             : "text-muted-foreground/60",
                         )}
                       >
-                        {n.body}
+                        {renderNotificationBody(n.body, n.data?.groupName)}
                       </p>
                     </div>
                   </div>

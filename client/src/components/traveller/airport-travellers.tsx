@@ -653,6 +653,7 @@ const AirportTravellers = () => {
                       hasListingAtThisAirport={!!userDestination}
                       onLeaveGroup={handleLeaveGroup}
                       onJoinRequestSuccess={handleJoinRequestSuccess}
+                      onGroupNameUpdated={refreshAirportData}
                     />
                   )
                 )}

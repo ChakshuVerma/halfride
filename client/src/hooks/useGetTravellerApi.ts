@@ -283,6 +283,42 @@ export function useGetTravellerApi() {
     [sessionRequest],
   );
 
+  const updateGroupName = useCallback(
+    async (
+      groupId: string,
+      name: string,
+    ): Promise<{ ok: boolean; error?: string; name?: string }> => {
+      try {
+        const response = await sessionRequest<{
+          ok: boolean;
+          message?: string;
+          error?: string;
+          name?: string;
+        }>(API_ROUTES.UPDATE_GROUP_NAME, {
+          method: "POST",
+          body: JSON.stringify({ groupId, name }),
+        });
+        if (!response.ok) {
+          return {
+            ok: false,
+            error: response.error ?? "Failed to update group name",
+          };
+        }
+        return { ok: true, name: response.name };
+      } catch (error) {
+        console.error("Update group name error:", error);
+        return {
+          ok: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to update group name",
+        };
+      }
+    },
+    [sessionRequest],
+  );
+
   return {
     fetchTravellers,
     fetchGroups,
@@ -293,6 +329,7 @@ export function useGetTravellerApi() {
     requestJoinGroup,
     fetchGroupJoinRequests,
     respondToJoinRequest,
+    updateGroupName,
     loading,
   };
 }
