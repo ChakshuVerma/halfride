@@ -13,6 +13,7 @@ export enum NotificationType {
 
 export interface NotificationData {
   groupId?: string;
+  groupName?: string; // Display name for group (shown in bold in UI)
   actorUserId?: string; // The user who triggered the action
   listingId?: string;
   metadata?: Record<string, any>;

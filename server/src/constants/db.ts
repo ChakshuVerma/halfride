@@ -81,6 +81,8 @@ export interface NotificationSchema {
 
 export interface GroupSchema {
   groupId: string;
+  /** Display name; max 50 chars, alphabets only. Any member can update. */
+  name?: string;
   members: any[]; // Array of DocumentReference to users
   pendingRequests: any[]; // Array of DocumentReference to users
   /** Airport code (e.g. DEL) for querying groups by airport. Members may be from different flights/terminals. */
@@ -154,6 +156,7 @@ export const NOTIFICATION_FIELDS = {
 // [NEW]
 export const GROUP_FIELDS = {
   GROUP_ID: "groupId",
+  NAME: "name",
   MEMBERS: "members",
   PENDING_REQUESTS: "pendingRequests",
   FLIGHT_ARRIVAL_AIRPORT: "flightArrivalAirport",

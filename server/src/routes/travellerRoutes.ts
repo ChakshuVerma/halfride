@@ -12,6 +12,7 @@ import {
   requestJoinGroup,
   getGroupJoinRequests,
   respondToJoinRequest,
+  updateGroupName,
 } from "../controllers/travellerController";
 
 export const travellerRouter = Router();
@@ -51,3 +52,4 @@ travellerRouter.post(
   requireSession,
   respondToJoinRequest,
 );
+travellerRouter.post("/update-group-name", requireSession, updateGroupName);

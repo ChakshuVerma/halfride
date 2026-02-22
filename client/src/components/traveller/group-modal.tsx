@@ -10,6 +10,7 @@ import {
   Check,
   X,
   UserPlus,
+  Pencil,
 } from "lucide-react";
 import { useGetTravellerApi } from "@/hooks/useGetTravellerApi";
 import type { Group, Traveller } from "./types";
@@ -48,6 +49,12 @@ const CONSTANTS = {
     NEED_LISTING_TO_JOIN:
       "Post your flight at this airport to join this group.",
     REQUEST_PENDING: "Join request pending",
+    EDIT_NAME: "Edit name",
+    SAVE: "Save",
+    CANCEL: "Cancel",
+    NAME_PLACEHOLDER: "Group name",
+    NAME_RULES: "Letters and spaces only, max 50 characters",
+    CHAR_COUNT: "characters",
   },
   UNITS: {
     KM_MIN: "km (min)",
@@ -72,7 +79,12 @@ type GroupModalProps = {
   onLeaveGroup?: () => void;
   /** Called after user successfully sends a join request. Use to close modal and refetch list. */
   onJoinRequestSuccess?: () => void;
+  /** Called after user successfully updates the group name. Use to refetch groups list. */
+  onGroupNameUpdated?: () => void;
 };
+
+const GROUP_NAME_MAX_LENGTH = 50;
+const GROUP_NAME_ALPHABETS_ONLY = /^[A-Za-z\s]*$/;
 
 export function GroupModal({
   group,
@@ -80,6 +92,7 @@ export function GroupModal({
   hasListingAtThisAirport = false,
   onLeaveGroup,
   onJoinRequestSuccess,
+  onGroupNameUpdated,
 }: GroupModalProps) {
   const {
     fetchGroupMembers,
@@ -87,6 +100,7 @@ export function GroupModal({
     requestJoinGroup,
     fetchGroupJoinRequests,
     respondToJoinRequest,
+    updateGroupName,
   } = useGetTravellerApi();
   const [members, setMembers] = useState<Traveller[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
@@ -98,11 +112,62 @@ export function GroupModal({
   const [joinError, setJoinError] = useState<string | null>(null);
   const [respondingId, setRespondingId] = useState<string | null>(null);
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
+  const [editingName, setEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState(group.name);
+  const [nameUpdateError, setNameUpdateError] = useState<string | null>(null);
+  const [nameUpdateLoading, setNameUpdateLoading] = useState(false);
+  const [displayName, setDisplayName] = useState(group.name);
 
   const capacityPercentage = Math.round(
     (group.groupSize / group.maxUsers) * 100,
   );
   const isFull = group.groupSize >= group.maxUsers;
+
+  useEffect(() => {
+    setDisplayName(group.name);
+    setEditNameValue(group.name);
+  }, [group.id, group.name]);
+
+  const handleStartEditName = () => {
+    setEditNameValue(displayName);
+    setNameUpdateError(null);
+    setEditingName(true);
+  };
+  const handleCancelEditName = () => {
+    setEditingName(false);
+    setEditNameValue(displayName);
+    setNameUpdateError(null);
+  };
+  const handleSaveName = async () => {
+    const trimmed = editNameValue.trim();
+    if (trimmed.length === 0) {
+      setNameUpdateError("Group name cannot be empty");
+      return;
+    }
+    if (trimmed.length > GROUP_NAME_MAX_LENGTH) {
+      setNameUpdateError(`Max ${GROUP_NAME_MAX_LENGTH} characters`);
+      return;
+    }
+    if (!GROUP_NAME_ALPHABETS_ONLY.test(trimmed)) {
+      setNameUpdateError("Only letters and spaces allowed");
+      return;
+    }
+    setNameUpdateError(null);
+    setNameUpdateLoading(true);
+    const result = await updateGroupName(group.id, trimmed);
+    setNameUpdateLoading(false);
+    if (result.ok) {
+      setDisplayName(trimmed);
+      setEditingName(false);
+      onGroupNameUpdated?.();
+    } else {
+      setNameUpdateError(result.error ?? "Failed to update name");
+    }
+  };
+  const handleEditNameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") void handleSaveName();
+    if (e.key === "Escape") handleCancelEditName();
+  };
 
   useEffect(() => {
     const loadMembers = async () => {
@@ -174,9 +239,9 @@ export function GroupModal({
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 min-w-0 max-w-full">
-      {/* Header Section */}
-      <DialogHeader className="space-y-0 pb-4 border-b border-border/10">
+    <div className="p-4 sm:p-6 pr-12 sm:pr-14 space-y-4 sm:space-y-5 min-w-0 max-w-full">
+      {/* Header Section - pr-12 reserves space for dialog close button */}
+      <DialogHeader className="space-y-0 pb-4 border-b border-border/10 min-w-0">
         <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 min-w-0">
           <div className="relative shrink-0">
             <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 border border-black/5 dark:border-white/10 shadow-lg">
@@ -188,26 +253,104 @@ export function GroupModal({
           </div>
 
           <div className="flex-1 min-w-0 space-y-1 w-full">
-            <DialogTitle className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-foreground/90 truncate break-words">
-              {group.name}
-            </DialogTitle>
-            <DialogDescription className="flex flex-wrap items-center gap-1.5 text-[11px] sm:text-xs text-muted-foreground/80 font-medium">
-              <span className="inline-flex items-center gap-1 bg-muted/30 px-2 py-0.5 rounded-md border border-border/40 shrink-0">
-                <Users className="w-3 h-3 shrink-0" />
-                {group.groupSize} {CONSTANTS.LABELS.USERS_Lower}
-              </span>
-              <span className="text-muted-foreground/40 shrink-0">•</span>
-              <span className="truncate min-w-0">
-                Created{" "}
-                {group.createdAt
-                  ? new Date(group.createdAt).toLocaleDateString(undefined, {
-                      month: "short",
-                      day: "numeric",
-                      year: "numeric",
-                    })
-                  : "—"}
-              </span>
-            </DialogDescription>
+            {isCurrentUserInGroup && editingName ? (
+              <div className="space-y-2">
+                <input
+                  type="text"
+                  value={editNameValue}
+                  onChange={(e) =>
+                    setEditNameValue(
+                      e.target.value.slice(0, GROUP_NAME_MAX_LENGTH),
+                    )
+                  }
+                  onKeyDown={handleEditNameKeyDown}
+                  placeholder={CONSTANTS.LABELS.NAME_PLACEHOLDER}
+                  maxLength={GROUP_NAME_MAX_LENGTH}
+                  className="w-full text-lg sm:text-xl font-bold tracking-tight bg-muted/30 border border-border rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
+                  autoFocus
+                  disabled={nameUpdateLoading}
+                />
+                <div className="flex items-baseline justify-between gap-2 flex-wrap">
+                  <p className="text-[10px] text-muted-foreground">
+                    {CONSTANTS.LABELS.NAME_RULES}
+                  </p>
+                  <p
+                    className={`text-[10px] font-medium shrink-0 ${
+                      editNameValue.length >= GROUP_NAME_MAX_LENGTH
+                        ? "text-amber-600 dark:text-amber-500"
+                        : "text-muted-foreground"
+                    }`}
+                  >
+                    {editNameValue.length}/{GROUP_NAME_MAX_LENGTH}{" "}
+                    {CONSTANTS.LABELS.CHAR_COUNT}
+                  </p>
+                </div>
+                {nameUpdateError && (
+                  <p className="text-xs text-destructive font-medium">
+                    {nameUpdateError}
+                  </p>
+                )}
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={nameUpdateLoading}
+                    onClick={handleSaveName}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50"
+                  >
+                    {nameUpdateLoading ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : null}
+                    {CONSTANTS.LABELS.SAVE}
+                  </button>
+                  <button
+                    type="button"
+                    disabled={nameUpdateLoading}
+                    onClick={handleCancelEditName}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border bg-muted/30 text-sm font-medium hover:bg-muted/50"
+                  >
+                    {CONSTANTS.LABELS.CANCEL}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 min-w-0 flex-1 overflow-hidden">
+                  <DialogTitle className="text-lg sm:text-xl md:text-2xl font-bold tracking-tight text-foreground/90 truncate min-w-0">
+                    {displayName}
+                  </DialogTitle>
+                  {isCurrentUserInGroup && (
+                    <button
+                      type="button"
+                      onClick={handleStartEditName}
+                      className="shrink-0 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors"
+                      title={CONSTANTS.LABELS.EDIT_NAME}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+                <DialogDescription className="flex flex-wrap items-center gap-1.5 text-[11px] sm:text-xs text-muted-foreground/80 font-medium">
+                  <span className="inline-flex items-center gap-1 bg-muted/30 px-2 py-0.5 rounded-md border border-border/40 shrink-0">
+                    <Users className="w-3 h-3 shrink-0" />
+                    {group.groupSize} {CONSTANTS.LABELS.USERS_Lower}
+                  </span>
+                  <span className="text-muted-foreground/40 shrink-0">•</span>
+                  <span className="truncate min-w-0">
+                    Created{" "}
+                    {group.createdAt
+                      ? new Date(group.createdAt).toLocaleDateString(
+                          undefined,
+                          {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                          },
+                        )
+                      : "—"}
+                  </span>
+                </DialogDescription>
+              </>
+            )}
           </div>
         </div>
       </DialogHeader>
@@ -284,7 +427,9 @@ export function GroupModal({
                         {member.flightNumber}
                       </span>
                       <span className="shrink-0">•</span>
-                      <span className="whitespace-nowrap">{member.destination}</span>
+                      <span className="whitespace-nowrap">
+                        {member.destination}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -333,7 +478,9 @@ export function GroupModal({
                           {req.flightNumber}
                         </span>
                         <span className="shrink-0">•</span>
-                        <span className="whitespace-nowrap truncate">{req.destination}</span>
+                        <span className="whitespace-nowrap truncate">
+                          {req.destination}
+                        </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
@@ -344,11 +491,19 @@ export function GroupModal({
                         title={CONSTANTS.LABELS.ACCEPT}
                         onClick={async () => {
                           setRespondingId(req.id);
-                          const result = await respondToJoinRequest(group.id, req.id, "accept");
+                          const result = await respondToJoinRequest(
+                            group.id,
+                            req.id,
+                            "accept",
+                          );
                           setRespondingId(null);
                           if (result.ok) {
-                            setJoinRequests((prev) => prev.filter((r) => r.id !== req.id));
-                            const freshMembers = await fetchGroupMembers(group.id);
+                            setJoinRequests((prev) =>
+                              prev.filter((r) => r.id !== req.id),
+                            );
+                            const freshMembers = await fetchGroupMembers(
+                              group.id,
+                            );
                             setMembers(freshMembers);
                           }
                         }}
@@ -366,10 +521,16 @@ export function GroupModal({
                         title={CONSTANTS.LABELS.REJECT}
                         onClick={async () => {
                           setRespondingId(req.id);
-                          const result = await respondToJoinRequest(group.id, req.id, "reject");
+                          const result = await respondToJoinRequest(
+                            group.id,
+                            req.id,
+                            "reject",
+                          );
                           setRespondingId(null);
                           if (result.ok) {
-                            setJoinRequests((prev) => prev.filter((r) => r.id !== req.id));
+                            setJoinRequests((prev) =>
+                              prev.filter((r) => r.id !== req.id),
+                            );
                           }
                         }}
                       >
@@ -457,7 +618,9 @@ export function GroupModal({
                       if (result.ok) {
                         onJoinRequestSuccess?.();
                       } else {
-                        setJoinError(result.error ?? "Failed to send join request");
+                        setJoinError(
+                          result.error ?? "Failed to send join request",
+                        );
                       }
                     }}
                   >

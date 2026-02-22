@@ -32,6 +32,7 @@ export const API_ROUTES = {
   REQUEST_JOIN_GROUP: `${API_BASE_URL}/request-join-group`,
   GROUP_JOIN_REQUESTS: `${API_BASE_URL}/group-join-requests`,
   RESPOND_TO_JOIN_REQUEST: `${API_BASE_URL}/respond-to-join-request`,
+  UPDATE_GROUP_NAME: `${API_BASE_URL}/update-group-name`,
 
   // Airport routes
   AIRPORTS: `${API_BASE_URL}/airports`,

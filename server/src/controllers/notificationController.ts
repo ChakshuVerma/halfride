@@ -78,6 +78,25 @@ export async function createNotification(payload: CreateNotificationPayload) {
 }
 
 /**
+ * Fetch group display name for notifications. Returns stored name or "Group of N" fallback.
+ */
+async function getGroupDisplayName(
+  db: admin.firestore.Firestore,
+  groupId: string,
+): Promise<string> {
+  const groupDoc = await db.collection(COLLECTIONS.GROUPS).doc(groupId).get();
+  if (!groupDoc.exists) return "the group";
+  const data = groupDoc.data();
+  const storedName = data?.[GROUP_FIELDS.NAME];
+  if (typeof storedName === "string" && storedName.trim().length > 0) {
+    return storedName.trim();
+  }
+  const members: admin.firestore.DocumentReference[] =
+    data?.[GROUP_FIELDS.MEMBERS] || [];
+  return `Group of ${members.length}`;
+}
+
+/**
  * Use Case 1: Notify users near a new listing (traveller).
  * This should be called after a new Traveller is created.
  */
@@ -110,6 +129,7 @@ export async function notifyGroupAdminOfJoinRequest(
     const groupData = groupDoc.data();
     const members: admin.firestore.DocumentReference[] =
       groupData?.[GROUP_FIELDS.MEMBERS] || [];
+    const groupName = await getGroupDisplayName(db, groupId);
 
     const userSnap = await db
       .collection(COLLECTIONS.USERS)
@@ -125,8 +145,8 @@ export async function notifyGroupAdminOfJoinRequest(
           recipientUserId: memberRef.id,
           type: NotificationType.GROUP_JOIN_REQUEST,
           title: "New Join Request",
-          body: `${userName} wants to join your group.`,
-          data: { groupId, actorUserId: requesterUserId },
+          body: `${userName} wants to join your group ${groupName}.`,
+          data: { groupId, actorUserId: requesterUserId, groupName },
         }),
       ),
     );
@@ -145,6 +165,7 @@ export async function notifyGroupMembersMemberLeft(
 ) {
   const db = admin.firestore();
   try {
+    const groupName = await getGroupDisplayName(db, groupId);
     const leaverSnap = await db
       .collection(COLLECTIONS.USERS)
       .doc(leaverUserId)
@@ -159,8 +180,8 @@ export async function notifyGroupMembersMemberLeft(
           recipientUserId: recipientId,
           type: NotificationType.GROUP_MEMBER_LEFT,
           title: "Member left group",
-          body: `${leaverName} left the group.`,
-          data: { groupId, actorUserId: leaverUserId },
+          body: `${leaverName} left the group ${groupName}.`,
+          data: { groupId, actorUserId: leaverUserId, groupName },
         }),
       ),
     );
@@ -176,13 +197,15 @@ export async function notifyGroupDisbanded(
   lastMemberUserId: string,
   groupId: string,
 ) {
+  const db = admin.firestore();
   try {
+    const groupName = await getGroupDisplayName(db, groupId);
     await createNotification({
       recipientUserId: lastMemberUserId,
       type: NotificationType.GROUP_DISBANDED,
       title: "Group disbanded",
-      body: "The group has been disbanded because the other member left.",
-      data: { groupId },
+      body: `The group ${groupName} has been disbanded because the other member left.`,
+      data: { groupId, groupName },
     });
   } catch (e) {
     console.error("Notify Group Disbanded Error:", e);
@@ -196,12 +219,14 @@ export async function notifyUserJoinAccepted(
   groupId: string,
   newMemberId: string,
 ) {
+  const db = admin.firestore();
+  const groupName = await getGroupDisplayName(db, groupId);
   await createNotification({
     recipientUserId: newMemberId,
     type: NotificationType.GROUP_JOIN_ACCEPTED,
     title: "Join Request Accepted",
-    body: "You have been accepted into the group.",
-    data: { groupId },
+    body: `You have been accepted into the group ${groupName}.`,
+    data: { groupId, groupName },
   });
 }
 
@@ -213,15 +238,17 @@ export async function notifyUserJoinRejected(
   groupId: string,
   deciderName?: string,
 ) {
+  const db = admin.firestore();
+  const groupName = await getGroupDisplayName(db, groupId);
   const body = deciderName
-    ? `${deciderName} declined your request to join the group.`
-    : "Your request to join the group was declined.";
+    ? `${deciderName} declined your request to join the group ${groupName}.`
+    : `Your request to join the group ${groupName} was declined.`;
   await createNotification({
     recipientUserId: requesterUserId,
     type: NotificationType.GROUP_JOIN_REJECTED,
     title: "Join Request Declined",
     body,
-    data: { groupId },
+    data: { groupId, groupName },
   });
 }
 
@@ -237,14 +264,14 @@ export async function notifyOtherMembersJoinDecided(
   requesterName: string,
   accepted: boolean,
 ) {
+  const db = admin.firestore();
+  const groupName = await getGroupDisplayName(db, groupId);
   const recipients = memberUserIds.filter(
     (id) => id !== deciderUserId && id !== requesterUserId,
   );
   const action = accepted ? "accepted" : "rejected";
-  const title = accepted
-    ? "Join request accepted"
-    : "Join request declined";
-  const body = `${deciderName} ${action} ${requesterName}'s request to join the group.`;
+  const title = accepted ? "Join request accepted" : "Join request declined";
+  const body = `${deciderName} ${action} ${requesterName}'s request to join the group ${groupName}.`;
   await Promise.all(
     recipients.map((recipientId) =>
       createNotification({
@@ -252,7 +279,12 @@ export async function notifyOtherMembersJoinDecided(
         type: NotificationType.GROUP_JOIN_REQUEST_DECIDED,
         title,
         body,
-        data: { groupId, actorUserId: deciderUserId, metadata: { requesterUserId, accepted } },
+        data: {
+          groupId,
+          groupName,
+          actorUserId: deciderUserId,
+          metadata: { requesterUserId, accepted },
+        },
       }),
     ),
   );
@@ -267,18 +299,20 @@ export async function notifyDeciderJoinRequestDecided(
   accepted: boolean,
   groupId: string,
 ) {
+  const db = admin.firestore();
+  const groupName = await getGroupDisplayName(db, groupId);
   const title = accepted
     ? "You accepted the join request"
     : "You declined the join request";
   const body = accepted
-    ? `You accepted ${requesterName} into the group.`
-    : `You declined ${requesterName}'s request to join the group.`;
+    ? `You accepted ${requesterName} into the group ${groupName}.`
+    : `You declined ${requesterName}'s request to join the group ${groupName}.`;
   await createNotification({
     recipientUserId: deciderUserId,
     type: NotificationType.GROUP_JOIN_REQUEST_DECIDED,
     title,
     body,
-    data: { groupId, metadata: { accepted } },
+    data: { groupId, groupName, metadata: { accepted } },
   });
 }
 
@@ -350,12 +384,13 @@ export async function notifyConnectionRequestResponded(
       : "Someone";
 
     if (status === "accepted" && groupId) {
+      const groupName = await getGroupDisplayName(db, groupId);
       await createNotification({
         recipientUserId: requesterUserId,
         type: NotificationType.CONNECTION_ACCEPTED,
         title: "Connection request accepted",
-        body: `${recipientName} accepted your connection request. You're now in a group together.`,
-        data: { groupId, actorUserId: recipientUserId },
+        body: `${recipientName} accepted your connection request. You're now in a group together: ${groupName}.`,
+        data: { groupId, groupName, actorUserId: recipientUserId },
       });
     } else if (status === "rejected") {
       await createNotification({
