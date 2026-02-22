@@ -1,5 +1,6 @@
 import { useEffect, useCallback, useMemo, useState } from "react";
 import { useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { Card, CardContent } from "../ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select";
 import { Button } from "@/components/ui/button";
@@ -285,8 +286,10 @@ export function AirportTravellersDashboard({
         setTravellers(travellersResult.travellers);
         setGroups(fetchedGroups);
         if (closeModalAfter) setSelectedEntity(null);
+        toast.success("Listing removed");
         return true;
       }
+      toast.error(result.error ?? "Failed to remove listing");
       return false;
     },
     [

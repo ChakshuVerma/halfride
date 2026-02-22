@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -67,6 +68,17 @@ const CONSTANTS = {
   GENDER: {
     MALE: "Male",
     FEMALE: "Female",
+  },
+  TOASTS: {
+    NAME_UPDATED: "Group name updated",
+    NAME_UPDATE_FAILED: "Failed to update name",
+    LEFT_GROUP: "Left group",
+    LEAVE_FAILED: "Failed to leave group",
+    JOIN_REQUEST_SENT: "Join request sent",
+    JOIN_REQUEST_FAILED: "Failed to send join request",
+    REQUEST_ACCEPTED: "Request accepted",
+    REQUEST_REJECTED: "Request rejected",
+    RESPOND_FAILED: "Failed to respond to request",
   },
 };
 
@@ -160,8 +172,11 @@ export function GroupModal({
       setDisplayName(trimmed);
       setEditingName(false);
       onGroupNameUpdated?.();
+      toast.success(CONSTANTS.TOASTS.NAME_UPDATED);
     } else {
-      setNameUpdateError(result.error ?? "Failed to update name");
+      const msg = result.error ?? CONSTANTS.TOASTS.NAME_UPDATE_FAILED;
+      setNameUpdateError(msg);
+      toast.error(msg);
     }
   };
   const handleEditNameKeyDown = (e: React.KeyboardEvent) => {
@@ -527,6 +542,11 @@ export function GroupModal({
                                 group.id,
                               );
                               setMembers(freshMembers);
+                              toast.success(CONSTANTS.TOASTS.REQUEST_ACCEPTED);
+                            } else {
+                              toast.error(
+                                result.error ?? CONSTANTS.TOASTS.RESPOND_FAILED,
+                              );
                             }
                           }}
                         >
@@ -555,6 +575,11 @@ export function GroupModal({
                             if (result.ok) {
                               setJoinRequests((prev) =>
                                 prev.filter((r) => r.id !== req.id),
+                              );
+                              toast.success(CONSTANTS.TOASTS.REQUEST_REJECTED);
+                            } else {
+                              toast.error(
+                                result.error ?? CONSTANTS.TOASTS.RESPOND_FAILED,
                               );
                             }
                           }}
@@ -616,8 +641,11 @@ export function GroupModal({
                     const result = await leaveGroup(group.id);
                     if (result.ok) {
                       onLeaveGroup?.();
+                      toast.success(CONSTANTS.TOASTS.LEFT_GROUP);
                     } else {
-                      setLeaveError(result.error ?? "Failed to leave group");
+                      const msg = result.error ?? CONSTANTS.TOASTS.LEAVE_FAILED;
+                      setLeaveError(msg);
+                      toast.error(msg);
                     }
                   }}
                 />
@@ -643,10 +671,12 @@ export function GroupModal({
                       const result = await requestJoinGroup(group.id);
                       if (result.ok) {
                         onJoinRequestSuccess?.();
+                        toast.success(CONSTANTS.TOASTS.JOIN_REQUEST_SENT);
                       } else {
-                        setJoinError(
-                          result.error ?? "Failed to send join request",
-                        );
+                        const msg =
+                          result.error ?? CONSTANTS.TOASTS.JOIN_REQUEST_FAILED;
+                        setJoinError(msg);
+                        toast.error(msg);
                       }
                     }}
                   >

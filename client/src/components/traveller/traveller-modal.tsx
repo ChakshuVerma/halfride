@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { toast } from "sonner";
 import { DialogHeader, DialogTitle } from "../ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -214,6 +215,9 @@ export function TravellerModal({
 
     if (response.ok) {
       setConnectionSent(true);
+      toast.success("Connection request sent");
+    } else {
+      toast.error(response.error ?? "Failed to send connection request");
     }
   };
 
@@ -228,6 +232,13 @@ export function TravellerModal({
     if (response.ok) {
       setConnectionResponded(action === ConnectionResponseAction.ACCEPT ? "accepted" : "rejected");
       onConnectionResponded?.();
+      toast.success(
+        action === ConnectionResponseAction.ACCEPT
+          ? "Connection accepted"
+          : "Request declined",
+      );
+    } else {
+      toast.error(response.error ?? "Failed to respond to request");
     }
   };
 

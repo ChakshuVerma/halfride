@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -128,6 +129,7 @@ export function JoinWaitlistModal({
 
       setSuccess(true);
       onSuccess?.();
+      toast.success("You're on the waitlist!");
       setTimeout(() => {
         onOpenChange(false);
         setSuccess(false);
@@ -140,7 +142,9 @@ export function JoinWaitlistModal({
         });
       }, 2500);
     } catch (err: any) {
-      setError(err.message || MODAL_CONTENT.FORM.ERRORS.UNEXPECTED);
+      const msg = err.message || MODAL_CONTENT.FORM.ERRORS.UNEXPECTED;
+      setError(msg);
+      toast.error(msg);
     }
   };
 

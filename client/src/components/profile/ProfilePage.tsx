@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import {
   User,
   MapPin,
@@ -69,7 +70,12 @@ export default function ProfilePage() {
         setUserProfile(userProfile ? { ...userProfile, photoURL: res.photoURL ?? undefined } : { photoURL: res.photoURL });
         await fetchMeProfile();
         await fetchProfile();
+        toast.success("Photo updated");
+      } else {
+        toast.error(res.error ?? "Failed to upload photo");
       }
+    } catch {
+      toast.error("Failed to upload photo");
     } finally {
       setUploadingPhoto(false);
       e.target.value = "";
