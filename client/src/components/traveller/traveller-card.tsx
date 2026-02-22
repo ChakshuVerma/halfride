@@ -29,6 +29,7 @@ export const TravellerCard = memo(function TravellerCard({
   hasListing,
 }: TravellerCardProps) {
   const isMale = traveller.gender === CONSTANTS.GENDER.MALE;
+  const isOwnListing = traveller.isOwnListing === true;
 
   // REVERTED: Using the original utility function
   const flightTime = formatDateAndTime(traveller.flightDateTime);
@@ -41,11 +42,12 @@ export const TravellerCard = memo(function TravellerCard({
     <div
       onClick={onClick}
       className={cn(
-        "group relative flex flex-col w-full",
-        "bg-white rounded-[2rem]",
-        "border border-zinc-200",
+        "group relative flex flex-col w-full rounded-[2rem] overflow-hidden",
         "shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.08)]",
-        "transition-all duration-300 ease-out hover:-translate-y-1 cursor-pointer overflow-hidden",
+        "transition-all duration-300 ease-out hover:-translate-y-1 cursor-pointer",
+        isOwnListing
+          ? "border-2 border-violet-300 dark:border-violet-600 ring-1 ring-violet-200/60 dark:ring-violet-800/40 bg-white dark:bg-zinc-900"
+          : "bg-white border border-zinc-200",
       )}
     >
       {/* 1. Identity Header */}
@@ -74,10 +76,15 @@ export const TravellerCard = memo(function TravellerCard({
 
         {/* Name & Tags */}
         <div className="flex-1 min-w-0 pt-0.5">
-          <div className="flex justify-between items-start">
+          <div className="flex justify-between items-start gap-2">
             <h3 className="font-bold text-lg text-zinc-900 truncate leading-none mb-1.5">
               {traveller.name}
             </h3>
+            {isOwnListing && (
+              <span className="shrink-0 px-2 py-0.5 rounded-full bg-violet-600 text-white text-[10px] font-bold shadow-sm">
+                Your listing
+              </span>
+            )}
           </div>
           <p className="text-sm text-zinc-500 font-medium mb-2">
             @{traveller.username}
@@ -150,7 +157,6 @@ export const TravellerCard = memo(function TravellerCard({
               <span className="text-[10px] font-bold text-zinc-400 uppercase">
                 Departure
               </span>
-              {/* Updated to use flightTime directly */}
               <span className="text-sm font-bold text-zinc-900 leading-none truncate">
                 {flightTime}
               </span>

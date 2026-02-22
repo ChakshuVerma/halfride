@@ -208,6 +208,11 @@ const AirportTravellers = () => {
     setSelectedEntity(null);
   }, [refreshAirportData]);
 
+  const handleJoinRequestSuccess = useCallback(async () => {
+    await refreshAirportData();
+    setSelectedEntity(null);
+  }, [refreshAirportData]);
+
   const handleWaitlistSuccess = useCallback(async () => {
     if (!selectedAirport?.airportCode) return;
     const code = selectedAirport.airportCode;
@@ -584,7 +589,9 @@ const AirportTravellers = () => {
                         userGroupId != null &&
                         userGroupId === selectedEntity.data.id
                       }
+                      hasListingAtThisAirport={!!userDestination}
                       onLeaveGroup={handleLeaveGroup}
+                      onJoinRequestSuccess={handleJoinRequestSuccess}
                     />
                   )
                 )}

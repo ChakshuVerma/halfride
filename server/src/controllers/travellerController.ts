@@ -17,6 +17,11 @@ import {
   notifyConnectionRequestResponded,
   notifyGroupMembersMemberLeft,
   notifyGroupDisbanded,
+  notifyGroupAdminOfJoinRequest,
+  notifyUserJoinAccepted,
+  notifyUserJoinRejected,
+  notifyOtherMembersJoinDecided,
+  notifyDeciderJoinRequestDecided,
 } from "./notificationController";
 
 export async function getTravellersByAirport(req: Request, res: Response) {
@@ -127,6 +132,7 @@ export async function getTravellersByAirport(req: Request, res: Response) {
         }
 
         // 4. Construct the response object
+        const isOwnListing = uid ? userSnap.id === uid : false;
         return {
           id: userSnap.id, // UID from Firestore
           name: `${user?.FirstName ?? ""} ${user?.LastName ?? ""}`.trim(),
@@ -154,15 +160,15 @@ export async function getTravellersByAirport(req: Request, res: Response) {
           bio: user?.bio || "No bio available.",
           tags: user?.tags || [],
           isVerified: user?.isVerified || false,
-          connectionStatus, // Added
+          connectionStatus,
+          isOwnListing,
         };
       }),
     );
 
-    const filteredResults = results.filter((result) => result.id !== uid);
     return res.json({
       ok: true,
-      data: filteredResults,
+      data: results,
       isUserInGroup,
       userGroupId: userGroupId ?? undefined,
     });
@@ -540,9 +546,11 @@ export async function respondToConnectionRequest(req: Request, res: Response) {
 /**
  * GET /groups-by-airport/:airportCode
  * Returns groups at the given airport. Members can be from different flights/terminals.
+ * Includes hasPendingJoinRequest when the current user has a pending join request for that group.
  */
 export async function getGroupsByAirport(req: Request, res: Response) {
   const { airportCode } = req.params;
+  const uid = req.auth?.uid;
 
   if (!airportCode) {
     return res
@@ -568,7 +576,12 @@ export async function getGroupsByAirport(req: Request, res: Response) {
         const data = doc.data();
         const members: admin.firestore.DocumentReference[] =
           data[GROUP_FIELDS.MEMBERS] || [];
+        const pendingRequests: admin.firestore.DocumentReference[] =
+          data[GROUP_FIELDS.PENDING_REQUESTS] || [];
         const groupSize = members.length;
+        const hasPendingJoinRequest =
+          !!uid &&
+          pendingRequests.some((ref: admin.firestore.DocumentReference) => ref.id === uid);
 
         let male = 0;
         let female = 0;
@@ -625,6 +638,7 @@ export async function getGroupsByAirport(req: Request, res: Response) {
           maxUsers: 6,
           genderBreakdown: { male, female },
           createdAt: createdAtISO,
+          hasPendingJoinRequest,
         };
       }),
     );
@@ -824,6 +838,373 @@ export async function leaveGroup(req: Request, res: Response) {
     });
   } catch (error: any) {
     console.error("Leave group error:", error.message);
+    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+  }
+}
+
+const MAX_GROUP_USERS = 6;
+
+/**
+ * POST /request-join-group
+ * Body: { groupId: string }
+ * Adds current user to group's pendingRequests and notifies all existing members.
+ */
+export async function requestJoinGroup(req: Request, res: Response) {
+  const { groupId } = req.body as { groupId?: string };
+  const uid = req.auth?.uid;
+
+  if (!uid) {
+    return res.status(401).json({ ok: false, error: "Unauthorized" });
+  }
+  if (!groupId || typeof groupId !== "string" || !groupId.trim()) {
+    return res
+      .status(400)
+      .json({ ok: false, error: "groupId is required" });
+  }
+
+  const db = admin.firestore();
+  const groupRef = db.collection(COLLECTIONS.GROUPS).doc(groupId.trim());
+  const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
+
+  try {
+    const groupSnap = await groupRef.get();
+    if (!groupSnap.exists) {
+      return res.status(404).json({ ok: false, error: "Group not found" });
+    }
+
+    const data = groupSnap.data();
+    const members: admin.firestore.DocumentReference[] =
+      data?.[GROUP_FIELDS.MEMBERS] || [];
+    const pendingRequests: admin.firestore.DocumentReference[] =
+      data?.[GROUP_FIELDS.PENDING_REQUESTS] || [];
+    const flightArrivalAirport =
+      data?.[GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT] as string | undefined;
+
+    if (members.some((ref: admin.firestore.DocumentReference) => ref.id === uid)) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "You are already a member of this group" });
+    }
+    if (pendingRequests.some((ref: admin.firestore.DocumentReference) => ref.id === uid)) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "You already have a pending join request" });
+    }
+    if (members.length >= MAX_GROUP_USERS) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "Group is full" });
+    }
+
+    if (!flightArrivalAirport) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "Group has no airport; cannot join" });
+    }
+
+    const requesterTravellerSnap = await db
+      .collection(COLLECTIONS.TRAVELLER_DATA)
+      .where(TRAVELLER_FIELDS.USER_REF, "==", userRef)
+      .where(TRAVELLER_FIELDS.FLIGHT_ARRIVAL, "==", flightArrivalAirport)
+      .where(TRAVELLER_FIELDS.IS_COMPLETED, "==", false)
+      .limit(1)
+      .get();
+
+    if (requesterTravellerSnap.empty) {
+      return res
+        .status(400)
+        .json({ ok: false, error: "You need an active listing at this airport to join the group" });
+    }
+
+    const newPending = [...pendingRequests, userRef];
+    await groupRef.update({
+      [GROUP_FIELDS.PENDING_REQUESTS]: newPending,
+      [GROUP_FIELDS.UPDATED_AT]: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    await notifyGroupAdminOfJoinRequest(groupId.trim(), uid);
+
+    return res.json({
+      ok: true,
+      message: "Join request sent. Group members will be notified.",
+    });
+  } catch (error: any) {
+    console.error("Request join group error:", error.message);
+    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+  }
+}
+
+/**
+ * GET /group-join-requests/:groupId
+ * Returns pending join requests for the group. Only callable by a current member.
+ */
+export async function getGroupJoinRequests(req: Request, res: Response) {
+  const rawId = req.params.groupId;
+  const groupId =
+    typeof rawId === "string" ? rawId.trim() : Array.isArray(rawId) ? rawId[0]?.trim() ?? "" : "";
+  const uid = req.auth?.uid;
+
+  if (!uid) {
+    return res.status(401).json({ ok: false, error: "Unauthorized" });
+  }
+  if (!groupId) {
+    return res
+      .status(400)
+      .json({ ok: false, message: "Group ID is required" });
+  }
+
+  const db = admin.firestore();
+  const groupRef = db.collection(COLLECTIONS.GROUPS).doc(groupId);
+
+  try {
+    const groupSnap = await groupRef.get();
+    if (!groupSnap.exists) {
+      return res.status(404).json({ ok: false, error: "Group not found" });
+    }
+
+    const data = groupSnap.data();
+    const members: admin.firestore.DocumentReference[] =
+      data?.[GROUP_FIELDS.MEMBERS] || [];
+    const pendingRequests: admin.firestore.DocumentReference[] =
+      data?.[GROUP_FIELDS.PENDING_REQUESTS] || [];
+
+    const isMember = members.some((ref: admin.firestore.DocumentReference) => ref.id === uid);
+    if (!isMember) {
+      return res
+        .status(403)
+        .json({ ok: false, error: "Only group members can view join requests" });
+    }
+
+    if (pendingRequests.length === 0) {
+      return res.json({ ok: true, data: [] });
+    }
+
+    const flightArrivalAirport = data?.[GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT] as string | undefined;
+    const code = flightArrivalAirport ?? "";
+
+    const requestDetails = await Promise.all(
+      pendingRequests.map(
+        async (userRef: admin.firestore.DocumentReference) => {
+          const userSnap = await userRef.get();
+          const user = userSnap.data();
+          const travellerSnap = await db
+            .collection(COLLECTIONS.TRAVELLER_DATA)
+            .where(TRAVELLER_FIELDS.USER_REF, "==", userRef)
+            .where(TRAVELLER_FIELDS.FLIGHT_ARRIVAL, "==", code)
+            .limit(1)
+            .get();
+
+          let destination = "N/A";
+          let terminal = "N/A";
+          let flightNumber = "—";
+
+          if (!travellerSnap.empty) {
+            const trav = travellerSnap.docs[0].data();
+            const flightRef = trav[TRAVELLER_FIELDS.FLIGHT_REF] as admin.firestore.DocumentReference;
+            const flightSnap = await flightRef.get();
+            const flight = flightSnap.data();
+            const dest = trav[TRAVELLER_FIELDS.DESTINATION];
+            destination =
+              typeof dest === "string"
+                ? dest
+                : (dest?.address ?? "N/A");
+            terminal = trav[TRAVELLER_FIELDS.TERMINAL] || "N/A";
+            flightNumber =
+              `${flight?.[FLIGHT_FIELDS.CARRIER] ?? ""} ${flight?.[FLIGHT_FIELDS.FLIGHT_NUMBER] ?? ""}`.trim() || "—";
+          }
+
+          return {
+            id: userRef.id,
+            name: `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim() || "Unknown",
+            gender: user?.[USER_FIELDS.IS_FEMALE] ? "Female" : "Male",
+            destination,
+            terminal,
+            flightNumber,
+          };
+        },
+      ),
+    );
+
+    return res.json({ ok: true, data: requestDetails });
+  } catch (error: any) {
+    console.error("Get group join requests error:", error.message);
+    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+  }
+}
+
+/**
+ * POST /respond-to-join-request
+ * Body: { groupId: string, requesterUserId: string, action: "accept" | "reject" }
+ * Only a current member can accept or reject. Notifies requester, other members, and the decider.
+ */
+export async function respondToJoinRequest(req: Request, res: Response) {
+  const { groupId, requesterUserId, action } = req.body as {
+    groupId?: string;
+    requesterUserId?: string;
+    action?: string;
+  };
+  const uid = req.auth?.uid;
+
+  if (!uid) {
+    return res.status(401).json({ ok: false, error: "Unauthorized" });
+  }
+  if (
+    !groupId ||
+    typeof groupId !== "string" ||
+    !groupId.trim() ||
+    !requesterUserId ||
+    typeof requesterUserId !== "string" ||
+    !requesterUserId.trim()
+  ) {
+    return res
+      .status(400)
+      .json({ ok: false, error: "groupId and requesterUserId are required" });
+  }
+  const isAccept = action === "accept";
+  const isReject = action === "reject";
+  if (!isAccept && !isReject) {
+    return res
+      .status(400)
+      .json({ ok: false, error: "action must be 'accept' or 'reject'" });
+  }
+
+  const db = admin.firestore();
+  const groupRef = db.collection(COLLECTIONS.GROUPS).doc(groupId.trim());
+  const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
+  const requesterUserRef = db.collection(COLLECTIONS.USERS).doc(requesterUserId.trim());
+
+  try {
+    const groupSnap = await groupRef.get();
+    if (!groupSnap.exists) {
+      return res.status(404).json({ ok: false, error: "Group not found" });
+    }
+
+    const data = groupSnap.data();
+    const members: admin.firestore.DocumentReference[] =
+      data?.[GROUP_FIELDS.MEMBERS] || [];
+    let pendingRequests: admin.firestore.DocumentReference[] =
+      data?.[GROUP_FIELDS.PENDING_REQUESTS] || [];
+    const flightArrivalAirport =
+      data?.[GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT] as string | undefined;
+
+    const isMember = members.some((ref: admin.firestore.DocumentReference) => ref.id === uid);
+    if (!isMember) {
+      return res
+        .status(403)
+        .json({ ok: false, error: "Only group members can respond to join requests" });
+    }
+
+    const requesterInPending = pendingRequests.some(
+      (ref: admin.firestore.DocumentReference) => ref.id === requesterUserId.trim(),
+    );
+    if (!requesterInPending) {
+      return res
+        .status(404)
+        .json({ ok: false, error: "Join request not found or already handled" });
+    }
+
+    const [deciderSnap, requesterSnap] = await Promise.all([
+      userRef.get(),
+      requesterUserRef.get(),
+    ]);
+    const deciderName =
+      deciderSnap.data()?.[USER_FIELDS.FIRST_NAME] ?? "A member";
+    const requesterName =
+      requesterSnap.data()?.[USER_FIELDS.FIRST_NAME] ?? "Someone";
+
+    pendingRequests = pendingRequests.filter(
+      (ref: admin.firestore.DocumentReference) => ref.id !== requesterUserId.trim(),
+    );
+
+    if (isAccept) {
+      if (members.length >= MAX_GROUP_USERS) {
+        return res
+          .status(400)
+          .json({ ok: false, error: "Group is full; cannot add more members" });
+      }
+      if (!flightArrivalAirport) {
+        return res
+          .status(400)
+          .json({ ok: false, error: "Group has no airport" });
+      }
+
+      const requesterTravellerSnap = await db
+        .collection(COLLECTIONS.TRAVELLER_DATA)
+        .where(TRAVELLER_FIELDS.USER_REF, "==", requesterUserRef)
+        .where(TRAVELLER_FIELDS.FLIGHT_ARRIVAL, "==", flightArrivalAirport)
+        .where(TRAVELLER_FIELDS.IS_COMPLETED, "==", false)
+        .limit(1)
+        .get();
+
+      if (requesterTravellerSnap.empty) {
+        return res
+          .status(400)
+          .json({ ok: false, error: "Requester no longer has an active listing at this airport" });
+      }
+
+      const newMembers = [...members, requesterUserRef];
+      await groupRef.update({
+        [GROUP_FIELDS.MEMBERS]: newMembers,
+        [GROUP_FIELDS.PENDING_REQUESTS]: pendingRequests,
+        [GROUP_FIELDS.UPDATED_AT]: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      await requesterTravellerSnap.docs[0].ref.update({
+        [TRAVELLER_FIELDS.GROUP_REF]: groupRef,
+      });
+
+      await notifyUserJoinAccepted(groupId.trim(), requesterUserId.trim());
+      const memberIds = newMembers.map((ref: admin.firestore.DocumentReference) => ref.id);
+      await notifyOtherMembersJoinDecided(
+        memberIds,
+        groupId.trim(),
+        uid,
+        deciderName,
+        requesterUserId.trim(),
+        requesterName,
+        true,
+      );
+      await notifyDeciderJoinRequestDecided(
+        uid,
+        requesterName,
+        true,
+        groupId.trim(),
+      );
+    } else {
+      await groupRef.update({
+        [GROUP_FIELDS.PENDING_REQUESTS]: pendingRequests,
+        [GROUP_FIELDS.UPDATED_AT]: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      await notifyUserJoinRejected(
+        requesterUserId.trim(),
+        groupId.trim(),
+        deciderName,
+      );
+      const memberIds = members.map((ref: admin.firestore.DocumentReference) => ref.id);
+      await notifyOtherMembersJoinDecided(
+        memberIds,
+        groupId.trim(),
+        uid,
+        deciderName,
+        requesterUserId.trim(),
+        requesterName,
+        false,
+      );
+      await notifyDeciderJoinRequestDecided(
+        uid,
+        requesterName,
+        false,
+        groupId.trim(),
+      );
+    }
+
+    return res.json({
+      ok: true,
+      message: isAccept ? "Join request accepted." : "Join request rejected.",
+    });
+  } catch (error: any) {
+    console.error("Respond to join request error:", error.message);
     return res.status(500).json({ ok: false, error: "Internal Server Error" });
   }
 }

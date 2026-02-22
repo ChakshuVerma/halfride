@@ -8,6 +8,9 @@ import {
   requestConnection,
   respondToConnectionRequest,
   leaveGroup,
+  requestJoinGroup,
+  getGroupJoinRequests,
+  respondToJoinRequest,
 } from "../controllers/travellerController";
 
 export const travellerRouter = Router();
@@ -35,3 +38,14 @@ travellerRouter.post(
   respondToConnectionRequest,
 );
 travellerRouter.post("/leave-group", requireSession, leaveGroup);
+travellerRouter.post("/request-join-group", requireSession, requestJoinGroup);
+travellerRouter.get(
+  "/group-join-requests/:groupId",
+  requireSession,
+  getGroupJoinRequests,
+);
+travellerRouter.post(
+  "/respond-to-join-request",
+  requireSession,
+  respondToJoinRequest,
+);

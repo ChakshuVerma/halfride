@@ -28,6 +28,9 @@ export const API_ROUTES = {
   REQUEST_CONNECTION: `${API_BASE_URL}/request-connection`,
   RESPOND_TO_CONNECTION: `${API_BASE_URL}/respond-to-connection`,
   LEAVE_GROUP: `${API_BASE_URL}/leave-group`,
+  REQUEST_JOIN_GROUP: `${API_BASE_URL}/request-join-group`,
+  GROUP_JOIN_REQUESTS: `${API_BASE_URL}/group-join-requests`,
+  RESPOND_TO_JOIN_REQUEST: `${API_BASE_URL}/respond-to-join-request`,
 
   // Airport routes
   AIRPORTS: `${API_BASE_URL}/airports`,

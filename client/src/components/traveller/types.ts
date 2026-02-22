@@ -16,6 +16,8 @@ export type Traveller = {
   isVerified?: boolean;
   username: string;
   connectionStatus?: "SEND_REQUEST" | "REQUEST_SENT" | "REQUEST_RECEIVED";
+  /** True when this traveller is the current user's own listing. */
+  isOwnListing?: boolean;
 };
 
 export type Group = {
@@ -31,6 +33,8 @@ export type Group = {
     female: number;
   };
   createdAt: string | Date;
+  /** True when the current user has a pending join request for this group (request sent, not yet accepted/rejected). */
+  hasPendingJoinRequest?: boolean;
 };
 
 export const ENTITY_TYPE = {

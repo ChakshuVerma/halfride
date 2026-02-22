@@ -6,9 +6,21 @@ import {
   Users,
   ArrowRight,
   Loader2,
+  Check,
+  X,
+  UserPlus,
 } from "lucide-react";
 import { useGetTravellerApi } from "@/hooks/useGetTravellerApi";
 import type { Group, Traveller } from "./types";
+
+type JoinRequestUser = {
+  id: string;
+  name: string;
+  gender: string;
+  destination: string;
+  terminal: string;
+  flightNumber: string;
+};
 
 const CONSTANTS = {
   LABELS: {
@@ -23,10 +35,18 @@ const CONSTANTS = {
     LEAVE_GROUP: "Leave Group",
     MEMBERS: "Members",
     NO_MEMBERS: "No members found",
+    JOIN_REQUESTS: "Join requests",
+    NO_JOIN_REQUESTS: "No pending join requests",
+    ACCEPT: "Accept",
+    REJECT: "Reject",
+    REQUEST_SENT: "Request sent",
     USERS_Lower: "users",
     TERM: "Term",
     OF: "of",
     GROUP_FULL: "Group Full",
+    NEED_LISTING_TO_JOIN:
+      "Post your flight at this airport to join this group.",
+    REQUEST_PENDING: "Join request pending",
   },
   UNITS: {
     KM_MIN: "km (min)",
@@ -45,20 +65,37 @@ type GroupModalProps = {
   group: Group;
   /** True when the current user is a member of this group. */
   isCurrentUserInGroup?: boolean;
+  /** True when the current user has an active listing at this group's airport. Join button is shown only when true. */
+  hasListingAtThisAirport?: boolean;
   /** Called after user successfully leaves the group. Use to close modal and refetch list. */
   onLeaveGroup?: () => void;
+  /** Called after user successfully sends a join request. Use to close modal and refetch list. */
+  onJoinRequestSuccess?: () => void;
 };
 
 export function GroupModal({
   group,
   isCurrentUserInGroup = false,
+  hasListingAtThisAirport = false,
   onLeaveGroup,
+  onJoinRequestSuccess,
 }: GroupModalProps) {
-  const { fetchGroupMembers, leaveGroup } = useGetTravellerApi();
+  const {
+    fetchGroupMembers,
+    leaveGroup,
+    requestJoinGroup,
+    fetchGroupJoinRequests,
+    respondToJoinRequest,
+  } = useGetTravellerApi();
   const [members, setMembers] = useState<Traveller[]>([]);
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
   const [leaveLoading, setLeaveLoading] = useState(false);
   const [leaveError, setLeaveError] = useState<string | null>(null);
+  const [joinRequests, setJoinRequests] = useState<JoinRequestUser[]>([]);
+  const [isLoadingJoinRequests, setIsLoadingJoinRequests] = useState(false);
+  const [joinLoading, setJoinLoading] = useState(false);
+  const [joinError, setJoinError] = useState<string | null>(null);
+  const [respondingId, setRespondingId] = useState<string | null>(null);
 
   const capacityPercentage = Math.round(
     (group.groupSize / group.maxUsers) * 100,
@@ -79,6 +116,22 @@ export function GroupModal({
     };
     void loadMembers();
   }, [group.id, fetchGroupMembers]);
+
+  useEffect(() => {
+    if (!isCurrentUserInGroup) return;
+    const loadJoinRequests = async () => {
+      setIsLoadingJoinRequests(true);
+      try {
+        const data = await fetchGroupJoinRequests(group.id);
+        setJoinRequests(data);
+      } catch (err) {
+        console.error("Failed to load join requests", err);
+      } finally {
+        setIsLoadingJoinRequests(false);
+      }
+    };
+    void loadJoinRequests();
+  }, [group.id, isCurrentUserInGroup, fetchGroupJoinRequests]);
 
   const renderGenderBar = (type: "Male" | "Female") => {
     const isMale = type === CONSTANTS.GENDER.MALE;
@@ -242,10 +295,106 @@ export function GroupModal({
           </div>
         </div>
 
+        {/* Join Requests (only for members) */}
+        {isCurrentUserInGroup && (
+          <div className="space-y-2 sm:space-y-2.5 pt-2 border-t border-border/10 min-w-0">
+            <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest flex items-center gap-1.5">
+              <UserPlus className="w-3.5 h-3.5" />
+              {CONSTANTS.LABELS.JOIN_REQUESTS} ({joinRequests.length})
+            </span>
+            <div className="space-y-2 max-h-[140px] overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin">
+              {isLoadingJoinRequests ? (
+                <div className="flex items-center justify-center py-4 text-primary/80">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                </div>
+              ) : joinRequests.length > 0 ? (
+                joinRequests.map((req) => (
+                  <div
+                    key={req.id}
+                    className="flex items-center gap-2 sm:gap-3 p-2 rounded-xl border border-border/10 bg-muted/5 min-w-0"
+                  >
+                    <div
+                      className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0 border shadow-sm ${
+                        req.gender === CONSTANTS.GENDER.MALE
+                          ? "bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/10 text-blue-600"
+                          : "bg-gradient-to-br from-pink-500/10 to-pink-500/5 border-pink-500/10 text-pink-600"
+                      }`}
+                    >
+                      <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    </div>
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <p className="text-xs sm:text-sm font-semibold text-foreground truncate">
+                        {req.name}
+                      </p>
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium overflow-x-auto overflow-y-hidden scrollbar-thin min-w-0">
+                        <span className="bg-muted/30 px-1.5 py-0.5 rounded-md border border-border/20 shrink-0">
+                          {req.flightNumber}
+                        </span>
+                        <span className="shrink-0">•</span>
+                        <span className="whitespace-nowrap truncate">{req.destination}</span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        type="button"
+                        disabled={respondingId === req.id}
+                        className="p-2 rounded-lg bg-green-500/15 text-green-700 hover:bg-green-500/25 border border-green-500/20 transition-colors disabled:opacity-50"
+                        title={CONSTANTS.LABELS.ACCEPT}
+                        onClick={async () => {
+                          setRespondingId(req.id);
+                          const result = await respondToJoinRequest(group.id, req.id, "accept");
+                          setRespondingId(null);
+                          if (result.ok) {
+                            setJoinRequests((prev) => prev.filter((r) => r.id !== req.id));
+                            const freshMembers = await fetchGroupMembers(group.id);
+                            setMembers(freshMembers);
+                          }
+                        }}
+                      >
+                        {respondingId === req.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Check className="w-4 h-4" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={respondingId === req.id}
+                        className="p-2 rounded-lg bg-red-500/15 text-red-700 hover:bg-red-500/25 border border-red-500/20 transition-colors disabled:opacity-50"
+                        title={CONSTANTS.LABELS.REJECT}
+                        onClick={async () => {
+                          setRespondingId(req.id);
+                          const result = await respondToJoinRequest(group.id, req.id, "reject");
+                          setRespondingId(null);
+                          if (result.ok) {
+                            setJoinRequests((prev) => prev.filter((r) => r.id !== req.id));
+                          }
+                        }}
+                      >
+                        {respondingId === req.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <X className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground py-2 text-center">
+                  {CONSTANTS.LABELS.NO_JOIN_REQUESTS}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="pt-1 space-y-2 min-w-0">
-          {leaveError && (
-            <p className="text-xs sm:text-sm text-destructive font-medium break-words">{leaveError}</p>
+          {(leaveError || joinError) && (
+            <p className="text-xs sm:text-sm text-destructive font-medium break-words">
+              {leaveError ?? joinError}
+            </p>
           )}
           <div className="flex flex-col-reverse sm:flex-row gap-2">
             {isCurrentUserInGroup && (
@@ -273,28 +422,54 @@ export function GroupModal({
               </button>
             )}
             {!isCurrentUserInGroup && (
-              <button
-                disabled={isFull}
-                className={`flex-1 min-w-0 group relative overflow-hidden rounded-xl px-4 py-2.5 transition-all
-                ${
-                  isFull
-                    ? "bg-muted text-muted-foreground cursor-not-allowed"
-                    : "bg-primary text-primary-foreground hover:shadow-lg hover:shadow-primary/25 active:scale-[0.99]"
-                }`}
-                onClick={() => {
-                  console.log(CONSTANTS.LOGS.JOIN_CLICKED, group.name);
-                }}
-              >
-                {!isFull && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+              <>
+                {group.hasPendingJoinRequest ? (
+                  <p className="text-xs text-muted-foreground text-center py-2 px-4 flex-1">
+                    {CONSTANTS.LABELS.REQUEST_PENDING}
+                  </p>
+                ) : hasListingAtThisAirport ? (
+                  <button
+                    disabled={isFull || joinLoading}
+                    className={`flex-1 min-w-0 group relative overflow-hidden rounded-xl px-4 py-2.5 transition-all
+                    ${
+                      isFull
+                        ? "bg-muted text-muted-foreground cursor-not-allowed"
+                        : "bg-primary text-primary-foreground hover:shadow-lg hover:shadow-primary/25 active:scale-[0.99]"
+                    }`}
+                    onClick={async () => {
+                      setJoinError(null);
+                      setJoinLoading(true);
+                      const result = await requestJoinGroup(group.id);
+                      setJoinLoading(false);
+                      if (result.ok) {
+                        onJoinRequestSuccess?.();
+                      } else {
+                        setJoinError(result.error ?? "Failed to send join request");
+                      }
+                    }}
+                  >
+                    {!isFull && (
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                    )}
+                    <span className="relative flex items-center justify-center gap-2 font-bold text-sm tracking-wide">
+                      {joinLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : isFull ? (
+                        CONSTANTS.LABELS.GROUP_FULL
+                      ) : (
+                        <>
+                          {CONSTANTS.LABELS.JOIN}
+                          <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+                        </>
+                      )}
+                    </span>
+                  </button>
+                ) : (
+                  <p className="text-xs text-muted-foreground text-center py-2 px-4 flex-1">
+                    {CONSTANTS.LABELS.NEED_LISTING_TO_JOIN}
+                  </p>
                 )}
-                <span className="relative flex items-center justify-center gap-2 font-bold text-sm tracking-wide">
-                  {isFull ? CONSTANTS.LABELS.GROUP_FULL : CONSTANTS.LABELS.JOIN}
-                  {!isFull && (
-                    <ArrowRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
-                  )}
-                </span>
-              </button>
+              </>
             )}
           </div>
         </div>
