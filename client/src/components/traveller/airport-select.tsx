@@ -29,8 +29,11 @@ const MESSAGES = {
   NO_AIRPORT_FOUND: "No airport found.",
 } as const;
 
+/** Search matches airport name, code, or city. */
 const filterAirports = (value: string, search: string) => {
-  if (value.toLowerCase().includes(search.toLowerCase())) return 1;
+  if (!search.trim()) return 1;
+  const s = search.toLowerCase().trim();
+  if (value.toLowerCase().includes(s)) return 1;
   return 0;
 };
 
@@ -121,7 +124,7 @@ export function AirportSelect({
                   {airports.map((airport) => (
                     <CommandItem
                       key={airport.airportCode}
-                      value={`${airport.airportName} ${airport.airportCode}`}
+                      value={`${airport.airportName} ${airport.airportCode} ${airport.city ?? ""}`}
                       onSelect={() => {
                         if (
                           selectedAirport?.airportCode !== airport.airportCode
@@ -148,7 +151,7 @@ export function AirportSelect({
                             {airport.airportName}
                           </span>
                           <span className="text-xs text-zinc-500 group-data-[selected=true]:text-zinc-400">
-                            International Airport
+                            {airport.city ? `${airport.city}` : "International Airport"}
                           </span>
                         </div>
                       </div>

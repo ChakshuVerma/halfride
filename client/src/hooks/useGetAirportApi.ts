@@ -5,6 +5,8 @@ import { API_ROUTES } from "@/lib/apiRoutes"
 export type Airport = {
   airportName: string
   airportCode: string
+  /** City name for search (e.g. "Agra"). */
+  city?: string
 }
 
 export function useGetAirportsApi() {
