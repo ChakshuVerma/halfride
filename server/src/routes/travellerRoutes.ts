@@ -2,7 +2,9 @@ import { Router } from "express";
 import { requireSession } from "../middleware/sessionAuth";
 import {
   getTravellersByAirport,
+  getTravellerByAirportAndUser,
   getGroupsByAirport,
+  getGroupById,
   getGroupMembers,
   checkTravellerHasListing,
   requestConnection,
@@ -23,10 +25,16 @@ travellerRouter.get(
   getTravellersByAirport,
 );
 travellerRouter.get(
+  "/traveller-by-airport/:airportCode/:userId",
+  requireSession,
+  getTravellerByAirportAndUser,
+);
+travellerRouter.get(
   "/groups-by-airport/:airportCode",
   requireSession,
   getGroupsByAirport,
 );
+travellerRouter.get("/group/:groupId", requireSession, getGroupById);
 travellerRouter.get(
   "/group-members/:groupId",
   requireSession,

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, type ReactNode } from "react";
+import { useNavigate } from "react-router-dom";
 import { Bell, Inbox } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -12,8 +13,44 @@ import {
   NOTIFICATIONS_PAGE_SIZE,
   type Notification,
 } from "@/hooks/useNotificationApi";
+import {
+  getAirportGroupPath,
+  getAirportTravellerPath,
+} from "@/constants/routes";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
+
+/** Action types sent by the backend; frontend performs navigation based on these. */
+const NOTIFICATION_ACTION_TYPES = {
+  OPEN_GROUP: "OPEN_GROUP",
+  OPEN_TRAVELLER: "OPEN_TRAVELLER",
+} as const;
+
+type NotificationAction = {
+  type: (typeof NOTIFICATION_ACTION_TYPES)[keyof typeof NOTIFICATION_ACTION_TYPES];
+  payload: { airportCode: string; groupId?: string; userId?: string };
+};
+
+function isNotificationAction(action: unknown): action is NotificationAction {
+  return (
+    typeof action === "object" &&
+    action !== null &&
+    "type" in action &&
+    "payload" in action &&
+    typeof (action as NotificationAction).payload === "object" &&
+    typeof (action as NotificationAction).payload.airportCode === "string"
+  );
+}
+
+/** Use the action type and payload from the backend to determine behaviour. */
+function getNotificationAction(n: Notification): NotificationAction | null {
+  const action = n.data?.action;
+  if (!isNotificationAction(action)) return null;
+  if (action.type !== NOTIFICATION_ACTION_TYPES.OPEN_GROUP && action.type !== NOTIFICATION_ACTION_TYPES.OPEN_TRAVELLER) {
+    return null;
+  }
+  return action;
+}
 
 type FilterType = "all" | "unread";
 
@@ -64,6 +101,7 @@ function renderNotificationBody(
 }
 
 export function NotificationBell() {
+  const navigate = useNavigate();
   const {
     fetchNotifications,
     getUnreadCount,
@@ -123,16 +161,30 @@ export function NotificationBell() {
     }
   };
 
-  const handleNotificationClick = async (id: string, isRead: boolean) => {
+  const handleNotificationClick = async (n: Notification) => {
+    const { notificationId, isRead } = n;
     if (!isRead) {
-      const success = await markRead(id);
+      const success = await markRead(notificationId);
       if (success) {
         setNotifications((prev) =>
-          prev.map((n) =>
-            n.notificationId === id ? { ...n, isRead: true } : n,
+          prev.map((item) =>
+            item.notificationId === notificationId
+              ? { ...item, isRead: true }
+              : item,
           ),
         );
         setUnreadCount((c) => Math.max(0, c - 1));
+      }
+    }
+    const action = getNotificationAction(n);
+    if (action) {
+      setIsOpen(false);
+      const { airportCode } = action.payload;
+      const state = { fromNotification: true };
+      if (action.type === NOTIFICATION_ACTION_TYPES.OPEN_GROUP && action.payload.groupId) {
+        navigate(getAirportGroupPath(airportCode, action.payload.groupId), { state });
+      } else if (action.type === NOTIFICATION_ACTION_TYPES.OPEN_TRAVELLER && action.payload.userId) {
+        navigate(getAirportTravellerPath(airportCode, action.payload.userId), { state });
       }
     }
   };
@@ -255,12 +307,11 @@ export function NotificationBell() {
             <div className="flex flex-col">
               {filteredNotifications.map((n) => {
                 const isUnread = !n.isRead;
+                const action = getNotificationAction(n);
                 return (
                   <div
                     key={n.notificationId}
-                    onClick={() =>
-                      handleNotificationClick(n.notificationId, n.isRead)
-                    }
+                    onClick={() => handleNotificationClick(n)}
                     className={cn(
                       "relative flex gap-3 px-4 py-3.5 border-b last:border-0 cursor-pointer transition-all duration-200 group",
                       "hover:bg-muted/40",
@@ -299,6 +350,13 @@ export function NotificationBell() {
                       >
                         {renderNotificationBody(n.body, n.data?.groupName)}
                       </p>
+                      {action && (
+                        <span className="text-[11px] font-medium text-primary">
+                          {action.type === NOTIFICATION_ACTION_TYPES.OPEN_GROUP
+                            ? "View group →"
+                            : "View request →"}
+                        </span>
+                      )}
                     </div>
                   </div>
                 );

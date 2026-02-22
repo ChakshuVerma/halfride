@@ -1,5 +1,5 @@
-import { useEffect, useCallback, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useCallback, useMemo, useRef, useState } from "react";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Card, CardContent } from "../ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select";
@@ -103,10 +103,15 @@ export function AirportTravellersDashboard({
   const [isUserInGroup, setIsUserInGroup] = useState(false);
   const [userGroupId, setUserGroupId] = useState<string | null>(null);
   const [userDestination, setUserDestination] = useState<string | null>(null);
-  const [hasOpenedGroupFromUrl, setHasOpenedGroupFromUrl] = useState(false);
-  const [hasOpenedTravellerFromUrl, setHasOpenedTravellerFromUrl] = useState(false);
+  const lastOpenedGroupIdFromUrlRef = useRef<string | null>(null);
+  const lastOpenedTravellerIdFromUrlRef = useRef<string | null>(null);
+  const lastRefetchedEntityRef = useRef<{ type: "traveller" | "group"; id: string } | null>(null);
+  const [openFromUrlTrigger, setOpenFromUrlTrigger] = useState(0);
+  const [openingEntityId, setOpeningEntityId] = useState<{ type: "traveller" | "group"; id: string } | null>(null);
 
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const navigate = useNavigate();
   const groupIdFromUrl = searchParams.get("group");
   const travellerIdFromUrl = searchParams.get("traveller");
 
@@ -120,6 +125,8 @@ export function AirportTravellersDashboard({
   const {
     fetchTravellers,
     fetchGroups,
+    fetchGroupById,
+    fetchTravellerByAirportAndUser,
     fetchUserDestination,
     revokeListing,
     fetchTravellersLoading,
@@ -182,40 +189,110 @@ export function AirportTravellersDashboard({
     checkUserListing();
   }, [selectedAirport, fetchUserDestination]);
 
-  // When URL has ?group=groupId, open that group's modal once groups are loaded
+  // When user clicked a notification action, we navigated with state.fromNotification; reset refs so open-from-URL runs (handles same URL / no re-render)
   useEffect(() => {
-    if (!groupIdFromUrl || !initialDataFetchCompleted || hasOpenedGroupFromUrl)
-      return;
-    if (groups.length === 0) return;
-    const group = groups.find((g) => g.id === groupIdFromUrl);
-    setHasOpenedGroupFromUrl(true);
-    if (group) {
-      setSelectedEntity({ type: ENTITY_TYPE.GROUP, data: group });
-      setViewMode(VIEW_MODE.GROUP);
-    }
-  }, [groupIdFromUrl, initialDataFetchCompleted, groups, hasOpenedGroupFromUrl]);
+    const fromNotification = (location.state as { fromNotification?: boolean } | null)?.fromNotification;
+    if (!fromNotification) return;
+    if (groupIdFromUrl) lastOpenedGroupIdFromUrlRef.current = null;
+    if (travellerIdFromUrl) lastOpenedTravellerIdFromUrlRef.current = null;
+    navigate(location.pathname + location.search, { replace: true, state: {} });
+    const id = requestAnimationFrame(() => setOpenFromUrlTrigger((t) => t + 1));
+    return () => cancelAnimationFrame(id);
+  }, [location.state, location.pathname, location.search, groupIdFromUrl, travellerIdFromUrl, navigate]);
 
-  // When URL has ?traveller=userId, open that traveller's modal once travellers are loaded
+  // When URL has ?group=groupId, open that group's modal; fetch only this group for fresh data
   useEffect(() => {
-    if (
-      !travellerIdFromUrl ||
-      !initialDataFetchCompleted ||
-      hasOpenedTravellerFromUrl
-    )
+    if (!groupIdFromUrl) {
+      lastOpenedGroupIdFromUrlRef.current = null;
       return;
-    if (travellers.length === 0) return;
-    const traveller = travellers.find((t) => t.id === travellerIdFromUrl);
-    setHasOpenedTravellerFromUrl(true);
-    if (traveller) {
-      setSelectedEntity({ type: ENTITY_TYPE.TRAVELLER, data: traveller });
-      setViewMode(VIEW_MODE.INDIVIDUAL);
     }
-  }, [
-    travellerIdFromUrl,
-    initialDataFetchCompleted,
-    travellers,
-    hasOpenedTravellerFromUrl,
-  ]);
+    if (!initialDataFetchCompleted) return;
+    if (groupIdFromUrl === lastOpenedGroupIdFromUrlRef.current) return;
+    const groupFromList = groups.find((g) => g.id === groupIdFromUrl);
+    lastOpenedGroupIdFromUrlRef.current = groupIdFromUrl;
+    setViewMode(VIEW_MODE.GROUP);
+    const airportName = selectedAirport.airportName;
+    const id = groupIdFromUrl;
+    fetchGroupById(groupIdFromUrl, airportName).then((freshGroup) => {
+      const data = freshGroup ?? groupFromList;
+      if (!data) return;
+      setSelectedEntity((prev) =>
+        prev === null || (prev?.type === ENTITY_TYPE.GROUP && prev.data.id === id)
+          ? { type: ENTITY_TYPE.GROUP, data }
+          : prev,
+      );
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchGroupById/selectedAirport intentionally omitted to avoid re-run before fetch completes
+  }, [groupIdFromUrl, initialDataFetchCompleted, groups, openFromUrlTrigger]);
+
+  // When URL has ?traveller=userId, open that traveller's modal; fetch only this traveller for fresh data
+  useEffect(() => {
+    if (!travellerIdFromUrl) {
+      lastOpenedTravellerIdFromUrlRef.current = null;
+      return;
+    }
+    if (!initialDataFetchCompleted) return;
+    if (travellerIdFromUrl === lastOpenedTravellerIdFromUrlRef.current) return;
+    const travellerFromList = travellers.find((t) => t.id === travellerIdFromUrl);
+    lastOpenedTravellerIdFromUrlRef.current = travellerIdFromUrl;
+    setViewMode(VIEW_MODE.INDIVIDUAL);
+    const code = selectedAirport.airportCode;
+    const airportName = selectedAirport.airportName;
+    const id = travellerIdFromUrl;
+    fetchTravellerByAirportAndUser(code, travellerIdFromUrl, airportName).then((freshTraveller) => {
+      const data = freshTraveller ?? travellerFromList;
+      if (!data) return;
+      setSelectedEntity((prev) =>
+        prev === null || (prev?.type === ENTITY_TYPE.TRAVELLER && prev.data.id === id)
+          ? { type: ENTITY_TYPE.TRAVELLER, data }
+          : prev,
+      );
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchTravellerByAirportAndUser/selectedAirport intentionally omitted
+  }, [travellerIdFromUrl, initialDataFetchCompleted, travellers, openFromUrlTrigger]);
+
+  // Whenever a modal is open, refetch that entity so connection status / group data is always fresh (e.g. after request rejected)
+  useEffect(() => {
+    if (!selectedEntity) {
+      lastRefetchedEntityRef.current = null;
+      return;
+    }
+    const code = selectedAirport.airportCode;
+    const airportName = selectedAirport.airportName;
+
+    if (selectedEntity.type === ENTITY_TYPE.TRAVELLER) {
+      const id = selectedEntity.data.id;
+      if (lastRefetchedEntityRef.current?.type === "traveller" && lastRefetchedEntityRef.current?.id === id) {
+        return;
+      }
+      lastRefetchedEntityRef.current = { type: "traveller", id };
+      fetchTravellerByAirportAndUser(code, id, airportName).then((fresh) => {
+        if (!fresh) return;
+        setSelectedEntity((prev) =>
+          prev?.type === ENTITY_TYPE.TRAVELLER && prev.data.id === id
+            ? { type: ENTITY_TYPE.TRAVELLER, data: fresh }
+            : prev,
+        );
+      });
+      return;
+    }
+
+    if (selectedEntity.type === ENTITY_TYPE.GROUP) {
+      const id = selectedEntity.data.id;
+      if (lastRefetchedEntityRef.current?.type === "group" && lastRefetchedEntityRef.current?.id === id) {
+        return;
+      }
+      lastRefetchedEntityRef.current = { type: "group", id };
+      fetchGroupById(id, airportName).then((fresh) => {
+        if (!fresh) return;
+        setSelectedEntity((prev) =>
+          prev?.type === ENTITY_TYPE.GROUP && prev.data.id === id
+            ? { type: ENTITY_TYPE.GROUP, data: fresh }
+            : prev,
+        );
+      });
+    }
+  }, [selectedEntity, selectedAirport.airportCode, selectedAirport.airportName, fetchTravellerByAirportAndUser, fetchGroupById]);
 
   const handleFilterToggle = useCallback(
     (
@@ -241,6 +318,10 @@ export function AirportTravellersDashboard({
     setIsUserInGroup(travellersResult.isUserInGroup);
     setUserGroupId(travellersResult.userGroupId);
     setGroups(fetchedGroups);
+    return {
+      travellers: travellersResult.travellers,
+      groups: fetchedGroups,
+    };
   }, [selectedAirport, fetchTravellers, fetchGroups]);
 
   const handleConnectionResponded = useCallback(async () => {
@@ -269,6 +350,39 @@ export function AirportTravellersDashboard({
     setIsUserInGroup(travellersResult.isUserInGroup);
     setUserGroupId(travellersResult.userGroupId);
   }, [selectedAirport, fetchUserDestination, fetchTravellers]);
+
+  const handleOpenTraveller = useCallback(
+    async (t: Traveller) => {
+      setOpeningEntityId({ type: "traveller", id: t.id });
+      const code = selectedAirport.airportCode;
+      const airportName = selectedAirport.airportName;
+      try {
+        const fresh = await fetchTravellerByAirportAndUser(code, t.id, airportName);
+        const data = fresh ?? t;
+        lastRefetchedEntityRef.current = { type: "traveller", id: data.id };
+        setSelectedEntity({ type: ENTITY_TYPE.TRAVELLER, data });
+      } finally {
+        setOpeningEntityId(null);
+      }
+    },
+    [selectedAirport.airportCode, selectedAirport.airportName, fetchTravellerByAirportAndUser],
+  );
+
+  const handleOpenGroup = useCallback(
+    async (g: Group) => {
+      setOpeningEntityId({ type: "group", id: g.id });
+      const airportName = selectedAirport.airportName;
+      try {
+        const fresh = await fetchGroupById(g.id, airportName);
+        const data = fresh ?? g;
+        lastRefetchedEntityRef.current = { type: "group", id: data.id };
+        setSelectedEntity({ type: ENTITY_TYPE.GROUP, data });
+      } finally {
+        setOpeningEntityId(null);
+      }
+    },
+    [selectedAirport.airportName, fetchGroupById],
+  );
 
   const handleRevokeListing = useCallback(
     async (closeModalAfter?: boolean): Promise<boolean> => {
@@ -381,20 +495,18 @@ export function AirportTravellersDashboard({
               <TravellerCard
                 key={`${t.id}-${index}`}
                 traveller={t}
-                onClick={() =>
-                  setSelectedEntity({ type: ENTITY_TYPE.TRAVELLER, data: t })
-                }
+                onClick={() => void handleOpenTraveller(t)}
                 hasListing={!!userDestination}
+                isOpening={openingEntityId?.type === "traveller" && openingEntityId?.id === t.id}
               />
             ))
           : processedGroups.map((g, index) => (
               <GroupCard
                 key={`${g.id}-${index}`}
                 group={g}
-                onClick={() =>
-                  setSelectedEntity({ type: ENTITY_TYPE.GROUP, data: g })
-                }
+                onClick={() => void handleOpenGroup(g)}
                 isYourGroup={userGroupId != null && g.id === userGroupId}
+                isOpening={openingEntityId?.type === "group" && openingEntityId?.id === g.id}
               />
             ))}
       </ListSection>
@@ -412,6 +524,9 @@ export function AirportTravellersDashboard({
     effectiveTerminals,
     initialDataFetchCompleted,
     userDestination,
+    handleOpenTraveller,
+    handleOpenGroup,
+    openingEntityId,
   ]);
 
   return (

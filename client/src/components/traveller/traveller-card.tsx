@@ -6,6 +6,7 @@ import {
   ArrowRight,
   Calendar,
   Sparkles,
+  Loader2,
 } from "lucide-react";
 import type { Traveller } from "./types";
 import { formatDateAndTime, calculateWaitText } from "./utils";
@@ -21,12 +22,15 @@ type TravellerCardProps = {
   traveller: Traveller;
   onClick: () => void;
   hasListing: boolean;
+  /** When true, shows a loading overlay (e.g. while fetching fresh data before opening modal). */
+  isOpening?: boolean;
 };
 
 export const TravellerCard = memo(function TravellerCard({
   traveller,
   onClick,
   hasListing,
+  isOpening = false,
 }: TravellerCardProps) {
   const isMale = traveller.gender === CONSTANTS.GENDER.MALE;
   const isOwnListing = traveller.isOwnListing === true;
@@ -40,9 +44,10 @@ export const TravellerCard = memo(function TravellerCard({
 
   return (
     <div
-      onClick={onClick}
+      onClick={isOpening ? undefined : onClick}
       className={cn(
         "group relative flex flex-col w-full rounded-[2rem] overflow-hidden",
+        isOpening && "pointer-events-none opacity-70",
         "shadow-[0_2px_8px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_24px_rgba(0,0,0,0.08)]",
         "transition-all duration-300 ease-out hover:-translate-y-1 cursor-pointer",
         isOwnListing
@@ -50,6 +55,11 @@ export const TravellerCard = memo(function TravellerCard({
           : "bg-white border border-zinc-200",
       )}
     >
+      {isOpening && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[2rem] bg-white/80 dark:bg-zinc-900/80">
+          <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+        </div>
+      )}
       {/* 1. Identity Header */}
       <div className="p-5 pb-4 flex items-start gap-4">
         {/* Avatar with Status Ring */}

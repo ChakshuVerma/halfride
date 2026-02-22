@@ -242,6 +242,140 @@ export async function getTravellersByAirport(req: Request, res: Response) {
   }
 }
 
+/**
+ * GET /traveller-by-airport/:airportCode/:userId
+ * Returns a single traveller (listing) at the given airport for the given user (same shape as one item from getTravellersByAirport).
+ */
+export async function getTravellerByAirportAndUser(req: Request, res: Response) {
+  const rawAirport = req.params.airportCode;
+  const rawUserId = req.params.userId;
+  const airportCode = typeof rawAirport === "string" ? rawAirport.trim() : "";
+  const userId = typeof rawUserId === "string" ? rawUserId.trim() : Array.isArray(rawUserId) ? rawUserId[0]?.trim() ?? "" : "";
+  if (!airportCode || !userId) {
+    return res
+      .status(400)
+      .json({ ok: false, message: "Airport code and user ID are required" });
+  }
+
+  const db = admin.firestore();
+  const uid = req.auth?.uid;
+  const code = String(airportCode).toUpperCase();
+  const destination = uid ? await getCurrentUserDestination(uid, code) : null;
+  const placeId = destination?.placeId;
+
+  try {
+    let currentUserTravellerData: admin.firestore.DocumentData | null = null;
+    if (uid) {
+      const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
+      const currentUserSnapshot = await db
+        .collection(COLLECTIONS.TRAVELLER_DATA)
+        .where(TRAVELLER_FIELDS.USER_REF, "==", userRef)
+        .where(TRAVELLER_FIELDS.FLIGHT_ARRIVAL, "==", code)
+        .where(TRAVELLER_FIELDS.IS_COMPLETED, "==", false)
+        .limit(1)
+        .get();
+      if (!currentUserSnapshot.empty) {
+        currentUserTravellerData = currentUserSnapshot.docs[0].data();
+      }
+    }
+
+    const targetUserRef = db.collection(COLLECTIONS.USERS).doc(userId);
+    const snapshot = await db
+      .collection(COLLECTIONS.TRAVELLER_DATA)
+      .where(TRAVELLER_FIELDS.USER_REF, "==", targetUserRef)
+      .where(TRAVELLER_FIELDS.FLIGHT_ARRIVAL, "==", code)
+      .where(TRAVELLER_FIELDS.IS_COMPLETED, "==", false)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({ ok: false, error: "Traveller not found" });
+    }
+
+    const doc = snapshot.docs[0];
+    const trav = doc.data();
+    const uRef = trav[
+      TRAVELLER_FIELDS.USER_REF
+    ] as admin.firestore.DocumentReference;
+    const fRef = trav[
+      TRAVELLER_FIELDS.FLIGHT_REF
+    ] as admin.firestore.DocumentReference;
+
+    const [userSnap, flightSnap] = await Promise.all([
+      uRef?.id ? db.collection(COLLECTIONS.USERS).doc(uRef.id).get() : null,
+      fRef?.id ? db.collection(COLLECTIONS.FLIGHT_DETAIL).doc(fRef.id).get() : null,
+    ]);
+
+    const user = userSnap?.data();
+    const flight = flightSnap?.data();
+    const fData = flight?.flightData;
+    const userIdFromRef = userSnap?.id;
+
+    let connectionStatus = "SEND_REQUEST";
+    if (uid && userIdFromRef) {
+      const theirConnectionRequests =
+        trav[TRAVELLER_FIELDS.CONNECTION_REQUESTS] || [];
+      const hasSentRequest = theirConnectionRequests.some(
+        (ref: admin.firestore.DocumentReference) => ref.id === uid,
+      );
+      if (hasSentRequest) {
+        connectionStatus = "REQUEST_SENT";
+      } else if (currentUserTravellerData) {
+        const myConnectionRequests =
+          currentUserTravellerData[TRAVELLER_FIELDS.CONNECTION_REQUESTS] || [];
+        const hasReceivedRequest = myConnectionRequests.some(
+          (ref: admin.firestore.DocumentReference) => ref.id === userIdFromRef,
+        );
+        if (hasReceivedRequest) connectionStatus = "REQUEST_RECEIVED";
+      }
+    }
+
+    const dest = trav[TRAVELLER_FIELDS.DESTINATION];
+    const destinationAddress =
+      typeof dest === "object" && dest?.address != null
+        ? dest.address
+        : typeof dest === "string"
+          ? dest
+          : "N/A";
+
+    const result = {
+      id: userIdFromRef ?? doc.id,
+      name: `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim(),
+      gender: user?.[USER_FIELDS.IS_FEMALE] ? "Female" : "Male",
+      username: `${user?.username ?? "user"}`,
+      photoURL: user?.[USER_FIELDS.PHOTO_URL] ?? null,
+      destination: destinationAddress,
+      flightDateTime: fData?.arrival?.estimatedActualTime
+        ? new Date(fData.arrival.estimatedActualTime)
+        : fData?.arrival?.scheduledTime
+          ? new Date(fData.arrival.scheduledTime)
+          : null,
+      flightDepartureTime: fData?.departure?.scheduledTime
+        ? new Date(fData.departure.scheduledTime)
+        : null,
+      terminal: trav[TRAVELLER_FIELDS.TERMINAL] || "N/A",
+      flightNumber:
+        `${flight?.[FLIGHT_FIELDS.CARRIER] ?? ""} ${flight?.[FLIGHT_FIELDS.FLIGHT_NUMBER] ?? ""}`.trim(),
+      flightCarrier: flight?.[FLIGHT_FIELDS.CARRIER],
+      flightNumberRaw: flight?.[FLIGHT_FIELDS.FLIGHT_NUMBER],
+      distanceFromUserKm: await calculateDistanceFromCurrentUser(
+        typeof dest === "object" && dest?.placeId != null ? dest.placeId : undefined,
+        placeId,
+      ),
+      bio: user?.bio || "No bio available.",
+      tags: user?.tags || [],
+      isVerified: user?.isVerified || false,
+      connectionStatus,
+      isOwnListing: uid ? userIdFromRef === uid : false,
+    };
+
+    return res.json({ ok: true, data: result });
+  } catch (error: any) {
+    console.error("Get traveller by airport and user error:", error.message);
+    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+  }
+}
+
 const calculateDistanceFromCurrentUser = async (
   travellerPlaceId: any,
   userPlaceId: any,
@@ -749,6 +883,117 @@ export async function getGroupsByAirport(req: Request, res: Response) {
     return res.json({ ok: true, data: results });
   } catch (error: any) {
     console.error("Get groups by airport error:", error.message);
+    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+  }
+}
+
+/**
+ * GET /group/:groupId
+ * Returns a single group by ID (same shape as one item from getGroupsByAirport).
+ */
+export async function getGroupById(req: Request, res: Response) {
+  const rawId = req.params.groupId;
+  const groupId =
+    typeof rawId === "string"
+      ? rawId.trim()
+      : Array.isArray(rawId)
+        ? (rawId[0]?.trim() ?? "")
+        : "";
+  if (!groupId) {
+    return res.status(400).json({ ok: false, message: "Group ID is required" });
+  }
+
+  const db = admin.firestore();
+  const uid = req.auth?.uid;
+
+  try {
+    const groupDoc = await db.collection(COLLECTIONS.GROUPS).doc(groupId).get();
+    if (!groupDoc.exists) {
+      return res.status(404).json({ ok: false, error: "Group not found" });
+    }
+
+    const data = groupDoc.data();
+    const members: admin.firestore.DocumentReference[] =
+      data?.[GROUP_FIELDS.MEMBERS] || [];
+    const pendingRequests: admin.firestore.DocumentReference[] =
+      data?.[GROUP_FIELDS.PENDING_REQUESTS] || [];
+    const code = (data?.[GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT] as string) || "";
+    const groupSize = members.length;
+    const hasPendingJoinRequest =
+      !!uid &&
+      pendingRequests.some(
+        (ref: admin.firestore.DocumentReference) => ref.id === uid,
+      );
+
+    let male = 0;
+    let female = 0;
+    const destinations: string[] = [];
+
+    if (members.length > 0) {
+      const userSnaps = await db.getAll(...members);
+      for (const userSnap of userSnaps) {
+        const userData = userSnap.data();
+        if (userData?.[USER_FIELDS.IS_FEMALE]) female++;
+        else male++;
+      }
+      const IN_QUERY_MAX = 10;
+      const travellerByUserId = new Map<
+        string,
+        admin.firestore.DocumentData
+      >();
+      for (let i = 0; i < members.length; i += IN_QUERY_MAX) {
+        const chunk = members.slice(i, i + IN_QUERY_MAX);
+        const qSnap = await db
+          .collection(COLLECTIONS.TRAVELLER_DATA)
+          .where(TRAVELLER_FIELDS.USER_REF, "in", chunk)
+          .where(TRAVELLER_FIELDS.FLIGHT_ARRIVAL, "==", code)
+          .limit(IN_QUERY_MAX)
+          .get();
+        for (const d of qSnap.docs) {
+          const tData = d.data();
+          const uRef = tData[
+            TRAVELLER_FIELDS.USER_REF
+          ] as admin.firestore.DocumentReference;
+          if (uRef?.id) travellerByUserId.set(uRef.id, tData);
+        }
+      }
+      for (const memberRef of members) {
+        const tData = travellerByUserId.get(memberRef.id);
+        if (tData) {
+          const dest = tData[TRAVELLER_FIELDS.DESTINATION];
+          const addr =
+            typeof dest === "string" ? dest : (dest?.address ?? "N/A");
+          destinations.push(addr);
+        } else {
+          destinations.push("N/A");
+        }
+      }
+    }
+
+    const createdAt = data?.[GROUP_FIELDS.CREATED_AT];
+    const createdAtISO =
+      createdAt?.toDate?.()?.toISOString?.() ?? new Date().toISOString();
+    const storedName = data?.[GROUP_FIELDS.NAME];
+    const name =
+      typeof storedName === "string" && storedName.trim().length > 0
+        ? storedName.trim()
+        : `Group of ${groupSize}`;
+
+    const group = {
+      id: groupDoc.id,
+      name,
+      airportCode: code,
+      destinations,
+      groupSize,
+      maxUsers: 6,
+      genderBreakdown: { male, female },
+      createdAt: createdAtISO,
+      hasPendingJoinRequest,
+    };
+
+    return res.json({ ok: true, data: group });
+  } catch (error: any) {
+    console.error("Get group by ID error:", error.message);
     return res.status(500).json({ ok: false, error: "Internal Server Error" });
   }
 }

@@ -94,6 +94,107 @@ export function useGetTravellerApi() {
     [sessionRequest],
   );
 
+  const fetchGroupById = useCallback(
+    async (groupId: string, airportName?: string): Promise<Group | null> => {
+      if (!groupId) return null;
+      try {
+        const url = `${API_ROUTES.GROUP}/${encodeURIComponent(groupId)}`;
+        const response = await sessionRequest<{
+          ok: boolean;
+          data: {
+            id: string;
+            name: string;
+            airportCode: string;
+            destinations: string[];
+            groupSize: number;
+            maxUsers: number;
+            genderBreakdown: { male: number; female: number };
+            createdAt: string;
+            hasPendingJoinRequest?: boolean;
+          };
+        }>(url);
+        if (!response.ok || !response.data) return null;
+        const g = response.data;
+        return {
+          ...g,
+          airportName: airportName ?? g.airportCode,
+          createdAt:
+            typeof g.createdAt === "string"
+              ? g.createdAt
+              : new Date(g.createdAt).toISOString(),
+          hasPendingJoinRequest: g.hasPendingJoinRequest ?? false,
+        } as Group;
+      } catch (error) {
+        console.error("Failed to fetch group by ID:", error);
+        return null;
+      }
+    },
+    [sessionRequest],
+  );
+
+  const fetchTravellerByAirportAndUser = useCallback(
+    async (
+      airportCode: string,
+      userId: string,
+      airportName?: string,
+    ): Promise<Traveller | null> => {
+      if (!airportCode || !userId) return null;
+      try {
+        const url = `${API_ROUTES.TRAVELLER_BY_AIRPORT}/${encodeURIComponent(airportCode)}/${encodeURIComponent(userId)}`;
+        const response = await sessionRequest<{
+          ok: boolean;
+          data: {
+            id: string;
+            name: string;
+            gender: "Male" | "Female" | "Other";
+            username?: string;
+            photoURL?: string | null;
+            destination: string;
+            flightDateTime: string | null;
+            flightDepartureTime?: string | null;
+            terminal: string;
+            flightNumber: string;
+            flightCarrier?: string;
+            flightNumberRaw?: string;
+            distanceFromUserKm: number;
+            bio?: string;
+            tags?: string[];
+            isVerified?: boolean;
+            connectionStatus?: string;
+            isOwnListing?: boolean;
+          };
+        }>(url);
+        if (!response.ok || !response.data) return null;
+        const t = response.data;
+        return {
+          id: t.id,
+          name: t.name,
+          gender: t.gender,
+          username: t.username ?? "",
+          photoURL: t.photoURL ?? undefined,
+          destination: t.destination,
+          airportName: airportName ?? airportCode,
+          flightDateTime: t.flightDateTime ? new Date(t.flightDateTime) : new Date(),
+          flightDepartureTime: t.flightDepartureTime ?? undefined,
+          terminal: t.terminal,
+          flightNumber: t.flightNumber,
+          flightCarrier: t.flightCarrier,
+          flightNumberRaw: t.flightNumberRaw,
+          distanceFromUserKm: t.distanceFromUserKm ?? 0,
+          bio: t.bio,
+          tags: t.tags,
+          isVerified: t.isVerified,
+          connectionStatus: t.connectionStatus as Traveller["connectionStatus"],
+          isOwnListing: t.isOwnListing,
+        } as Traveller;
+      } catch (error) {
+        console.error("Failed to fetch traveller by airport and user:", error);
+        return null;
+      }
+    },
+    [sessionRequest],
+  );
+
   const fetchUserDestination = useCallback(
     async (airportCode: string): Promise<string | null> => {
       setFetchUserDestinationLoading(true);
@@ -363,6 +464,8 @@ export function useGetTravellerApi() {
   return {
     fetchTravellers,
     fetchGroups,
+    fetchGroupById,
+    fetchTravellerByAirportAndUser,
     fetchGroupMembers,
     fetchUserDestination,
     leaveGroup,

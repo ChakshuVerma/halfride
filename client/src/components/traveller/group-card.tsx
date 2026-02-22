@@ -1,4 +1,4 @@
-import { Users, MapPin, ArrowRight } from "lucide-react";
+import { Users, MapPin, ArrowRight, Loader2 } from "lucide-react";
 import type { Group } from "./types";
 
 const CONSTANTS = {
@@ -29,9 +29,11 @@ type GroupCardProps = {
   onClick: () => void;
   /** When true, shows "Your group" badge and highlight styling. */
   isYourGroup?: boolean;
+  /** When true, shows a loading overlay (e.g. while fetching fresh data before opening modal). */
+  isOpening?: boolean;
 };
 
-export function GroupCard({ group, onClick, isYourGroup = false }: GroupCardProps) {
+export function GroupCard({ group, onClick, isYourGroup = false, isOpening = false }: GroupCardProps) {
   const percentFull = Math.round((group.groupSize / group.maxUsers) * 100);
 
   // Monochromatic/Neutral gradient for group cards (Light Gray)
@@ -41,12 +43,17 @@ export function GroupCard({ group, onClick, isYourGroup = false }: GroupCardProp
 
   return (
     <div
-      className={`group flex flex-col overflow-hidden rounded-[2rem] border shadow-sm transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 dark:border-white/5 ${
+      className={`group relative flex flex-col overflow-hidden rounded-[2rem] border shadow-sm transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 dark:border-white/5 ${
         isYourGroup
           ? "border-violet-400 dark:border-violet-500 ring-2 ring-violet-200 dark:ring-violet-900/50 bg-violet-50/30 dark:bg-violet-950/20"
           : "border-white/60 hover:border-white/80 dark:border-white/5"
-      }`}
+      } ${isOpening ? "pointer-events-none opacity-70" : ""}`}
     >
+      {isOpening && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[2rem] bg-white/80 dark:bg-zinc-900/80">
+          <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+        </div>
+      )}
       {/* Top Section - Gray Background */}
       <div className="relative p-4 sm:p-5 bg-zinc-200/70 dark:bg-zinc-800 border-b border-black/5 dark:border-white/5 transition-colors duration-300">
         {/* Header */}
