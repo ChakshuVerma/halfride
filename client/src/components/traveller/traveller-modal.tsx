@@ -95,6 +95,8 @@ type TravellerModalProps = {
   onRevokeListing?: () => void | Promise<void>;
   /** True while revoke is in progress (e.g. from parent). */
   isRevokingListing?: boolean;
+  /** Fetches fresh traveller detail (e.g. connection status). When provided, modal fetches on open and shows loading until resolved. */
+  onFetchTravellerDetail?: (userId: string) => Promise<Traveller | null>;
 };
 
 // ... existing code ...
@@ -149,6 +151,7 @@ export function TravellerModal({
   onConnectionResponded,
   onRevokeListing,
   isRevokingListing = false,
+  onFetchTravellerDetail,
 }: TravellerModalProps) {
   const { fetchFlightTrackerByFlightNumber, loading: apiLoading } =
     useFlightTrackerApi();
@@ -158,7 +161,10 @@ export function TravellerModal({
   const [flightError, setFlightError] = useState<string | null>(null);
   const [now, setNow] = useState(Date.now());
   const [showRevokeConfirm, setShowRevokeConfirm] = useState(false);
+  const [detailTraveller, setDetailTraveller] = useState<Traveller | null>(null);
+  const [connectionStatusLoading, setConnectionStatusLoading] = useState(!!onFetchTravellerDetail);
 
+  const effectiveTraveller = detailTraveller ?? traveller;
   const isLoading = apiLoading || (!flightInfo && !flightError);
 
   useEffect(() => {
@@ -184,6 +190,20 @@ export function TravellerModal({
   useEffect(() => {
     void fetchArrivalInfo();
   }, [traveller.id]);
+
+  useEffect(() => {
+    if (!onFetchTravellerDetail || !traveller.id) {
+      setConnectionStatusLoading(false);
+      return;
+    }
+    setConnectionStatusLoading(true);
+    setDetailTraveller(null);
+    onFetchTravellerDetail(traveller.id)
+      .then((fresh) => {
+        if (fresh) setDetailTraveller(fresh);
+      })
+      .finally(() => setConnectionStatusLoading(false));
+  }, [traveller.id, onFetchTravellerDetail]);
 
   const s = useMemo(() => getStatusStyles(flightInfo), [flightInfo]);
 
@@ -550,7 +570,14 @@ export function TravellerModal({
         </div>
       ) : (
         <div className="p-6 pt-2 border-t border-zinc-100 bg-white">
-          {traveller.connectionStatus === "REQUEST_RECEIVED" &&
+          {connectionStatusLoading ? (
+            <div className="h-12 rounded-xl bg-zinc-100 border border-zinc-200 flex items-center justify-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
+              <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">
+                Loading connection status…
+              </span>
+            </div>
+          ) : effectiveTraveller.connectionStatus === "REQUEST_RECEIVED" &&
           !connectionResponded ? (
             <div className="flex gap-3">
               <button
@@ -598,29 +625,29 @@ export function TravellerModal({
               disabled={
                 requestConnectionLoading ||
                 connectionSent ||
-                traveller.connectionStatus === "REQUEST_SENT"
+                effectiveTraveller.connectionStatus === "REQUEST_SENT"
               }
               className={cn(
                 "w-full h-12 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl transition-all hover:scale-[1.01] active:scale-[0.98]",
-                connectionSent || traveller.connectionStatus === "REQUEST_SENT"
+                connectionSent || effectiveTraveller.connectionStatus === "REQUEST_SENT"
                   ? "bg-emerald-500 text-white shadow-emerald-500/20"
                   : "bg-zinc-900 hover:bg-black text-white shadow-zinc-900/10",
                 (requestConnectionLoading ||
                   connectionSent ||
-                  traveller.connectionStatus === "REQUEST_SENT") &&
+                  effectiveTraveller.connectionStatus === "REQUEST_SENT") &&
                   "cursor-not-allowed opacity-80",
               )}
             >
               {requestConnectionLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : connectionSent ||
-                traveller.connectionStatus === "REQUEST_SENT" ? (
+                effectiveTraveller.connectionStatus === "REQUEST_SENT" ? (
                 <>
                   Request Sent <CheckCircle2 className="w-4 h-4" />
                 </>
               ) : (
                 <>
-                  {CONSTANTS.MESSAGES.CONNECT} {traveller.name.split(" ")[0]}
+                  {CONSTANTS.MESSAGES.CONNECT} {effectiveTraveller.name.split(" ")[0]}
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
