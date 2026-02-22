@@ -162,6 +162,38 @@ export function useGetTravellerApi() {
     [sessionRequest],
   );
 
+  const revokeListing = useCallback(
+    async (airportCode: string): Promise<{ ok: boolean; error?: string }> => {
+      try {
+        const response = await sessionRequest<{
+          ok: boolean;
+          message?: string;
+          error?: string;
+        }>(API_ROUTES.REVOKE_LISTING, {
+          method: "POST",
+          body: JSON.stringify({ airportCode }),
+        });
+        if (!response.ok) {
+          return {
+            ok: false,
+            error: response.error ?? "Failed to revoke listing",
+          };
+        }
+        return { ok: true };
+      } catch (error) {
+        console.error("Revoke listing error:", error);
+        return {
+          ok: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to revoke listing",
+        };
+      }
+    },
+    [sessionRequest],
+  );
+
   const requestJoinGroup = useCallback(
     async (groupId: string): Promise<{ ok: boolean; error?: string }> => {
       try {
@@ -257,6 +289,7 @@ export function useGetTravellerApi() {
     fetchGroupMembers,
     fetchUserDestination,
     leaveGroup,
+    revokeListing,
     requestJoinGroup,
     fetchGroupJoinRequests,
     respondToJoinRequest,

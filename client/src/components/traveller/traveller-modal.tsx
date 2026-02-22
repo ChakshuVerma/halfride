@@ -89,6 +89,10 @@ type TravellerModalProps = {
   isUserInGroup?: boolean;
   /** Called after successfully accepting or rejecting a connection request. Use to refetch list and/or close modal. */
   onConnectionResponded?: () => void;
+  /** When this is the current user's listing, called when they revoke. Can be async; modal may close on success. */
+  onRevokeListing?: () => void | Promise<void>;
+  /** True while revoke is in progress (e.g. from parent). */
+  isRevokingListing?: boolean;
 };
 
 // ... existing code ...
@@ -141,6 +145,8 @@ export function TravellerModal({
   traveller,
   isUserInGroup,
   onConnectionResponded,
+  onRevokeListing,
+  isRevokingListing = false,
 }: TravellerModalProps) {
   const { fetchFlightTrackerByFlightNumber, loading: apiLoading } =
     useFlightTrackerApi();
@@ -493,10 +499,25 @@ export function TravellerModal({
 
       {/* 3. Footer Action */}
       {traveller.isOwnListing ? (
-        <div className="p-6 pt-2 border-t border-zinc-100 bg-white">
+        <div className="p-6 pt-2 border-t border-zinc-100 bg-white space-y-3">
           <div className="w-full py-3 rounded-xl bg-muted/50 text-muted-foreground text-sm font-medium text-center border border-border/50">
             This is your listing. Others can send you connection requests from here.
           </div>
+          {onRevokeListing && (
+            <button
+              onClick={async () => {
+                await onRevokeListing();
+              }}
+              disabled={isRevokingListing}
+              className="w-full h-12 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-2 border-zinc-200 text-zinc-600 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {isRevokingListing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "Revoke listing"
+              )}
+            </button>
+          )}
         </div>
       ) : isUserInGroup ? (
         <div className="p-6 pt-2 border-t border-zinc-100 bg-white">

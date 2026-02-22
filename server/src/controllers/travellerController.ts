@@ -581,7 +581,9 @@ export async function getGroupsByAirport(req: Request, res: Response) {
         const groupSize = members.length;
         const hasPendingJoinRequest =
           !!uid &&
-          pendingRequests.some((ref: admin.firestore.DocumentReference) => ref.id === uid);
+          pendingRequests.some(
+            (ref: admin.firestore.DocumentReference) => ref.id === uid,
+          );
 
         let male = 0;
         let female = 0;
@@ -590,7 +592,9 @@ export async function getGroupsByAirport(req: Request, res: Response) {
         if (members.length > 0) {
           const [userSnaps, ...travellerSnaps] = await Promise.all([
             Promise.all(
-              members.map((ref: admin.firestore.DocumentReference) => ref.get()),
+              members.map((ref: admin.firestore.DocumentReference) =>
+                ref.get(),
+              ),
             ),
             ...members.map((memberRef: admin.firestore.DocumentReference) =>
               db
@@ -614,9 +618,7 @@ export async function getGroupsByAirport(req: Request, res: Response) {
                 const tData = tSnap.docs[0].data();
                 const dest = tData[TRAVELLER_FIELDS.DESTINATION];
                 const addr =
-                  typeof dest === "string"
-                    ? dest
-                    : (dest?.address ?? "N/A");
+                  typeof dest === "string" ? dest : (dest?.address ?? "N/A");
                 destinations.push(addr);
               } else {
                 destinations.push("N/A");
@@ -657,12 +659,14 @@ export async function getGroupsByAirport(req: Request, res: Response) {
 export async function getGroupMembers(req: Request, res: Response) {
   const rawId = req.params.groupId;
   const groupId =
-    typeof rawId === "string" ? rawId.trim() : Array.isArray(rawId) ? rawId[0]?.trim() ?? "" : "";
+    typeof rawId === "string"
+      ? rawId.trim()
+      : Array.isArray(rawId)
+        ? (rawId[0]?.trim() ?? "")
+        : "";
 
   if (!groupId) {
-    return res
-      .status(400)
-      .json({ ok: false, message: "Group ID is required" });
+    return res.status(400).json({ ok: false, message: "Group ID is required" });
   }
 
   const db = admin.firestore();
@@ -683,52 +687,59 @@ export async function getGroupMembers(req: Request, res: Response) {
     }
 
     const memberDetails = await Promise.all(
-      members.map(
-        async (userRef: admin.firestore.DocumentReference) => {
-          const travellerSnap = await db
-            .collection(COLLECTIONS.TRAVELLER_DATA)
-            .where(TRAVELLER_FIELDS.USER_REF, "==", userRef)
-            .where(TRAVELLER_FIELDS.GROUP_REF, "==", groupRef)
-            .limit(1)
-            .get();
+      members.map(async (userRef: admin.firestore.DocumentReference) => {
+        const travellerSnap = await db
+          .collection(COLLECTIONS.TRAVELLER_DATA)
+          .where(TRAVELLER_FIELDS.USER_REF, "==", userRef)
+          .where(TRAVELLER_FIELDS.GROUP_REF, "==", groupRef)
+          .limit(1)
+          .get();
 
-          if (travellerSnap.empty) {
-            const userSnap = await userRef.get();
-            const user = userSnap.data();
-            return {
-              id: userRef.id,
-              name: `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim() || "Unknown",
-              gender: user?.[USER_FIELDS.IS_FEMALE] ? "Female" : "Male",
-              destination: "N/A",
-              terminal: "N/A",
-              flightNumber: "—",
-            };
-          }
-
-          const trav = travellerSnap.docs[0].data();
-          const [userSnap, flightSnap] = await Promise.all([
-            (trav[TRAVELLER_FIELDS.USER_REF] as admin.firestore.DocumentReference).get(),
-            (trav[TRAVELLER_FIELDS.FLIGHT_REF] as admin.firestore.DocumentReference).get(),
-          ]);
+        if (travellerSnap.empty) {
+          const userSnap = await userRef.get();
           const user = userSnap.data();
-          const flight = flightSnap.data();
-          const dest = trav[TRAVELLER_FIELDS.DESTINATION];
-          const destinationAddress =
-            typeof dest === "string"
-              ? dest
-              : (dest?.address ?? "N/A");
-
           return {
             id: userRef.id,
-            name: `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim() || "Unknown",
+            name:
+              `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim() ||
+              "Unknown",
             gender: user?.[USER_FIELDS.IS_FEMALE] ? "Female" : "Male",
-            destination: destinationAddress,
-            terminal: trav[TRAVELLER_FIELDS.TERMINAL] || "N/A",
-            flightNumber:
-              `${flight?.[FLIGHT_FIELDS.CARRIER] ?? ""} ${flight?.[FLIGHT_FIELDS.FLIGHT_NUMBER] ?? ""}`.trim() || "—",
+            destination: "N/A",
+            terminal: "N/A",
+            flightNumber: "—",
           };
-        },
-      ),
+        }
+
+        const trav = travellerSnap.docs[0].data();
+        const [userSnap, flightSnap] = await Promise.all([
+          (
+            trav[TRAVELLER_FIELDS.USER_REF] as admin.firestore.DocumentReference
+          ).get(),
+          (
+            trav[
+              TRAVELLER_FIELDS.FLIGHT_REF
+            ] as admin.firestore.DocumentReference
+          ).get(),
+        ]);
+        const user = userSnap.data();
+        const flight = flightSnap.data();
+        const dest = trav[TRAVELLER_FIELDS.DESTINATION];
+        const destinationAddress =
+          typeof dest === "string" ? dest : (dest?.address ?? "N/A");
+
+        return {
+          id: userRef.id,
+          name:
+            `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim() ||
+            "Unknown",
+          gender: user?.[USER_FIELDS.IS_FEMALE] ? "Female" : "Male",
+          destination: destinationAddress,
+          terminal: trav[TRAVELLER_FIELDS.TERMINAL] || "N/A",
+          flightNumber:
+            `${flight?.[FLIGHT_FIELDS.CARRIER] ?? ""} ${flight?.[FLIGHT_FIELDS.FLIGHT_NUMBER] ?? ""}`.trim() ||
+            "—",
+        };
+      }),
     );
 
     return res.json({ ok: true, data: memberDetails });
@@ -773,9 +784,7 @@ export async function leaveGroup(req: Request, res: Response) {
   }
 
   if (!groupId || typeof groupId !== "string" || !groupId.trim()) {
-    return res
-      .status(400)
-      .json({ ok: false, error: "groupId is required" });
+    return res.status(400).json({ ok: false, error: "groupId is required" });
   }
 
   const db = admin.firestore();
@@ -792,7 +801,9 @@ export async function leaveGroup(req: Request, res: Response) {
       data?.[GROUP_FIELDS.MEMBERS] || [];
 
     const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
-    const isMember = members.some((ref: admin.firestore.DocumentReference) => ref.id === uid);
+    const isMember = members.some(
+      (ref: admin.firestore.DocumentReference) => ref.id === uid,
+    );
     if (!isMember) {
       return res
         .status(403)
@@ -842,6 +853,61 @@ export async function leaveGroup(req: Request, res: Response) {
   }
 }
 
+/**
+ * POST /revoke-listing
+ * Body: { airportCode: string }
+ * Revokes the current user's active listing at the given airport.
+ * Only allowed when the user is not in a group; otherwise use leave-group first.
+ */
+export async function revokeListing(req: Request, res: Response) {
+  const { airportCode } = req.body as { airportCode?: string };
+  const uid = req.auth?.uid;
+
+  if (!uid) {
+    return res.status(401).json({ ok: false, error: "Unauthorized" });
+  }
+
+  if (!airportCode || typeof airportCode !== "string" || !airportCode.trim()) {
+    return res
+      .status(400)
+      .json({ ok: false, error: "airportCode is required" });
+  }
+
+  const db = admin.firestore();
+  const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
+  const code = String(airportCode).trim().toUpperCase();
+
+  try {
+    const snapshot = await db
+      .collection(COLLECTIONS.TRAVELLER_DATA)
+      .where(TRAVELLER_FIELDS.USER_REF, "==", userRef)
+      .where(TRAVELLER_FIELDS.FLIGHT_ARRIVAL, "==", code)
+      .where(TRAVELLER_FIELDS.IS_COMPLETED, "==", false)
+      .where(TRAVELLER_FIELDS.GROUP_REF, "==", null)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({
+        ok: false,
+        error: "No active listing found for this airport",
+      });
+    }
+
+    const travellerDoc = snapshot.docs[0];
+
+    await travellerDoc.ref.delete();
+
+    return res.json({
+      ok: true,
+      message: "Listing revoked successfully",
+    });
+  } catch (error: any) {
+    console.error("Revoke listing error:", error.message);
+    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+  }
+}
+
 const MAX_GROUP_USERS = 6;
 
 /**
@@ -857,9 +923,7 @@ export async function requestJoinGroup(req: Request, res: Response) {
     return res.status(401).json({ ok: false, error: "Unauthorized" });
   }
   if (!groupId || typeof groupId !== "string" || !groupId.trim()) {
-    return res
-      .status(400)
-      .json({ ok: false, error: "groupId is required" });
+    return res.status(400).json({ ok: false, error: "groupId is required" });
   }
 
   const db = admin.firestore();
@@ -877,23 +941,28 @@ export async function requestJoinGroup(req: Request, res: Response) {
       data?.[GROUP_FIELDS.MEMBERS] || [];
     const pendingRequests: admin.firestore.DocumentReference[] =
       data?.[GROUP_FIELDS.PENDING_REQUESTS] || [];
-    const flightArrivalAirport =
-      data?.[GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT] as string | undefined;
+    const flightArrivalAirport = data?.[GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT] as
+      | string
+      | undefined;
 
-    if (members.some((ref: admin.firestore.DocumentReference) => ref.id === uid)) {
+    if (
+      members.some((ref: admin.firestore.DocumentReference) => ref.id === uid)
+    ) {
       return res
         .status(400)
         .json({ ok: false, error: "You are already a member of this group" });
     }
-    if (pendingRequests.some((ref: admin.firestore.DocumentReference) => ref.id === uid)) {
+    if (
+      pendingRequests.some(
+        (ref: admin.firestore.DocumentReference) => ref.id === uid,
+      )
+    ) {
       return res
         .status(400)
         .json({ ok: false, error: "You already have a pending join request" });
     }
     if (members.length >= MAX_GROUP_USERS) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "Group is full" });
+      return res.status(400).json({ ok: false, error: "Group is full" });
     }
 
     if (!flightArrivalAirport) {
@@ -913,7 +982,10 @@ export async function requestJoinGroup(req: Request, res: Response) {
     if (requesterTravellerSnap.empty) {
       return res
         .status(400)
-        .json({ ok: false, error: "You need an active listing at this airport to join the group" });
+        .json({
+          ok: false,
+          error: "You need an active listing at this airport to join the group",
+        });
     }
 
     const newPending = [...pendingRequests, userRef];
@@ -941,16 +1013,18 @@ export async function requestJoinGroup(req: Request, res: Response) {
 export async function getGroupJoinRequests(req: Request, res: Response) {
   const rawId = req.params.groupId;
   const groupId =
-    typeof rawId === "string" ? rawId.trim() : Array.isArray(rawId) ? rawId[0]?.trim() ?? "" : "";
+    typeof rawId === "string"
+      ? rawId.trim()
+      : Array.isArray(rawId)
+        ? (rawId[0]?.trim() ?? "")
+        : "";
   const uid = req.auth?.uid;
 
   if (!uid) {
     return res.status(401).json({ ok: false, error: "Unauthorized" });
   }
   if (!groupId) {
-    return res
-      .status(400)
-      .json({ ok: false, message: "Group ID is required" });
+    return res.status(400).json({ ok: false, message: "Group ID is required" });
   }
 
   const db = admin.firestore();
@@ -968,18 +1042,25 @@ export async function getGroupJoinRequests(req: Request, res: Response) {
     const pendingRequests: admin.firestore.DocumentReference[] =
       data?.[GROUP_FIELDS.PENDING_REQUESTS] || [];
 
-    const isMember = members.some((ref: admin.firestore.DocumentReference) => ref.id === uid);
+    const isMember = members.some(
+      (ref: admin.firestore.DocumentReference) => ref.id === uid,
+    );
     if (!isMember) {
       return res
         .status(403)
-        .json({ ok: false, error: "Only group members can view join requests" });
+        .json({
+          ok: false,
+          error: "Only group members can view join requests",
+        });
     }
 
     if (pendingRequests.length === 0) {
       return res.json({ ok: true, data: [] });
     }
 
-    const flightArrivalAirport = data?.[GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT] as string | undefined;
+    const flightArrivalAirport = data?.[GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT] as
+      | string
+      | undefined;
     const code = flightArrivalAirport ?? "";
 
     const requestDetails = await Promise.all(
@@ -1000,22 +1081,25 @@ export async function getGroupJoinRequests(req: Request, res: Response) {
 
           if (!travellerSnap.empty) {
             const trav = travellerSnap.docs[0].data();
-            const flightRef = trav[TRAVELLER_FIELDS.FLIGHT_REF] as admin.firestore.DocumentReference;
+            const flightRef = trav[
+              TRAVELLER_FIELDS.FLIGHT_REF
+            ] as admin.firestore.DocumentReference;
             const flightSnap = await flightRef.get();
             const flight = flightSnap.data();
             const dest = trav[TRAVELLER_FIELDS.DESTINATION];
             destination =
-              typeof dest === "string"
-                ? dest
-                : (dest?.address ?? "N/A");
+              typeof dest === "string" ? dest : (dest?.address ?? "N/A");
             terminal = trav[TRAVELLER_FIELDS.TERMINAL] || "N/A";
             flightNumber =
-              `${flight?.[FLIGHT_FIELDS.CARRIER] ?? ""} ${flight?.[FLIGHT_FIELDS.FLIGHT_NUMBER] ?? ""}`.trim() || "—";
+              `${flight?.[FLIGHT_FIELDS.CARRIER] ?? ""} ${flight?.[FLIGHT_FIELDS.FLIGHT_NUMBER] ?? ""}`.trim() ||
+              "—";
           }
 
           return {
             id: userRef.id,
-            name: `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim() || "Unknown",
+            name:
+              `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim() ||
+              "Unknown",
             gender: user?.[USER_FIELDS.IS_FEMALE] ? "Female" : "Male",
             destination,
             terminal,
@@ -1071,7 +1155,9 @@ export async function respondToJoinRequest(req: Request, res: Response) {
   const db = admin.firestore();
   const groupRef = db.collection(COLLECTIONS.GROUPS).doc(groupId.trim());
   const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
-  const requesterUserRef = db.collection(COLLECTIONS.USERS).doc(requesterUserId.trim());
+  const requesterUserRef = db
+    .collection(COLLECTIONS.USERS)
+    .doc(requesterUserId.trim());
 
   try {
     const groupSnap = await groupRef.get();
@@ -1084,23 +1170,33 @@ export async function respondToJoinRequest(req: Request, res: Response) {
       data?.[GROUP_FIELDS.MEMBERS] || [];
     let pendingRequests: admin.firestore.DocumentReference[] =
       data?.[GROUP_FIELDS.PENDING_REQUESTS] || [];
-    const flightArrivalAirport =
-      data?.[GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT] as string | undefined;
+    const flightArrivalAirport = data?.[GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT] as
+      | string
+      | undefined;
 
-    const isMember = members.some((ref: admin.firestore.DocumentReference) => ref.id === uid);
+    const isMember = members.some(
+      (ref: admin.firestore.DocumentReference) => ref.id === uid,
+    );
     if (!isMember) {
       return res
         .status(403)
-        .json({ ok: false, error: "Only group members can respond to join requests" });
+        .json({
+          ok: false,
+          error: "Only group members can respond to join requests",
+        });
     }
 
     const requesterInPending = pendingRequests.some(
-      (ref: admin.firestore.DocumentReference) => ref.id === requesterUserId.trim(),
+      (ref: admin.firestore.DocumentReference) =>
+        ref.id === requesterUserId.trim(),
     );
     if (!requesterInPending) {
       return res
         .status(404)
-        .json({ ok: false, error: "Join request not found or already handled" });
+        .json({
+          ok: false,
+          error: "Join request not found or already handled",
+        });
     }
 
     const [deciderSnap, requesterSnap] = await Promise.all([
@@ -1113,7 +1209,8 @@ export async function respondToJoinRequest(req: Request, res: Response) {
       requesterSnap.data()?.[USER_FIELDS.FIRST_NAME] ?? "Someone";
 
     pendingRequests = pendingRequests.filter(
-      (ref: admin.firestore.DocumentReference) => ref.id !== requesterUserId.trim(),
+      (ref: admin.firestore.DocumentReference) =>
+        ref.id !== requesterUserId.trim(),
     );
 
     if (isAccept) {
@@ -1139,7 +1236,10 @@ export async function respondToJoinRequest(req: Request, res: Response) {
       if (requesterTravellerSnap.empty) {
         return res
           .status(400)
-          .json({ ok: false, error: "Requester no longer has an active listing at this airport" });
+          .json({
+            ok: false,
+            error: "Requester no longer has an active listing at this airport",
+          });
       }
 
       const newMembers = [...members, requesterUserRef];
@@ -1154,7 +1254,9 @@ export async function respondToJoinRequest(req: Request, res: Response) {
       });
 
       await notifyUserJoinAccepted(groupId.trim(), requesterUserId.trim());
-      const memberIds = newMembers.map((ref: admin.firestore.DocumentReference) => ref.id);
+      const memberIds = newMembers.map(
+        (ref: admin.firestore.DocumentReference) => ref.id,
+      );
       await notifyOtherMembersJoinDecided(
         memberIds,
         groupId.trim(),
@@ -1181,7 +1283,9 @@ export async function respondToJoinRequest(req: Request, res: Response) {
         groupId.trim(),
         deciderName,
       );
-      const memberIds = members.map((ref: admin.firestore.DocumentReference) => ref.id);
+      const memberIds = members.map(
+        (ref: admin.firestore.DocumentReference) => ref.id,
+      );
       await notifyOtherMembersJoinDecided(
         memberIds,
         groupId.trim(),
