@@ -24,6 +24,7 @@ export interface UserSchema {
   Phone: string | null;
   username?: string;
   bio?: string;
+  photoURL?: string | null;
   tags?: string[];
   isVerified?: boolean;
   passwordSalt?: string;
@@ -104,6 +105,7 @@ export const USER_FIELDS = {
   PHONE: "Phone",
   USERNAME: "username",
   BIO: "bio",
+  PHOTO_URL: "photoURL",
   TAGS: "tags",
   IS_VERIFIED: "isVerified",
   PASSWORD_SALT: "passwordSalt",

@@ -10,6 +10,7 @@ import {
 import {
   CreateNotificationPayload,
   NotificationType,
+  NOTIFICATION_ACTION_TYPES,
 } from "../types/notifications";
 
 /**
@@ -39,26 +40,20 @@ export async function createNotification(payload: CreateNotificationPayload) {
       .doc(payload.recipientUserId);
     const notificationRef = db.collection(COLLECTIONS.NOTIFICATIONS).doc();
 
-    const data: any = { ...payload.data };
+    const data: Record<string, unknown> = { ...payload.data };
 
-    // Convert IDs to References
+    // Convert IDs to References (action is preserved as-is for the client)
     if (data.groupId) {
-      data.groupRef = db.collection(COLLECTIONS.GROUPS).doc(data.groupId);
+      data.groupRef = db.collection(COLLECTIONS.GROUPS).doc(data.groupId as string);
       delete data.groupId;
     }
     if (data.actorUserId) {
       data.actorUserRef = db
         .collection(COLLECTIONS.USERS)
-        .doc(data.actorUserId);
+        .doc(data.actorUserId as string);
       delete data.actorUserId;
     }
-    // Handle specific fields if needed
-    if (data.listingId) {
-      // Assuming listingId is just a string or you want a ref to TravellerData?
-      // For now keeping it as string or if you have a collection:
-      // data.listingRef = db.collection(COLLECTIONS.TRAVELLER_DATA).doc(data.listingId);
-      // delete data.listingId;
-    }
+    // listingId is kept as a string for the client (no ref conversion)
 
     await notificationRef.set({
       [NOTIFICATION_FIELDS.NOTIFICATION_ID]: notificationRef.id,
@@ -79,22 +74,37 @@ export async function createNotification(payload: CreateNotificationPayload) {
 }
 
 /**
- * Fetch group display name for notifications. Returns stored name or "Group of N" fallback.
+ * Fetch group display name and airport code for notifications.
+ * Returns stored name or "Group of N" fallback; airportCode from group doc when present.
  */
+async function getGroupInfo(
+  db: admin.firestore.Firestore,
+  groupId: string,
+): Promise<{ name: string; airportCode?: string }> {
+  const groupDoc = await db.collection(COLLECTIONS.GROUPS).doc(groupId).get();
+  if (!groupDoc.exists) return { name: "the group" };
+  const data = groupDoc.data();
+  const storedName = data?.[GROUP_FIELDS.NAME];
+  const name =
+    typeof storedName === "string" && storedName.trim().length > 0
+      ? storedName.trim()
+      : (() => {
+          const members: admin.firestore.DocumentReference[] =
+            data?.[GROUP_FIELDS.MEMBERS] || [];
+          return `Group of ${members.length}`;
+        })();
+  const airportCode = data?.[GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT] as
+    | string
+    | undefined;
+  return { name, airportCode };
+}
+
 async function getGroupDisplayName(
   db: admin.firestore.Firestore,
   groupId: string,
 ): Promise<string> {
-  const groupDoc = await db.collection(COLLECTIONS.GROUPS).doc(groupId).get();
-  if (!groupDoc.exists) return "the group";
-  const data = groupDoc.data();
-  const storedName = data?.[GROUP_FIELDS.NAME];
-  if (typeof storedName === "string" && storedName.trim().length > 0) {
-    return storedName.trim();
-  }
-  const members: admin.firestore.DocumentReference[] =
-    data?.[GROUP_FIELDS.MEMBERS] || [];
-  return `Group of ${members.length}`;
+  const { name } = await getGroupInfo(db, groupId);
+  return name;
 }
 
 /**
@@ -130,7 +140,7 @@ export async function notifyGroupAdminOfJoinRequest(
     const groupData = groupDoc.data();
     const members: admin.firestore.DocumentReference[] =
       groupData?.[GROUP_FIELDS.MEMBERS] || [];
-    const groupName = await getGroupDisplayName(db, groupId);
+    const { name: groupName, airportCode } = await getGroupInfo(db, groupId);
 
     const userSnap = await db
       .collection(COLLECTIONS.USERS)
@@ -147,7 +157,18 @@ export async function notifyGroupAdminOfJoinRequest(
           type: NotificationType.GROUP_JOIN_REQUEST,
           title: "New Join Request",
           body: `${userName} wants to join your group ${groupName}.`,
-          data: { groupId, actorUserId: requesterUserId, groupName },
+          data: {
+            groupId,
+            actorUserId: requesterUserId,
+            groupName,
+            ...(airportCode && {
+              airportCode,
+              action: {
+                type: NOTIFICATION_ACTION_TYPES.OPEN_GROUP,
+                payload: { airportCode, groupId },
+              },
+            }),
+          },
         }),
       ),
     );
@@ -221,13 +242,23 @@ export async function notifyUserJoinAccepted(
   newMemberId: string,
 ) {
   const db = admin.firestore();
-  const groupName = await getGroupDisplayName(db, groupId);
+  const { name: groupName, airportCode } = await getGroupInfo(db, groupId);
   await createNotification({
     recipientUserId: newMemberId,
     type: NotificationType.GROUP_JOIN_ACCEPTED,
     title: "Join Request Accepted",
     body: `You have been accepted into the group ${groupName}.`,
-    data: { groupId, groupName },
+    data: {
+      groupId,
+      groupName,
+      ...(airportCode && {
+        airportCode,
+        action: {
+          type: NOTIFICATION_ACTION_TYPES.OPEN_GROUP,
+          payload: { airportCode, groupId },
+        },
+      }),
+    },
   });
 }
 
@@ -240,7 +271,7 @@ export async function notifyUserJoinRejected(
   deciderName?: string,
 ) {
   const db = admin.firestore();
-  const groupName = await getGroupDisplayName(db, groupId);
+  const { name: groupName, airportCode } = await getGroupInfo(db, groupId);
   const body = deciderName
     ? `${deciderName} declined your request to join the group ${groupName}.`
     : `Your request to join the group ${groupName} was declined.`;
@@ -249,7 +280,17 @@ export async function notifyUserJoinRejected(
     type: NotificationType.GROUP_JOIN_REJECTED,
     title: "Join Request Declined",
     body,
-    data: { groupId, groupName },
+    data: {
+      groupId,
+      groupName,
+      ...(airportCode && {
+        airportCode,
+        action: {
+          type: NOTIFICATION_ACTION_TYPES.OPEN_GROUP,
+          payload: { airportCode, groupId },
+        },
+      }),
+    },
   });
 }
 
@@ -266,7 +307,7 @@ export async function notifyOtherMembersJoinDecided(
   accepted: boolean,
 ) {
   const db = admin.firestore();
-  const groupName = await getGroupDisplayName(db, groupId);
+  const { name: groupName, airportCode } = await getGroupInfo(db, groupId);
   const recipients = memberUserIds.filter(
     (id) => id !== deciderUserId && id !== requesterUserId,
   );
@@ -285,6 +326,13 @@ export async function notifyOtherMembersJoinDecided(
           groupName,
           actorUserId: deciderUserId,
           metadata: { requesterUserId, accepted },
+          ...(airportCode && {
+            airportCode,
+            action: {
+              type: NOTIFICATION_ACTION_TYPES.OPEN_GROUP,
+              payload: { airportCode, groupId },
+            },
+          }),
         },
       }),
     ),
@@ -301,7 +349,7 @@ export async function notifyDeciderJoinRequestDecided(
   groupId: string,
 ) {
   const db = admin.firestore();
-  const groupName = await getGroupDisplayName(db, groupId);
+  const { name: groupName, airportCode } = await getGroupInfo(db, groupId);
   const title = accepted
     ? "You accepted the join request"
     : "You declined the join request";
@@ -313,7 +361,18 @@ export async function notifyDeciderJoinRequestDecided(
     type: NotificationType.GROUP_JOIN_REQUEST_DECIDED,
     title,
     body,
-    data: { groupId, groupName, metadata: { accepted } },
+    data: {
+      groupId,
+      groupName,
+      metadata: { accepted },
+      ...(airportCode && {
+        airportCode,
+        action: {
+          type: NOTIFICATION_ACTION_TYPES.OPEN_GROUP,
+          payload: { airportCode, groupId },
+        },
+      }),
+    },
   });
 }
 
@@ -350,14 +409,25 @@ export async function notifyUserOfConnectionRequest(
       ? userSnap.data()?.["FirstName"]
       : "Someone";
 
+    const airportCode = travellerData[TRAVELLER_FIELDS.FLIGHT_ARRIVAL] as
+      | string
+      | undefined;
+
     await createNotification({
       recipientUserId: recipientId,
       type: NotificationType.CONNECTION_REQUEST,
       title: "New Connection Request",
       body: `${userName} wants to connect with you.`,
       data: {
-        listingId: travellerDataId, // Using listingId to map to TravellerData ID
+        listingId: travellerDataId,
         actorUserId: requesterUserId,
+        ...(airportCode && {
+          airportCode,
+          action: {
+            type: NOTIFICATION_ACTION_TYPES.OPEN_TRAVELLER,
+            payload: { airportCode, userId: requesterUserId },
+          },
+        }),
       },
     });
   } catch (e) {
@@ -385,13 +455,24 @@ export async function notifyConnectionRequestResponded(
       : "Someone";
 
     if (status === "accepted" && groupId) {
-      const groupName = await getGroupDisplayName(db, groupId);
+      const { name: groupName, airportCode } = await getGroupInfo(db, groupId);
       await createNotification({
         recipientUserId: requesterUserId,
         type: NotificationType.CONNECTION_ACCEPTED,
         title: "Connection request accepted",
         body: `${recipientName} accepted your connection request. You're now in a group together: ${groupName}.`,
-        data: { groupId, groupName, actorUserId: recipientUserId },
+        data: {
+          groupId,
+          groupName,
+          actorUserId: recipientUserId,
+          ...(airportCode && {
+            airportCode,
+            action: {
+              type: NOTIFICATION_ACTION_TYPES.OPEN_GROUP,
+              payload: { airportCode, groupId },
+            },
+          }),
+        },
       });
     } else if (status === "rejected") {
       await createNotification({

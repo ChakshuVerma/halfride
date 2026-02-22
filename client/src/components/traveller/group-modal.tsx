@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
@@ -19,6 +20,7 @@ type JoinRequestUser = {
   id: string;
   name: string;
   gender: string;
+  photoURL?: string | null;
   destination: string;
   terminal: string;
   flightNumber: string;
@@ -66,6 +68,17 @@ const CONSTANTS = {
   GENDER: {
     MALE: "Male",
     FEMALE: "Female",
+  },
+  TOASTS: {
+    NAME_UPDATED: "Group name updated",
+    NAME_UPDATE_FAILED: "Failed to update name",
+    LEFT_GROUP: "Left group",
+    LEAVE_FAILED: "Failed to leave group",
+    JOIN_REQUEST_SENT: "Join request sent",
+    JOIN_REQUEST_FAILED: "Failed to send join request",
+    REQUEST_ACCEPTED: "Request accepted",
+    REQUEST_REJECTED: "Request rejected",
+    RESPOND_FAILED: "Failed to respond to request",
   },
 };
 
@@ -159,8 +172,11 @@ export function GroupModal({
       setDisplayName(trimmed);
       setEditingName(false);
       onGroupNameUpdated?.();
+      toast.success(CONSTANTS.TOASTS.NAME_UPDATED);
     } else {
-      setNameUpdateError(result.error ?? "Failed to update name");
+      const msg = result.error ?? CONSTANTS.TOASTS.NAME_UPDATE_FAILED;
+      setNameUpdateError(msg);
+      toast.error(msg);
     }
   };
   const handleEditNameKeyDown = (e: React.KeyboardEvent) => {
@@ -404,13 +420,22 @@ export function GroupModal({
                     className="flex items-center gap-2 sm:gap-3 p-2 rounded-xl hover:bg-muted/10 transition-colors border border-transparent hover:border-border/5 min-w-0"
                   >
                     <div
-                      className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0 border shadow-sm ${
-                        member.gender === CONSTANTS.GENDER.MALE
+                      className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0 border shadow-sm overflow-hidden ${
+                        !member.photoURL &&
+                        (member.gender === CONSTANTS.GENDER.MALE
                           ? "bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/10 text-blue-600"
-                          : "bg-gradient-to-br from-pink-500/10 to-pink-500/5 border-pink-500/10 text-pink-600"
+                          : "bg-gradient-to-br from-pink-500/10 to-pink-500/5 border-pink-500/10 text-pink-600")
                       }`}
                     >
-                      <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      {member.photoURL ? (
+                        <img
+                          src={member.photoURL}
+                          alt={member.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0 overflow-hidden">
                       <p className="text-xs sm:text-sm font-semibold text-foreground truncate">
@@ -461,13 +486,22 @@ export function GroupModal({
                       className="flex items-center gap-2 sm:gap-3 p-2 rounded-xl border border-border/10 bg-muted/5 min-w-0"
                     >
                       <div
-                        className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0 border shadow-sm ${
-                          req.gender === CONSTANTS.GENDER.MALE
+                        className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0 border shadow-sm overflow-hidden ${
+                          !req.photoURL &&
+                          (req.gender === CONSTANTS.GENDER.MALE
                             ? "bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/10 text-blue-600"
-                            : "bg-gradient-to-br from-pink-500/10 to-pink-500/5 border-pink-500/10 text-pink-600"
+                            : "bg-gradient-to-br from-pink-500/10 to-pink-500/5 border-pink-500/10 text-pink-600")
                         }`}
                       >
-                        <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        {req.photoURL ? (
+                          <img
+                            src={req.photoURL}
+                            alt={req.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0 overflow-hidden">
                         <p className="text-xs sm:text-sm font-semibold text-foreground truncate">
@@ -508,6 +542,11 @@ export function GroupModal({
                                 group.id,
                               );
                               setMembers(freshMembers);
+                              toast.success(CONSTANTS.TOASTS.REQUEST_ACCEPTED);
+                            } else {
+                              toast.error(
+                                result.error ?? CONSTANTS.TOASTS.RESPOND_FAILED,
+                              );
                             }
                           }}
                         >
@@ -536,6 +575,11 @@ export function GroupModal({
                             if (result.ok) {
                               setJoinRequests((prev) =>
                                 prev.filter((r) => r.id !== req.id),
+                              );
+                              toast.success(CONSTANTS.TOASTS.REQUEST_REJECTED);
+                            } else {
+                              toast.error(
+                                result.error ?? CONSTANTS.TOASTS.RESPOND_FAILED,
                               );
                             }
                           }}
@@ -597,8 +641,11 @@ export function GroupModal({
                     const result = await leaveGroup(group.id);
                     if (result.ok) {
                       onLeaveGroup?.();
+                      toast.success(CONSTANTS.TOASTS.LEFT_GROUP);
                     } else {
-                      setLeaveError(result.error ?? "Failed to leave group");
+                      const msg = result.error ?? CONSTANTS.TOASTS.LEAVE_FAILED;
+                      setLeaveError(msg);
+                      toast.error(msg);
                     }
                   }}
                 />
@@ -624,10 +671,12 @@ export function GroupModal({
                       const result = await requestJoinGroup(group.id);
                       if (result.ok) {
                         onJoinRequestSuccess?.();
+                        toast.success(CONSTANTS.TOASTS.JOIN_REQUEST_SENT);
                       } else {
-                        setJoinError(
-                          result.error ?? "Failed to send join request",
-                        );
+                        const msg =
+                          result.error ?? CONSTANTS.TOASTS.JOIN_REQUEST_FAILED;
+                        setJoinError(msg);
+                        toast.error(msg);
                       }
                     }}
                   >

@@ -85,6 +85,7 @@ export function Login() {
       window.location.reload();
     } catch {
       showError(CONSTANTS.ERRORS.LOGIN_FAILED);
+      toast.error(CONSTANTS.ERRORS.LOGIN_FAILED);
     }
   };
 

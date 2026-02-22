@@ -11,12 +11,35 @@ export enum NotificationType {
   CONNECTION_REJECTED = "CONNECTION_REJECTED",
 }
 
+/** Action types the client can perform when the user taps a notification. */
+export const NOTIFICATION_ACTION_TYPES = {
+  OPEN_GROUP: "OPEN_GROUP",
+  OPEN_TRAVELLER: "OPEN_TRAVELLER",
+} as const;
+
+export type NotificationActionType =
+  (typeof NOTIFICATION_ACTION_TYPES)[keyof typeof NOTIFICATION_ACTION_TYPES];
+
+export interface NotificationActionPayload {
+  airportCode: string;
+  groupId?: string;
+  userId?: string;
+}
+
+export interface NotificationAction {
+  type: NotificationActionType;
+  payload: NotificationActionPayload;
+}
+
 export interface NotificationData {
   groupId?: string;
   groupName?: string; // Display name for group (shown in bold in UI)
+  airportCode?: string;
   actorUserId?: string; // The user who triggered the action
   listingId?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
+  /** When set, the client will use this to navigate / open UI (e.g. group modal, traveller modal). Omit for no action. */
+  action?: NotificationAction;
 }
 
 export interface CreateNotificationPayload {

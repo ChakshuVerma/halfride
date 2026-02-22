@@ -11,6 +11,9 @@ export const API_ROUTES = {
 
   // User routes
   USER_PROFILE: `${API_BASE_URL}/user/profile`,
+  USER_PROFILE_BY_USERNAME: (username: string) =>
+    `${API_BASE_URL}/user/profile/${encodeURIComponent(username)}`,
+  USER_PROFILE_PHOTO: `${API_BASE_URL}/user/profile/photo`,
   USER_ME: `${API_BASE_URL}/user/me`,
 
   // Health routes
@@ -22,7 +25,9 @@ export const API_ROUTES = {
 
   // Traveller routes
   TRAVELLERS_BY_AIRPORT: `${API_BASE_URL}/travellers-by-airport`,
+  TRAVELLER_BY_AIRPORT: `${API_BASE_URL}/traveller-by-airport`,
   GROUPS_BY_AIRPORT: `${API_BASE_URL}/groups-by-airport`,
+  GROUP: `${API_BASE_URL}/group`,
   GROUP_MEMBERS: `${API_BASE_URL}/group-members`,
   CHECK_LISTING: `${API_BASE_URL}/check-listing`,
   REQUEST_CONNECTION: `${API_BASE_URL}/request-connection`,

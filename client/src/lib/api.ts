@@ -13,8 +13,9 @@ export async function publicRequest<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const isFormData = options.body instanceof FormData
   const headers: HeadersInit = {
-    "Content-Type": "application/json",
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...options.headers,
   }
 
@@ -39,8 +40,9 @@ export async function publicRequest<T>(
  * Uses access/refresh cookies and auto-refreshes once on 401.
  */
 export async function sessionRequest<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const isFormData = options.body instanceof FormData
   const headers: HeadersInit = {
-    "Content-Type": "application/json",
+    ...(isFormData ? {} : { "Content-Type": "application/json" }),
     ...options.headers,
   }
 

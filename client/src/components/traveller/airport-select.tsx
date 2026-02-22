@@ -92,7 +92,11 @@ export function AirportSelect({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="p-0 overflow-hidden bg-white/95 backdrop-blur-2xl border-zinc-200 shadow-2xl rounded-3xl w-[95vw] max-w-2xl gap-0">
+      <DialogContent
+        className="p-0 overflow-hidden bg-white/95 backdrop-blur-2xl border-zinc-200 shadow-2xl rounded-3xl w-[95vw] max-w-2xl gap-0"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         <div className="flex flex-col h-[70vh] sm:h-[600px]">
           <div className="px-4 py-4 border-b border-zinc-100">
             <DialogTitle className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-2 mb-2">

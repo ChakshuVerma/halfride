@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { NotificationBell } from "./NotificationBell";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { ROUTES } from "@/constants/routes";
+import { ROUTES, getProfilePath } from "@/constants/routes";
 
 const HEADER_CONSTANTS = {
   BRAND: "HalfRide",
@@ -48,10 +48,11 @@ export function Header() {
     ? `${userProfile.firstName} ${userProfile.lastName || ""}`
     : user.username;
 
-  // Helper for initials
+  // Helper for initials (when no photo)
   const initials = userProfile?.firstName
     ? userProfile.firstName.charAt(0).toUpperCase()
     : user.username.slice(0, 2).toUpperCase();
+  const hasPhoto = !!userProfile?.photoURL;
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
@@ -94,8 +95,12 @@ export function Header() {
                 )}
               >
                 {/* Avatar Circle */}
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs ring-2 ring-background shadow-sm">
-                  {initials}
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs ring-2 ring-background shadow-sm overflow-hidden">
+                  {hasPhoto ? (
+                    <img src={userProfile!.photoURL!} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    initials
+                  )}
                 </div>
 
                 {/* Name (Hidden on very small screens) */}
@@ -121,8 +126,12 @@ export function Header() {
             >
               {/* Popover Header: User Info */}
               <div className="flex items-center gap-3 p-3 mb-1 bg-muted/40 rounded-md border border-border/50">
-                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-background border border-border text-primary font-bold shadow-sm">
-                  {initials}
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-background border border-border text-primary font-bold shadow-sm overflow-hidden">
+                  {hasPhoto ? (
+                    <img src={userProfile!.photoURL!} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    initials
+                  )}
                 </div>
                 <div className="flex flex-col overflow-hidden">
                   <p className="text-sm font-semibold truncate text-foreground">
@@ -140,6 +149,10 @@ export function Header() {
                 <Button
                   variant="ghost"
                   className="w-full justify-start h-9 px-2 text-sm font-normal text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setIsProfileOpen(false);
+                    navigate(getProfilePath(user.username));
+                  }}
                 >
                   <User className="mr-2 h-4 w-4 opacity-70" />
                   {HEADER_CONSTANTS.MENU.PROFILE}
