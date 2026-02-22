@@ -11,7 +11,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { NotificationBell } from "./NotificationBell";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
-import { ROUTES } from "@/constants/routes";
+import { ROUTES, getProfilePath } from "@/constants/routes";
 
 const HEADER_CONSTANTS = {
   BRAND: "HalfRide",
@@ -140,6 +140,10 @@ export function Header() {
                 <Button
                   variant="ghost"
                   className="w-full justify-start h-9 px-2 text-sm font-normal text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setIsProfileOpen(false);
+                    navigate(getProfilePath(user.username));
+                  }}
                 >
                   <User className="mr-2 h-4 w-4 opacity-70" />
                   {HEADER_CONSTANTS.MENU.PROFILE}

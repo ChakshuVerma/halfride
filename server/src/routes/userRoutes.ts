@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import { requireSession } from '../middleware/sessionAuth';
-import { createMe, meExists, profile } from '../controllers/userController';
+import { createMe, meExists, profile, profileByUsername } from '../controllers/userController';
 
 export const userRouter = Router();
 
 userRouter.get('/user/profile', requireSession, profile);
+userRouter.get('/user/profile/:username', requireSession, profileByUsername);
 
 // Create a user profile for the authenticated uid
 userRouter.post('/user/me', requireSession, createMe);

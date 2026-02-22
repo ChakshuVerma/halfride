@@ -35,6 +35,7 @@ const Dashboard = lazy(() => import("./components/home/dashboard"));
 const AirportTravellers = lazy(
   () => import("./components/traveller/airport-travellers"),
 );
+const ProfilePage = lazy(() => import("./components/profile/ProfilePage"));
 
 function AppRoutes() {
   const { loading } = useAuth();
@@ -59,6 +60,7 @@ function AppRoutes() {
           <Route path={ROUTES.DASHBOARD} element={<Dashboard />} />
           <Route path={ROUTES.AIRPORT} element={<AirportTravellers />} />
           <Route path={ROUTES.AIRPORT_BY_CODE} element={<AirportTravellers />} />
+          <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
         </Route>
 
         {/* FALLBACK */}

@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useMemo, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import { Card, CardContent } from "../ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select";
 import { Button } from "@/components/ui/button";
@@ -78,7 +79,11 @@ export function AirportTravellersDashboard({
   onSelectOpenChange,
   searchInputRef,
 }: AirportTravellersDashboardProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODE.INDIVIDUAL);
+  const [viewMode, setViewMode] = useState<ViewMode>(() =>
+    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("group")
+      ? VIEW_MODE.GROUP
+      : VIEW_MODE.INDIVIDUAL,
+  );
   const [selectedEntity, setSelectedEntity] = useState<SelectedEntity>(null);
   const [travellers, setTravellers] = useState<Traveller[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -97,6 +102,19 @@ export function AirportTravellersDashboard({
   const [isUserInGroup, setIsUserInGroup] = useState(false);
   const [userGroupId, setUserGroupId] = useState<string | null>(null);
   const [userDestination, setUserDestination] = useState<string | null>(null);
+  const [hasOpenedGroupFromUrl, setHasOpenedGroupFromUrl] = useState(false);
+  const [hasOpenedTravellerFromUrl, setHasOpenedTravellerFromUrl] = useState(false);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const groupIdFromUrl = searchParams.get("group");
+  const travellerIdFromUrl = searchParams.get("traveller");
+
+  const clearModalParamsFromUrl = useCallback(() => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("group");
+    next.delete("traveller");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const {
     fetchTravellers,
@@ -162,6 +180,41 @@ export function AirportTravellersDashboard({
     };
     checkUserListing();
   }, [selectedAirport, fetchUserDestination]);
+
+  // When URL has ?group=groupId, open that group's modal once groups are loaded
+  useEffect(() => {
+    if (!groupIdFromUrl || !initialDataFetchCompleted || hasOpenedGroupFromUrl)
+      return;
+    if (groups.length === 0) return;
+    const group = groups.find((g) => g.id === groupIdFromUrl);
+    setHasOpenedGroupFromUrl(true);
+    if (group) {
+      setSelectedEntity({ type: ENTITY_TYPE.GROUP, data: group });
+      setViewMode(VIEW_MODE.GROUP);
+    }
+  }, [groupIdFromUrl, initialDataFetchCompleted, groups, hasOpenedGroupFromUrl]);
+
+  // When URL has ?traveller=userId, open that traveller's modal once travellers are loaded
+  useEffect(() => {
+    if (
+      !travellerIdFromUrl ||
+      !initialDataFetchCompleted ||
+      hasOpenedTravellerFromUrl
+    )
+      return;
+    if (travellers.length === 0) return;
+    const traveller = travellers.find((t) => t.id === travellerIdFromUrl);
+    setHasOpenedTravellerFromUrl(true);
+    if (traveller) {
+      setSelectedEntity({ type: ENTITY_TYPE.TRAVELLER, data: traveller });
+      setViewMode(VIEW_MODE.INDIVIDUAL);
+    }
+  }, [
+    travellerIdFromUrl,
+    initialDataFetchCompleted,
+    travellers,
+    hasOpenedTravellerFromUrl,
+  ]);
 
   const handleFilterToggle = useCallback(
     (
@@ -553,9 +606,18 @@ export function AirportTravellersDashboard({
             {/* MODALS */}
             <Dialog
               open={selectedEntity !== null}
-              onOpenChange={(open) => !open && setSelectedEntity(null)}
+              onOpenChange={(open) => {
+                if (!open) {
+                  setSelectedEntity(null);
+                  clearModalParamsFromUrl();
+                }
+              }}
             >
-              <DialogContent className="w-[95vw] max-w-xl max-h-[85vh] overflow-y-auto rounded-3xl border-zinc-200 bg-white/95 backdrop-blur-xl p-0 shadow-2xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              <DialogContent
+                className="w-[95vw] max-w-xl max-h-[85vh] overflow-y-auto rounded-3xl border-zinc-200 bg-white/95 backdrop-blur-xl p-0 shadow-2xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                onInteractOutside={(e) => e.preventDefault()}
+                onEscapeKeyDown={(e) => e.preventDefault()}
+              >
                 <DialogTitle className="sr-only">
                   {CONSTANTS.LABELS.DETAILS}
                 </DialogTitle>
