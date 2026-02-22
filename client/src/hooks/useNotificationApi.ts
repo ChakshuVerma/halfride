@@ -3,6 +3,9 @@ import { useApi } from "./useApi";
 import { API_ROUTES } from "@/lib/apiRoutes";
 import { toast } from "sonner";
 
+/** Max notifications per page (must match server NOTIFICATIONS_PAGE_SIZE) */
+export const NOTIFICATIONS_PAGE_SIZE = 6;
+
 export interface Notification {
   notificationId: string;
   recipientUserId: string;
@@ -18,7 +21,10 @@ export function useNotificationApi() {
   const { sessionRequest, loading } = useApi();
 
   const fetchNotifications = useCallback(
-    async (limit = 20, lastId?: string) => {
+    async (
+      limit = NOTIFICATIONS_PAGE_SIZE,
+      lastId?: string,
+    ): Promise<{ data: Notification[]; hasMore: boolean }> => {
       try {
         const params = new URLSearchParams({ limit: limit.toString() });
         if (lastId) params.append("lastId", lastId);
@@ -26,11 +32,14 @@ export function useNotificationApi() {
         const response = await sessionRequest<{
           ok: boolean;
           data: Notification[];
+          hasMore?: boolean;
         }>(`${API_ROUTES.NOTIFICATIONS}?${params.toString()}`);
-        return response.data || [];
+        const data = response.data || [];
+        const hasMore = response.hasMore ?? false;
+        return { data, hasMore };
       } catch (error) {
         console.error("Fetch Notifications Error:", error);
-        return [];
+        return { data: [], hasMore: false };
       }
     },
     [sessionRequest],

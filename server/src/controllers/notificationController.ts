@@ -3,6 +3,7 @@ import { admin } from "../firebase/admin";
 import {
   COLLECTIONS,
   NOTIFICATION_FIELDS,
+  NOTIFICATIONS_PAGE_SIZE,
   GROUP_FIELDS,
   TRAVELLER_FIELDS,
 } from "../constants/db";
@@ -414,8 +415,15 @@ export async function getMyNotifications(req: Request, res: Response) {
   if (!uid) {
     return res.status(401).json({ ok: false, error: "Unauthorized" });
   }
-  // Pagination params
-  const limit = parseInt(String(req.query.limit || "20"));
+  // Pagination params: max NOTIFICATIONS_PAGE_SIZE per page
+  const rawLimit = parseInt(
+    String(req.query.limit || NOTIFICATIONS_PAGE_SIZE),
+    10,
+  );
+  const limit = Math.min(
+    isNaN(rawLimit) ? NOTIFICATIONS_PAGE_SIZE : rawLimit,
+    NOTIFICATIONS_PAGE_SIZE,
+  );
   const lastId = req.query.lastId ? String(req.query.lastId) : undefined;
 
   const db = admin.firestore();
@@ -458,7 +466,8 @@ export async function getMyNotifications(req: Request, res: Response) {
       };
     });
 
-    return res.json({ ok: true, data: notifications });
+    const hasMore = snapshot.docs.length === limit;
+    return res.json({ ok: true, data: notifications, hasMore });
   } catch (error: any) {
     console.error("Get Notifications Error:", error.message);
     // Return specific error message to help debugging (e.g. missing index)
