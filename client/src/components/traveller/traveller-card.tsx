@@ -56,10 +56,18 @@ export const TravellerCard = memo(function TravellerCard({
         <div className="relative">
           <div
             className={cn(
-              "w-14 h-14 rounded-2xl flex items-center justify-center text-zinc-900 border-2 border-zinc-100 bg-zinc-50 group-hover:bg-zinc-900 group-hover:text-white group-hover:border-zinc-900 transition-colors duration-300",
+              "w-14 h-14 rounded-2xl flex items-center justify-center text-zinc-900 border-2 border-zinc-100 bg-zinc-50 group-hover:bg-zinc-900 group-hover:text-white group-hover:border-zinc-900 transition-colors duration-300 overflow-hidden",
             )}
           >
-            <User className="w-6 h-6" strokeWidth={2} />
+            {traveller.photoURL ? (
+              <img
+                src={traveller.photoURL}
+                alt={traveller.name}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <User className="w-6 h-6" strokeWidth={2} />
+            )}
           </div>
           {/* Online/Gender Indicator */}
           <div

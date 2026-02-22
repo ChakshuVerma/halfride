@@ -15,6 +15,8 @@ export type Traveller = {
   tags?: string[];
   isVerified?: boolean;
   username: string;
+  /** Profile photo URL when set by user. */
+  photoURL?: string | null;
   connectionStatus?: "SEND_REQUEST" | "REQUEST_SENT" | "REQUEST_RECEIVED";
   /** True when this traveller is the current user's own listing. */
   isOwnListing?: boolean;

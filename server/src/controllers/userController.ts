@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import { FieldValue } from 'firebase-admin/firestore';
+import sharp from 'sharp';
 import { admin } from '../firebase/admin';
 import {
   COLLECTIONS,
@@ -54,6 +55,7 @@ export async function profileByUsername(req: Request, res: Response) {
       FirstName: userData?.[USER_FIELDS.FIRST_NAME],
       LastName: userData?.[USER_FIELDS.LAST_NAME],
       bio: userData?.[USER_FIELDS.BIO],
+      photoURL: userData?.[USER_FIELDS.PHOTO_URL] ?? null,
     };
 
     if (isOwnProfile) {
@@ -274,4 +276,44 @@ export async function meExists(req: Request, res: Response) {
     exists: result.exists,
     user: result.data,
   });
+}
+
+const AVATAR_SIZE = 192;
+const AVATAR_JPEG_QUALITY = 85;
+
+/**
+ * POST /user/profile/photo
+ * Upload profile photo (multipart form with "photo" file). Resizes and stores as base64 in Firestore (no Storage bucket needed).
+ */
+export async function uploadProfilePhotoHandler(req: Request, res: Response) {
+  const uid = req.auth?.uid;
+  if (!uid) return res.status(401).json({ ok: false, error: 'Unauthorized' });
+
+  const file = (req as any).file;
+  if (!file || !file.buffer) {
+    return res.status(400).json({ ok: false, error: 'No photo file provided' });
+  }
+
+  try {
+    const buffer = await sharp(file.buffer)
+      .resize(AVATAR_SIZE, AVATAR_SIZE, { fit: 'cover' })
+      .jpeg({ quality: AVATAR_JPEG_QUALITY })
+      .toBuffer();
+    const base64 = buffer.toString('base64');
+    const photoURL = `data:image/jpeg;base64,${base64}`;
+
+    await admin.firestore().collection(COLLECTIONS.USERS).doc(uid).update({
+      [USER_FIELDS.PHOTO_URL]: photoURL,
+      [USER_FIELDS.UPDATED_AT]: FieldValue.serverTimestamp(),
+    });
+
+    return res.json({ ok: true, photoURL });
+  } catch (e: any) {
+    console.error('uploadProfilePhoto error:', e?.message ?? e);
+    return res.status(500).json({
+      ok: false,
+      error: 'Failed to process or save photo',
+      message: e?.message ?? undefined,
+    });
+  }
 }

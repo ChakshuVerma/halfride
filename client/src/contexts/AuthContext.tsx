@@ -11,6 +11,7 @@ export interface UserProfile {
   dob?: string
   gender?: "male" | "female"
   phone?: string
+  photoURL?: string | null
 }
 
 interface AuthContextType {
@@ -48,6 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             dob: u.DOB ?? undefined,
             gender: typeof u.isFemale === "boolean" ? (u.isFemale ? "female" : "male") : undefined,
             phone: u.Phone ?? undefined,
+            photoURL: u.photoURL ?? undefined,
           })
         } else {
           setUserProfile(null)

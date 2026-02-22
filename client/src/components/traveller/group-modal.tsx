@@ -19,6 +19,7 @@ type JoinRequestUser = {
   id: string;
   name: string;
   gender: string;
+  photoURL?: string | null;
   destination: string;
   terminal: string;
   flightNumber: string;
@@ -404,13 +405,22 @@ export function GroupModal({
                     className="flex items-center gap-2 sm:gap-3 p-2 rounded-xl hover:bg-muted/10 transition-colors border border-transparent hover:border-border/5 min-w-0"
                   >
                     <div
-                      className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0 border shadow-sm ${
-                        member.gender === CONSTANTS.GENDER.MALE
+                      className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0 border shadow-sm overflow-hidden ${
+                        !member.photoURL &&
+                        (member.gender === CONSTANTS.GENDER.MALE
                           ? "bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/10 text-blue-600"
-                          : "bg-gradient-to-br from-pink-500/10 to-pink-500/5 border-pink-500/10 text-pink-600"
+                          : "bg-gradient-to-br from-pink-500/10 to-pink-500/5 border-pink-500/10 text-pink-600")
                       }`}
                     >
-                      <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      {member.photoURL ? (
+                        <img
+                          src={member.photoURL}
+                          alt={member.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      )}
                     </div>
                     <div className="flex-1 min-w-0 overflow-hidden">
                       <p className="text-xs sm:text-sm font-semibold text-foreground truncate">
@@ -461,13 +471,22 @@ export function GroupModal({
                       className="flex items-center gap-2 sm:gap-3 p-2 rounded-xl border border-border/10 bg-muted/5 min-w-0"
                     >
                       <div
-                        className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0 border shadow-sm ${
-                          req.gender === CONSTANTS.GENDER.MALE
+                        className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0 border shadow-sm overflow-hidden ${
+                          !req.photoURL &&
+                          (req.gender === CONSTANTS.GENDER.MALE
                             ? "bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/10 text-blue-600"
-                            : "bg-gradient-to-br from-pink-500/10 to-pink-500/5 border-pink-500/10 text-pink-600"
+                            : "bg-gradient-to-br from-pink-500/10 to-pink-500/5 border-pink-500/10 text-pink-600")
                         }`}
                       >
-                        <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        {req.photoURL ? (
+                          <img
+                            src={req.photoURL}
+                            alt={req.name}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0 overflow-hidden">
                         <p className="text-xs sm:text-sm font-semibold text-foreground truncate">

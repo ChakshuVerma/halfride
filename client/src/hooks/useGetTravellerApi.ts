@@ -7,13 +7,17 @@ export function useGetTravellerApi() {
   const { sessionRequest } = useApi();
   const [fetchTravellersLoading, setFetchTravellersLoading] = useState(false);
   const [fetchGroupsLoading, setFetchGroupsLoading] = useState(false);
-  const [fetchUserDestinationLoading, setFetchUserDestinationLoading] = useState(false);
-  const [fetchGroupMembersLoading, setFetchGroupMembersLoading] = useState(false);
-  const [fetchGroupJoinRequestsLoading, setFetchGroupJoinRequestsLoading] = useState(false);
+  const [fetchUserDestinationLoading, setFetchUserDestinationLoading] =
+    useState(false);
+  const [fetchGroupMembersLoading, setFetchGroupMembersLoading] =
+    useState(false);
+  const [fetchGroupJoinRequestsLoading, setFetchGroupJoinRequestsLoading] =
+    useState(false);
   const [leaveGroupLoading, setLeaveGroupLoading] = useState(false);
   const [revokeListingLoading, setRevokeListingLoading] = useState(false);
   const [requestJoinGroupLoading, setRequestJoinGroupLoading] = useState(false);
-  const [respondToJoinRequestLoading, setRespondToJoinRequestLoading] = useState(false);
+  const [respondToJoinRequestLoading, setRespondToJoinRequestLoading] =
+    useState(false);
   const [updateGroupNameLoading, setUpdateGroupNameLoading] = useState(false);
 
   const fetchTravellers = useCallback(
@@ -122,6 +126,8 @@ export function useGetTravellerApi() {
             id: string;
             name: string;
             gender: "Male" | "Female" | "Other";
+            photoURL?: string | null;
+            username?: string | null;
             destination: string;
             terminal: string;
             flightNumber: string;
@@ -132,13 +138,14 @@ export function useGetTravellerApi() {
           id: m.id,
           name: m.name,
           gender: m.gender,
+          photoURL: m.photoURL ?? undefined,
+          username: m.username ?? "",
           destination: m.destination,
           terminal: m.terminal,
           flightNumber: m.flightNumber,
           airportName: "",
           flightDateTime: new Date(),
           distanceFromUserKm: 0,
-          username: "",
         })) as Traveller[];
       } catch (error) {
         console.error("Failed to fetch group members:", error);
@@ -207,9 +214,7 @@ export function useGetTravellerApi() {
         return {
           ok: false,
           error:
-            error instanceof Error
-              ? error.message
-              : "Failed to revoke listing",
+            error instanceof Error ? error.message : "Failed to revoke listing",
         };
       } finally {
         setRevokeListingLoading(false);

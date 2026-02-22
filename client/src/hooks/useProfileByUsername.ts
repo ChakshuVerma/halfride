@@ -8,6 +8,7 @@ export type ProfileUser = {
   FirstName?: string;
   LastName?: string;
   bio?: string;
+  photoURL?: string | null;
   Phone?: string;
   DOB?: string;
   isFemale?: boolean;

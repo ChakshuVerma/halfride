@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   User,
@@ -13,6 +13,7 @@ import {
   Sparkles,
   Compass,
   Luggage,
+  Camera,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,9 +26,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfileByUsername } from "@/hooks/useProfileByUsername";
+import { useUserProfileApi } from "@/hooks/useUserProfileApi";
 import {
   ROUTES,
-  getAirportPath,
   getAirportGroupPath,
   getAirportTravellerPath,
 } from "@/constants/routes";
@@ -52,8 +53,28 @@ function formatDate(dateStr: string) {
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, userProfile, setUserProfile } = useAuth();
   const { data, loading, error, fetchProfile } = useProfileByUsername(username);
+  const { uploadProfilePhoto, fetchProfile: fetchMeProfile } = useUserProfileApi();
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const handlePhotoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user) return;
+    setUploadingPhoto(true);
+    try {
+      const res = await uploadProfilePhoto(file);
+      if (res.ok && res.photoURL) {
+        setUserProfile(userProfile ? { ...userProfile, photoURL: res.photoURL ?? undefined } : { photoURL: res.photoURL });
+        await fetchMeProfile();
+        await fetchProfile();
+      }
+    } finally {
+      setUploadingPhoto(false);
+      e.target.value = "";
+    }
+  };
 
   useEffect(() => {
     if (username) fetchProfile();
@@ -154,8 +175,41 @@ export default function ProfilePage() {
           </Button>
 
           <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 pt-10 sm:pt-6">
-            <div className="flex h-24 w-24 sm:h-28 sm:w-28 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground font-bold text-3xl sm:text-4xl shadow-lg ring-4 ring-background">
-              {initials}
+            <div className="relative group">
+              <div className="flex h-24 w-24 sm:h-28 sm:w-28 shrink-0 items-center justify-center rounded-2xl bg-primary text-primary-foreground font-bold text-3xl sm:text-4xl shadow-lg ring-4 ring-background overflow-hidden">
+                {profileUser.photoURL ? (
+                  <img
+                    src={profileUser.photoURL}
+                    alt={displayName}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  initials
+                )}
+              </div>
+              {isOwnProfile && (
+                <>
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    className="hidden"
+                    onChange={handlePhotoChange}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => photoInputRef.current?.click()}
+                    disabled={uploadingPhoto}
+                    className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-70"
+                  >
+                    {uploadingPhoto ? (
+                      <Loader2 className="h-8 w-8 animate-spin text-white" />
+                    ) : (
+                      <Camera className="h-8 w-8 text-white" />
+                    )}
+                  </button>
+                </>
+              )}
             </div>
             <div className="flex-1 text-center sm:text-left min-w-0 pb-0.5">
               <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight truncate">

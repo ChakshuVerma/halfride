@@ -199,6 +199,7 @@ export async function getTravellersByAirport(req: Request, res: Response) {
           name: `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim(),
           gender: user?.[USER_FIELDS.IS_FEMALE] ? "Female" : "Male",
           username: `${user?.username ?? "user"}`,
+          photoURL: user?.[USER_FIELDS.PHOTO_URL] ?? null,
           destination: destinationAddress,
           flightDateTime: fData?.arrival?.estimatedActualTime
             ? new Date(fData.arrival.estimatedActualTime)
@@ -842,6 +843,8 @@ export async function getGroupMembers(req: Request, res: Response) {
               `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim() ||
               "Unknown",
             gender: user?.[USER_FIELDS.IS_FEMALE] ? "Female" : "Male",
+            photoURL: user?.[USER_FIELDS.PHOTO_URL] ?? null,
+            username: user?.[USER_FIELDS.USERNAME] ?? null,
             destination: "N/A",
             terminal: "N/A",
             flightNumber: "—",
@@ -863,6 +866,8 @@ export async function getGroupMembers(req: Request, res: Response) {
             `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim() ||
             "Unknown",
           gender: user?.[USER_FIELDS.IS_FEMALE] ? "Female" : "Male",
+          photoURL: user?.[USER_FIELDS.PHOTO_URL] ?? null,
+          username: user?.[USER_FIELDS.USERNAME] ?? null,
           destination: destinationAddress,
           terminal: trav[TRAVELLER_FIELDS.TERMINAL] || "N/A",
           flightNumber:
@@ -1227,6 +1232,7 @@ export async function getGroupJoinRequests(req: Request, res: Response) {
               `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim() ||
               "Unknown",
             gender: user?.[USER_FIELDS.IS_FEMALE] ? "Female" : "Male",
+            photoURL: user?.[USER_FIELDS.PHOTO_URL] ?? null,
             destination,
             terminal,
             flightNumber,

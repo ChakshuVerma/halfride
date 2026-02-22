@@ -13,6 +13,7 @@ export const API_ROUTES = {
   USER_PROFILE: `${API_BASE_URL}/user/profile`,
   USER_PROFILE_BY_USERNAME: (username: string) =>
     `${API_BASE_URL}/user/profile/${encodeURIComponent(username)}`,
+  USER_PROFILE_PHOTO: `${API_BASE_URL}/user/profile/photo`,
   USER_ME: `${API_BASE_URL}/user/me`,
 
   // Health routes
