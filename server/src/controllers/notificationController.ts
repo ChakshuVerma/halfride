@@ -206,6 +206,83 @@ export async function notifyUserJoinAccepted(
 }
 
 /**
+ * Notify the requester that their join request was rejected.
+ */
+export async function notifyUserJoinRejected(
+  requesterUserId: string,
+  groupId: string,
+  deciderName?: string,
+) {
+  const body = deciderName
+    ? `${deciderName} declined your request to join the group.`
+    : "Your request to join the group was declined.";
+  await createNotification({
+    recipientUserId: requesterUserId,
+    type: NotificationType.GROUP_JOIN_REJECTED,
+    title: "Join Request Declined",
+    body,
+    data: { groupId },
+  });
+}
+
+/**
+ * Notify other group members (excluding decider and requester) that a join request was accepted or rejected.
+ */
+export async function notifyOtherMembersJoinDecided(
+  memberUserIds: string[],
+  groupId: string,
+  deciderUserId: string,
+  deciderName: string,
+  requesterUserId: string,
+  requesterName: string,
+  accepted: boolean,
+) {
+  const recipients = memberUserIds.filter(
+    (id) => id !== deciderUserId && id !== requesterUserId,
+  );
+  const action = accepted ? "accepted" : "rejected";
+  const title = accepted
+    ? "Join request accepted"
+    : "Join request declined";
+  const body = `${deciderName} ${action} ${requesterName}'s request to join the group.`;
+  await Promise.all(
+    recipients.map((recipientId) =>
+      createNotification({
+        recipientUserId: recipientId,
+        type: NotificationType.GROUP_JOIN_REQUEST_DECIDED,
+        title,
+        body,
+        data: { groupId, actorUserId: deciderUserId, metadata: { requesterUserId, accepted } },
+      }),
+    ),
+  );
+}
+
+/**
+ * Notify the member who accepted/rejected the request (the decider).
+ */
+export async function notifyDeciderJoinRequestDecided(
+  deciderUserId: string,
+  requesterName: string,
+  accepted: boolean,
+  groupId: string,
+) {
+  const title = accepted
+    ? "You accepted the join request"
+    : "You declined the join request";
+  const body = accepted
+    ? `You accepted ${requesterName} into the group.`
+    : `You declined ${requesterName}'s request to join the group.`;
+  await createNotification({
+    recipientUserId: deciderUserId,
+    type: NotificationType.GROUP_JOIN_REQUEST_DECIDED,
+    title,
+    body,
+    data: { groupId, metadata: { accepted } },
+  });
+}
+
+/**
  * Use Case 4: Connection Request
  */
 export async function notifyUserOfConnectionRequest(

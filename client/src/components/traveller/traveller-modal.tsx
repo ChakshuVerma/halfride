@@ -47,6 +47,8 @@ const CONSTANTS = {
     BELT: "Belt",
     INTERESTS: "Vibes & Interests",
     CONNECT: "Connect with",
+    ALREADY_IN_GROUP:
+      "You can't connect with others since you're already in a group.",
   },
   COLORS: {
     CANCELLED: {
@@ -490,7 +492,19 @@ export function TravellerModal({
       </div>
 
       {/* 3. Footer Action */}
-      {!isUserInGroup && (
+      {traveller.isOwnListing ? (
+        <div className="p-6 pt-2 border-t border-zinc-100 bg-white">
+          <div className="w-full py-3 rounded-xl bg-muted/50 text-muted-foreground text-sm font-medium text-center border border-border/50">
+            This is your listing. Others can send you connection requests from here.
+          </div>
+        </div>
+      ) : isUserInGroup ? (
+        <div className="p-6 pt-2 border-t border-zinc-100 bg-white">
+          <div className="w-full py-3 rounded-xl bg-muted/50 text-muted-foreground text-sm font-medium text-center border border-border/50">
+            {CONSTANTS.MESSAGES.ALREADY_IN_GROUP}
+          </div>
+        </div>
+      ) : (
         <div className="p-6 pt-2 border-t border-zinc-100 bg-white">
           {traveller.connectionStatus === "REQUEST_RECEIVED" &&
           !connectionResponded ? (
@@ -573,5 +587,3 @@ export function TravellerModal({
     </div>
   );
 }
-//   );
-// }

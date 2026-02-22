@@ -55,6 +55,7 @@ export function useGetTravellerApi() {
             maxUsers: number;
             genderBreakdown: { male: number; female: number };
             createdAt: string;
+            hasPendingJoinRequest?: boolean;
           }>;
         }>(url);
 
@@ -67,6 +68,7 @@ export function useGetTravellerApi() {
             typeof g.createdAt === "string"
               ? g.createdAt
               : new Date(g.createdAt).toISOString(),
+          hasPendingJoinRequest: g.hasPendingJoinRequest ?? false,
         })) as Group[];
       } catch (error) {
         console.error("Failed to fetch groups:", error);
@@ -142,14 +144,107 @@ export function useGetTravellerApi() {
           body: JSON.stringify({ groupId }),
         });
         if (!response.ok) {
-          return { ok: false, error: response.error ?? "Failed to leave group" };
+          return {
+            ok: false,
+            error: response.error ?? "Failed to leave group",
+          };
         }
         return { ok: true };
       } catch (error) {
         console.error("Leave group error:", error);
         return {
           ok: false,
-          error: error instanceof Error ? error.message : "Failed to leave group",
+          error:
+            error instanceof Error ? error.message : "Failed to leave group",
+        };
+      }
+    },
+    [sessionRequest],
+  );
+
+  const requestJoinGroup = useCallback(
+    async (groupId: string): Promise<{ ok: boolean; error?: string }> => {
+      try {
+        const response = await sessionRequest<{
+          ok: boolean;
+          message?: string;
+          error?: string;
+        }>(API_ROUTES.REQUEST_JOIN_GROUP, {
+          method: "POST",
+          body: JSON.stringify({ groupId }),
+        });
+        if (!response.ok) {
+          return {
+            ok: false,
+            error: response.error ?? "Failed to send join request",
+          };
+        }
+        return { ok: true };
+      } catch (error) {
+        console.error("Request join group error:", error);
+        return {
+          ok: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to send join request",
+        };
+      }
+    },
+    [sessionRequest],
+  );
+
+  type JoinRequestUser = {
+    id: string;
+    name: string;
+    gender: string;
+    destination: string;
+    terminal: string;
+    flightNumber: string;
+  };
+
+  const fetchGroupJoinRequests = useCallback(
+    async (groupId: string): Promise<JoinRequestUser[]> => {
+      if (!groupId) return [];
+      try {
+        const url = `${API_ROUTES.GROUP_JOIN_REQUESTS}/${encodeURIComponent(groupId)}`;
+        const response = await sessionRequest<{
+          ok: boolean;
+          data: JoinRequestUser[];
+        }>(url);
+        return response.data ?? [];
+      } catch (error) {
+        console.error("Fetch group join requests error:", error);
+        return [];
+      }
+    },
+    [sessionRequest],
+  );
+
+  const respondToJoinRequest = useCallback(
+    async (
+      groupId: string,
+      requesterUserId: string,
+      action: "accept" | "reject",
+    ): Promise<{ ok: boolean; error?: string }> => {
+      try {
+        const response = await sessionRequest<{
+          ok: boolean;
+          message?: string;
+          error?: string;
+        }>(API_ROUTES.RESPOND_TO_JOIN_REQUEST, {
+          method: "POST",
+          body: JSON.stringify({ groupId, requesterUserId, action }),
+        });
+        if (!response.ok) {
+          return { ok: false, error: response.error ?? "Action failed" };
+        }
+        return { ok: true };
+      } catch (error) {
+        console.error("Respond to join request error:", error);
+        return {
+          ok: false,
+          error: error instanceof Error ? error.message : "Action failed",
         };
       }
     },
@@ -162,6 +257,9 @@ export function useGetTravellerApi() {
     fetchGroupMembers,
     fetchUserDestination,
     leaveGroup,
+    requestJoinGroup,
+    fetchGroupJoinRequests,
+    respondToJoinRequest,
     loading,
   };
 }
