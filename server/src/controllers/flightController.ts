@@ -1,4 +1,5 @@
 import type { Request, Response } from "express";
+import type { Firestore } from "firebase-admin/firestore";
 import { admin } from "../firebase/admin";
 import { Timestamp, FieldValue } from "firebase-admin/firestore";
 import { checkUserExists } from "./userController";
@@ -7,6 +8,50 @@ import {
   isDateTodayOrTomorrow,
   checkRoadDistance,
 } from "../utils/controllerUtils";
+
+interface CachedAirport {
+  airportCode: string;
+  airportName: string;
+  city?: string;
+  terminals: { id: string; name: string }[];
+}
+
+/** Loaded once after server start; only the first request triggers a Firestore read. */
+let airportsCache: {
+  list: { airportCode: string; airportName: string; city?: string }[];
+  byCode: Map<string, CachedAirport>;
+} | null = null;
+
+/** Normalize terminal items from DB (id, name; strip updatedAt etc.). */
+function normalizeTerminals(raw: unknown): { id: string; name: string }[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.map((t) => ({
+    id: typeof t?.id === "string" ? t.id : "",
+    name: typeof t?.name === "string" ? t.name : "",
+  }));
+}
+
+async function ensureAirportsCache(db: Firestore): Promise<{
+  list: { airportCode: string; airportName: string; city?: string }[];
+  byCode: Map<string, CachedAirport>;
+}> {
+  if (airportsCache) return airportsCache;
+  const snapshot = await db.collection(COLLECTIONS.AIRPORTS).get();
+  const list: { airportCode: string; airportName: string; city?: string }[] = [];
+  const byCode = new Map<string, CachedAirport>();
+  for (const doc of snapshot.docs) {
+    const data = doc.data();
+    // DB fields: city, country, iataCode, icaoCode, name, terminals
+    const airportCode = (data.iataCode || doc.id).toString().toUpperCase();
+    const airportName = data.name || data.airportName || "Unknown Airport";
+    const city = typeof data.city === "string" ? data.city : undefined;
+    const terminals = normalizeTerminals(data.terminals);
+    list.push({ airportCode, airportName, city });
+    byCode.set(airportCode, { airportCode, airportName, city, terminals });
+  }
+  airportsCache = { list, byCode };
+  return airportsCache;
+}
 
 /**
  * TYPES & INTERFACES
@@ -284,11 +329,8 @@ export async function createFlightTracker(req: Request, res: Response) {
         });
       }
     }
-    const airportDoc = await db
-      .collection(COLLECTIONS.AIRPORTS)
-      .doc(arrivalCode)
-      .get();
-    if (!airportDoc.exists) {
+    const { byCode } = await ensureAirportsCache(db);
+    if (!byCode.has(String(arrivalCode).toUpperCase())) {
       return res.status(400).json({
         ok: false,
         error: "Bad Request",
@@ -435,22 +477,13 @@ export async function getFlightTracker(req: Request, res: Response) {
 
 /**
  * ENDPOINT 3: GET AIRPORTS
+ * Served from in-memory cache to reduce Firestore reads (airport list is mostly static).
  */
 export async function getAirports(_req: Request, res: Response) {
   try {
     const db = admin.firestore();
-    const snapshot = await db.collection(COLLECTIONS.AIRPORTS).get();
-
-    // map doc.id to airportCode and name to airportName
-    const airports = snapshot.docs.map((doc) => {
-      const data = doc.data();
-      return {
-        airportName: data.name || data.airportName || "Unknown Airport", // Handle different potential field names
-        airportCode: doc.id,
-      };
-    });
-
-    return res.json({ ok: true, data: airports });
+    const { list } = await ensureAirportsCache(db);
+    return res.json({ ok: true, data: list });
   } catch (error: any) {
     console.error("Get Airports Error:", error.message);
     return res.status(500).json({
@@ -463,6 +496,7 @@ export async function getAirports(_req: Request, res: Response) {
 
 /**
  * ENDPOINT 4: GET TERMINALS FOR AIRPORT
+ * Served from in-memory cache to avoid per-request Firestore reads.
  */
 export async function getTerminals(req: Request, res: Response) {
   const { airportCode } = req.body;
@@ -479,9 +513,10 @@ export async function getTerminals(req: Request, res: Response) {
 
   try {
     const db = admin.firestore();
-    const doc = await db.collection(COLLECTIONS.AIRPORTS).doc(code).get();
+    const { byCode } = await ensureAirportsCache(db);
+    const cached = byCode.get(code);
 
-    if (!doc.exists) {
+    if (!cached) {
       return res.status(404).json({
         ok: false,
         error: "Not Found",
@@ -489,10 +524,7 @@ export async function getTerminals(req: Request, res: Response) {
       });
     }
 
-    const data = doc.data();
-    const terminals = data?.terminals || [];
-
-    return res.json({ ok: true, data: terminals });
+    return res.json({ ok: true, data: cached.terminals });
   } catch (error: any) {
     console.error("Get Terminals Error:", error.message);
     return res.status(500).json({

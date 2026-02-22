@@ -9,6 +9,7 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   useNotificationApi,
+  NOTIFICATIONS_PAGE_SIZE,
   type Notification,
 } from "@/hooks/useNotificationApi";
 import { formatDistanceToNow } from "date-fns";
@@ -63,14 +64,34 @@ function renderNotificationBody(
 }
 
 export function NotificationBell() {
-  const { fetchNotifications, getUnreadCount, markRead, markAllRead } =
-    useNotificationApi();
+  const {
+    fetchNotifications,
+    getUnreadCount,
+    markRead,
+    markAllRead,
+    loadMoreLoading,
+  } = useNotificationApi();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterType>(
     NOTIFICATION_CONSTANTS.FILTERS.ALL,
   );
+
+  const loadData = async () => {
+    try {
+      const [{ data: msgs, hasMore: more }, count] = await Promise.all([
+        fetchNotifications(NOTIFICATIONS_PAGE_SIZE),
+        getUnreadCount(),
+      ]);
+      setNotifications(msgs);
+      setHasMore(more);
+      setUnreadCount(count);
+    } catch (err) {
+      console.error(NOTIFICATION_CONSTANTS.ERRORS.LOAD_FAILED, err);
+    }
+  };
 
   // Initial load & Polling
   useEffect(() => {
@@ -79,14 +100,17 @@ export function NotificationBell() {
     return () => clearInterval(interval);
   }, []);
 
-  const loadData = async () => {
+  const loadMore = async () => {
+    if (!notifications.length || !hasMore || loadMoreLoading) return;
+    const lastId = notifications[notifications.length - 1]?.notificationId;
+    if (!lastId) return;
     try {
-      const [msgs, count] = await Promise.all([
-        fetchNotifications(50),
-        getUnreadCount(),
-      ]);
-      setNotifications(msgs);
-      setUnreadCount(count);
+      const { data: nextPage, hasMore: more } = await fetchNotifications(
+        NOTIFICATIONS_PAGE_SIZE,
+        lastId,
+      );
+      setNotifications((prev) => [...prev, ...nextPage]);
+      setHasMore(more);
     } catch (e) {
       console.error(NOTIFICATION_CONSTANTS.ERRORS.LOAD_FAILED, e);
     }
@@ -279,6 +303,19 @@ export function NotificationBell() {
                   </div>
                 );
               })}
+              {hasMore && activeFilter === NOTIFICATION_CONSTANTS.FILTERS.ALL && (
+                <div className="p-2 border-t">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-xs text-muted-foreground hover:text-foreground"
+                    onClick={loadMore}
+                    disabled={loadMoreLoading}
+                  >
+                    {loadMoreLoading ? "Loading…" : "Load more"}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </ScrollArea>

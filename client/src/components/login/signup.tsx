@@ -73,9 +73,9 @@ const CONSTANTS = {
 export function Signup() {
   const navigate = useNavigate();
   const [isSendingOtp, setIsSendingOtp] = useState(false);
-  const [isCompletingSignup, setIsCompletingSignup] = useState(false);
   const [step, setStep] = useState<1 | 2>(1);
-  const { completeSignup: completeSignupRequest } = useAuthApi();
+  const { completeSignup: completeSignupRequest, completeSignupLoading } =
+    useAuthApi();
 
   // account
   const [username, setUsername] = useState("");
@@ -204,9 +204,8 @@ export function Signup() {
     if (!dob || !firstName || !lastName || typeof isFemale !== "boolean") {
       return toast.error(CONSTANTS.ERRORS.FILL_REQUIRED_FIELDS);
     }
-    if (isCompletingSignup) return;
+    if (completeSignupLoading) return;
 
-    setIsCompletingSignup(true);
     try {
       const cred = await confirmation.confirm(otp);
       const firebaseIdToken = await cred.user.getIdToken();
@@ -227,8 +226,6 @@ export function Signup() {
       const message =
         e instanceof Error ? e.message : CONSTANTS.ERRORS.SIGNUP_FAILED;
       toast.error(message);
-    } finally {
-      setIsCompletingSignup(false);
     }
   };
 
@@ -507,7 +504,7 @@ export function Signup() {
                         country={country}
                         setCountry={setCountry}
                         disabled={
-                          !!confirmation || isSendingOtp || isCompletingSignup
+                          !!confirmation || isSendingOtp || completeSignupLoading
                         }
                       />
                     </div>
@@ -521,7 +518,7 @@ export function Signup() {
                       placeholder="98765 43210"
                       required
                       disabled={
-                        !!confirmation || isSendingOtp || isCompletingSignup
+                        !!confirmation || isSendingOtp || completeSignupLoading
                       }
                     />
                   </div>
@@ -537,7 +534,7 @@ export function Signup() {
                         maxLength={CONSTANTS.OTP_LENGTH}
                         value={otp}
                         onChange={setOtp}
-                        disabled={isCompletingSignup}
+                        disabled={completeSignupLoading}
                       >
                         <InputOTPGroup className="gap-3">
                           {[...Array(CONSTANTS.OTP_LENGTH)].map((_, i) => (
@@ -554,12 +551,12 @@ export function Signup() {
                     <Button
                       type="submit"
                       disabled={
-                        isCompletingSignup ||
+                        completeSignupLoading ||
                         otp.length !== CONSTANTS.OTP_LENGTH
                       }
                       className="w-full h-12 rounded-xl bg-zinc-900 hover:bg-black text-white font-bold text-sm uppercase tracking-widest shadow-lg shadow-zinc-900/20"
                     >
-                      {isCompletingSignup ? (
+                      {completeSignupLoading ? (
                         <span className="flex items-center gap-2">
                           <Loader2 className="w-4 h-4 animate-spin" /> Verifying
                         </span>

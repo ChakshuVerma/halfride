@@ -189,7 +189,8 @@ export function TravellerModal({
   const {
     requestConnection,
     respondToConnection,
-    loading: connectionLoading,
+    requestConnectionLoading,
+    respondToConnectionLoading,
     error: connectionError,
   } = useConnectionApi();
   const [connectionSent, setConnectionSent] = useState(
@@ -543,13 +544,13 @@ export function TravellerModal({
             <div className="flex gap-3">
               <button
                 onClick={() => handleRespondToConnection(ConnectionResponseAction.REJECT)}
-                disabled={connectionLoading}
+                disabled={respondToConnectionLoading}
                 className={cn(
                   "flex-1 h-12 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-2 border-zinc-200 text-zinc-600 hover:bg-zinc-50 hover:border-zinc-300 transition-all active:scale-[0.98]",
-                  connectionLoading && "opacity-60 cursor-not-allowed",
+                  respondToConnectionLoading && "opacity-60 cursor-not-allowed",
                 )}
               >
-                {connectionLoading ? (
+                {respondToConnectionLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   "Reject"
@@ -557,13 +558,13 @@ export function TravellerModal({
               </button>
               <button
                 onClick={() => handleRespondToConnection(ConnectionResponseAction.ACCEPT)}
-                disabled={connectionLoading}
+                disabled={respondToConnectionLoading}
                 className={cn(
                   "flex-1 h-12 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 bg-emerald-500 text-white shadow-emerald-500/20 shadow-xl hover:bg-emerald-600 transition-all hover:scale-[1.01] active:scale-[0.98]",
-                  connectionLoading && "opacity-60 cursor-not-allowed",
+                  respondToConnectionLoading && "opacity-60 cursor-not-allowed",
                 )}
               >
-                {connectionLoading ? (
+                {respondToConnectionLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
                 ) : (
                   <>
@@ -584,7 +585,7 @@ export function TravellerModal({
             <button
               onClick={handleConnect}
               disabled={
-                connectionLoading ||
+                requestConnectionLoading ||
                 connectionSent ||
                 traveller.connectionStatus === "REQUEST_SENT"
               }
@@ -593,13 +594,13 @@ export function TravellerModal({
                 connectionSent || traveller.connectionStatus === "REQUEST_SENT"
                   ? "bg-emerald-500 text-white shadow-emerald-500/20"
                   : "bg-zinc-900 hover:bg-black text-white shadow-zinc-900/10",
-                (connectionLoading ||
+                (requestConnectionLoading ||
                   connectionSent ||
                   traveller.connectionStatus === "REQUEST_SENT") &&
                   "cursor-not-allowed opacity-80",
               )}
             >
-              {connectionLoading ? (
+              {requestConnectionLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : connectionSent ||
                 traveller.connectionStatus === "REQUEST_SENT" ? (
