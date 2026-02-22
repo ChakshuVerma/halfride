@@ -6,6 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useAuth } from "@/contexts/AuthContext";
 import { NotificationBell } from "./NotificationBell";
 import { useState } from "react";
@@ -28,9 +29,11 @@ export function Header() {
   const { user, userProfile, logout } = useAuth();
   const navigate = useNavigate();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   const handleLogout = async () => {
     try {
+      setIsProfileOpen(false);
       await logout();
       navigate(ROUTES.LOGIN);
     } catch (error) {
@@ -157,7 +160,7 @@ export function Header() {
                 <Button
                   variant="ghost"
                   className="w-full justify-start h-9 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                  onClick={handleLogout}
+                  onClick={() => setShowLogoutConfirm(true)}
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   {HEADER_CONSTANTS.MENU.LOGOUT}
@@ -165,6 +168,16 @@ export function Header() {
               </div>
             </PopoverContent>
           </Popover>
+
+          <ConfirmDialog
+            open={showLogoutConfirm}
+            onOpenChange={setShowLogoutConfirm}
+            title="Log out?"
+            description="Are you sure you want to log out of your account?"
+            confirmLabel="Log out"
+            variant="destructive"
+            onConfirm={handleLogout}
+          />
         </div>
       </div>
     </header>

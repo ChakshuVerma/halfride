@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   UsersRound,
   User,
@@ -96,6 +97,7 @@ export function GroupModal({
   const [joinLoading, setJoinLoading] = useState(false);
   const [joinError, setJoinError] = useState<string | null>(null);
   const [respondingId, setRespondingId] = useState<string | null>(null);
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false);
 
   const capacityPercentage = Math.round(
     (group.groupSize / group.maxUsers) * 100,
@@ -398,28 +400,39 @@ export function GroupModal({
           )}
           <div className="flex flex-col-reverse sm:flex-row gap-2">
             {isCurrentUserInGroup && (
-              <button
-                type="button"
-                className="flex-1 min-w-0 rounded-xl px-4 py-2.5 sm:py-2.5 text-sm font-bold text-white bg-zinc-600 hover:bg-zinc-700 active:bg-zinc-800 transition-colors disabled:opacity-50 disabled:pointer-events-none"
-                disabled={leaveLoading}
-                onClick={async () => {
-                  setLeaveError(null);
-                  setLeaveLoading(true);
-                  const result = await leaveGroup(group.id);
-                  setLeaveLoading(false);
-                  if (result.ok) {
-                    onLeaveGroup?.();
-                  } else {
-                    setLeaveError(result.error ?? "Failed to leave group");
-                  }
-                }}
-              >
-                {leaveLoading ? (
-                  <Loader2 className="w-4 h-4 animate-spin mx-auto" />
-                ) : (
-                  CONSTANTS.LABELS.LEAVE_GROUP
-                )}
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="flex-1 min-w-0 rounded-xl px-4 py-2.5 sm:py-2.5 text-sm font-bold text-white bg-zinc-600 hover:bg-zinc-700 active:bg-zinc-800 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                  disabled={leaveLoading}
+                  onClick={() => setShowLeaveConfirm(true)}
+                >
+                  {leaveLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin mx-auto" />
+                  ) : (
+                    CONSTANTS.LABELS.LEAVE_GROUP
+                  )}
+                </button>
+                <ConfirmDialog
+                  open={showLeaveConfirm}
+                  onOpenChange={setShowLeaveConfirm}
+                  title="Leave group?"
+                  description="Are you sure you want to leave this group? Other members will be notified."
+                  confirmLabel="Leave group"
+                  variant="secondary"
+                  onConfirm={async () => {
+                    setLeaveError(null);
+                    setLeaveLoading(true);
+                    const result = await leaveGroup(group.id);
+                    setLeaveLoading(false);
+                    if (result.ok) {
+                      onLeaveGroup?.();
+                    } else {
+                      setLeaveError(result.error ?? "Failed to leave group");
+                    }
+                  }}
+                />
+              </>
             )}
             {!isCurrentUserInGroup && (
               <>

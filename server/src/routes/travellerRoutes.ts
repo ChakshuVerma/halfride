@@ -8,6 +8,7 @@ import {
   requestConnection,
   respondToConnectionRequest,
   leaveGroup,
+  revokeListing,
   requestJoinGroup,
   getGroupJoinRequests,
   respondToJoinRequest,
@@ -38,6 +39,7 @@ travellerRouter.post(
   respondToConnectionRequest,
 );
 travellerRouter.post("/leave-group", requireSession, leaveGroup);
+travellerRouter.post("/revoke-listing", requireSession, revokeListing);
 travellerRouter.post("/request-join-group", requireSession, requestJoinGroup);
 travellerRouter.get(
   "/group-join-requests/:groupId",

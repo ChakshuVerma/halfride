@@ -91,24 +91,62 @@ export async function getTravellersByAirport(req: Request, res: Response) {
       });
     }
 
-    // 3. Resolve Relationships (Fetch User and Flight data for each record)
+    // 3. Batch-fetch unique user and flight docs to avoid duplicate reads
+    const uniqueUserRefs = new Map<string, admin.firestore.DocumentReference>();
+    const uniqueFlightRefs = new Map<string, admin.firestore.DocumentReference>();
+    for (const doc of snapshot.docs) {
+      const trav = doc.data();
+      const uRef = trav[TRAVELLER_FIELDS.USER_REF] as admin.firestore.DocumentReference;
+      const fRef = trav[TRAVELLER_FIELDS.FLIGHT_REF] as admin.firestore.DocumentReference;
+      if (uRef?.id) uniqueUserRefs.set(uRef.id, uRef);
+      if (fRef?.id) uniqueFlightRefs.set(fRef.id, fRef);
+    }
+    const BATCH_SIZE = 100;
+    const userRefList = Array.from(uniqueUserRefs.values());
+    const flightRefList = Array.from(uniqueFlightRefs.values());
+    const userSnapBatches = await Promise.all(
+      Array.from({ length: Math.ceil(userRefList.length / BATCH_SIZE) }, (_, i) =>
+        userRefList.length
+          ? db.getAll(...userRefList.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE))
+          : Promise.resolve([]),
+      ),
+    );
+    const flightSnapBatches = await Promise.all(
+      Array.from({ length: Math.ceil(flightRefList.length / BATCH_SIZE) }, (_, i) =>
+        flightRefList.length
+          ? db.getAll(...flightRefList.slice(i * BATCH_SIZE, (i + 1) * BATCH_SIZE))
+          : Promise.resolve([]),
+      ),
+    );
+    const userSnapMap = new Map<string, admin.firestore.DocumentSnapshot>();
+    const flightSnapMap = new Map<string, admin.firestore.DocumentSnapshot>();
+    for (const batch of userSnapBatches) {
+      for (const snap of batch) {
+        userSnapMap.set(snap.id, snap);
+      }
+    }
+    for (const batch of flightSnapBatches) {
+      for (const snap of batch) {
+        flightSnapMap.set(snap.id, snap);
+      }
+    }
+
+    // 4. Build response using pre-fetched user and flight data
     const results = await Promise.all(
       snapshot.docs.map(async (doc) => {
         const trav = doc.data();
-
-        const [userSnap, flightSnap] = await Promise.all([
-          (trav.userRef as admin.firestore.DocumentReference).get(),
-          (trav.flightRef as admin.firestore.DocumentReference).get(),
-        ]);
-
-        const user = userSnap.data();
-        const flight = flightSnap.data();
+        const uRef = trav[TRAVELLER_FIELDS.USER_REF] as admin.firestore.DocumentReference;
+        const fRef = trav[TRAVELLER_FIELDS.FLIGHT_REF] as admin.firestore.DocumentReference;
+        const userSnap = uRef?.id ? userSnapMap.get(uRef.id) : null;
+        const flightSnap = fRef?.id ? flightSnapMap.get(fRef.id) : null;
+        const user = userSnap?.data();
+        const flight = flightSnap?.data();
         const fData = flight?.flightData;
 
         // Check connection status
         let connectionStatus = "SEND_REQUEST";
-        if (uid) {
-          // 1. Check if I sent a request to them
+        const userId = userSnap?.id;
+        if (uid && userId) {
           const theirConnectionRequests =
             trav[TRAVELLER_FIELDS.CONNECTION_REQUESTS] || [];
           const hasSentRequest = theirConnectionRequests.some(
@@ -118,12 +156,11 @@ export async function getTravellersByAirport(req: Request, res: Response) {
           if (hasSentRequest) {
             connectionStatus = "REQUEST_SENT";
           } else if (currentUserTravellerData) {
-            // 2. Check if they sent a request to me
             const myConnectionRequests =
               currentUserTravellerData[TRAVELLER_FIELDS.CONNECTION_REQUESTS] ||
               [];
             const hasReceivedRequest = myConnectionRequests.some(
-              (ref: any) => ref.id === userSnap.id,
+              (ref: any) => ref.id === userId,
             );
             if (hasReceivedRequest) {
               connectionStatus = "REQUEST_RECEIVED";
@@ -131,14 +168,19 @@ export async function getTravellersByAirport(req: Request, res: Response) {
           }
         }
 
-        // 4. Construct the response object
-        const isOwnListing = uid ? userSnap.id === uid : false;
+        const dest = trav[TRAVELLER_FIELDS.DESTINATION];
+        const destinationAddress =
+          typeof dest === "object" && dest?.address != null
+            ? dest.address
+            : typeof dest === "string"
+              ? dest
+              : "N/A";
         return {
-          id: userSnap.id, // UID from Firestore
-          name: `${user?.FirstName ?? ""} ${user?.LastName ?? ""}`.trim(),
-          gender: user?.isFemale ? "Female" : "Male",
+          id: userId ?? doc.id,
+          name: `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim(),
+          gender: user?.[USER_FIELDS.IS_FEMALE] ? "Female" : "Male",
           username: `${user?.username ?? "user"}`,
-          destination: trav.destination.address || "N/A",
+          destination: destinationAddress,
           flightDateTime: fData?.arrival?.estimatedActualTime
             ? new Date(fData.arrival.estimatedActualTime)
             : fData?.arrival?.scheduledTime
@@ -148,20 +190,22 @@ export async function getTravellersByAirport(req: Request, res: Response) {
             ? new Date(fData.departure.scheduledTime)
             : null,
 
-          terminal: trav.terminal || "N/A",
+          terminal: trav[TRAVELLER_FIELDS.TERMINAL] || "N/A",
           flightNumber:
-            `${flight?.carrier || ""} ${flight?.flightNumber || ""}`.trim(),
-          flightCarrier: flight?.carrier,
-          flightNumberRaw: flight?.flightNumber,
+            `${flight?.[FLIGHT_FIELDS.CARRIER] ?? ""} ${flight?.[FLIGHT_FIELDS.FLIGHT_NUMBER] ?? ""}`.trim(),
+          flightCarrier: flight?.[FLIGHT_FIELDS.CARRIER],
+          flightNumberRaw: flight?.[FLIGHT_FIELDS.FLIGHT_NUMBER],
           distanceFromUserKm: await calculateDistanceFromCurrentUser(
-            trav.destination.placeId,
+            typeof dest === "object" && dest?.placeId != null
+              ? dest.placeId
+              : undefined,
             placeId,
           ),
           bio: user?.bio || "No bio available.",
           tags: user?.tags || [],
           isVerified: user?.isVerified || false,
           connectionStatus,
-          isOwnListing,
+          isOwnListing: uid ? userId === uid : false,
         };
       }),
     );
@@ -571,6 +615,29 @@ export async function getGroupsByAirport(req: Request, res: Response) {
       return res.json({ ok: true, data: [] });
     }
 
+    // Collect unique member refs across all groups and batch-fetch user docs once
+    const uniqueMemberRefs = new Map<string, admin.firestore.DocumentReference>();
+    for (const doc of snapshot.docs) {
+      const members: admin.firestore.DocumentReference[] =
+        doc.data()[GROUP_FIELDS.MEMBERS] || [];
+      for (const ref of members) {
+        if (ref?.id) uniqueMemberRefs.set(ref.id, ref);
+      }
+    }
+    const memberRefList = Array.from(uniqueMemberRefs.values());
+    const userSnapMap = new Map<string, admin.firestore.DocumentSnapshot>();
+    if (memberRefList.length > 0) {
+      const BATCH = 100;
+      for (let i = 0; i < memberRefList.length; i += BATCH) {
+        const chunk = memberRefList.slice(i, i + BATCH);
+        const snaps = await db.getAll(...chunk);
+        for (const snap of snaps) {
+          userSnapMap.set(snap.id, snap);
+        }
+      }
+    }
+
+    const IN_QUERY_MAX = 10;
     const results = await Promise.all(
       snapshot.docs.map(async (doc) => {
         const data = doc.data();
@@ -581,48 +648,50 @@ export async function getGroupsByAirport(req: Request, res: Response) {
         const groupSize = members.length;
         const hasPendingJoinRequest =
           !!uid &&
-          pendingRequests.some((ref: admin.firestore.DocumentReference) => ref.id === uid);
+          pendingRequests.some(
+            (ref: admin.firestore.DocumentReference) => ref.id === uid,
+          );
 
         let male = 0;
         let female = 0;
         const destinations: string[] = [];
 
         if (members.length > 0) {
-          const [userSnaps, ...travellerSnaps] = await Promise.all([
-            Promise.all(
-              members.map((ref: admin.firestore.DocumentReference) => ref.get()),
-            ),
-            ...members.map((memberRef: admin.firestore.DocumentReference) =>
-              db
-                .collection(COLLECTIONS.TRAVELLER_DATA)
-                .where(TRAVELLER_FIELDS.USER_REF, "==", memberRef)
-                .where(TRAVELLER_FIELDS.FLIGHT_ARRIVAL, "==", code)
-                .limit(1)
-                .get(),
-            ),
-          ]);
-
-          (userSnaps as admin.firestore.DocumentSnapshot[]).forEach((snap) => {
-            const userData = snap.data();
-            if (userData?.[USER_FIELDS.IS_FEMALE]) female++;
-            else male++;
-          });
-
-          (travellerSnaps as admin.firestore.QuerySnapshot[]).forEach(
-            (tSnap) => {
-              if (!tSnap.empty) {
-                const tData = tSnap.docs[0].data();
-                const dest = tData[TRAVELLER_FIELDS.DESTINATION];
-                const addr =
-                  typeof dest === "string"
-                    ? dest
-                    : (dest?.address ?? "N/A");
-                destinations.push(addr);
-              } else {
-                destinations.push("N/A");
-              }
-            },
-          );
+          for (const memberRef of members) {
+            const userSnap = userSnapMap.get(memberRef.id);
+            if (userSnap) {
+              const userData = userSnap.data();
+              if (userData?.[USER_FIELDS.IS_FEMALE]) female++;
+              else male++;
+            }
+          }
+          // Fetch traveller docs in chunks of 10 (Firestore 'in' limit) to get destinations
+          const travellerByUserId = new Map<string, admin.firestore.DocumentData>();
+          for (let i = 0; i < members.length; i += IN_QUERY_MAX) {
+            const chunk = members.slice(i, i + IN_QUERY_MAX);
+            const qSnap = await db
+              .collection(COLLECTIONS.TRAVELLER_DATA)
+              .where(TRAVELLER_FIELDS.USER_REF, "in", chunk)
+              .where(TRAVELLER_FIELDS.FLIGHT_ARRIVAL, "==", code)
+              .limit(IN_QUERY_MAX)
+              .get();
+            for (const d of qSnap.docs) {
+              const tData = d.data();
+              const uRef = tData[TRAVELLER_FIELDS.USER_REF] as admin.firestore.DocumentReference;
+              if (uRef?.id) travellerByUserId.set(uRef.id, tData);
+            }
+          }
+          for (const memberRef of members) {
+            const tData = travellerByUserId.get(memberRef.id);
+            if (tData) {
+              const dest = tData[TRAVELLER_FIELDS.DESTINATION];
+              const addr =
+                typeof dest === "string" ? dest : (dest?.address ?? "N/A");
+              destinations.push(addr);
+            } else {
+              destinations.push("N/A");
+            }
+          }
         }
 
         const createdAt = data[GROUP_FIELDS.CREATED_AT];
@@ -657,12 +726,14 @@ export async function getGroupsByAirport(req: Request, res: Response) {
 export async function getGroupMembers(req: Request, res: Response) {
   const rawId = req.params.groupId;
   const groupId =
-    typeof rawId === "string" ? rawId.trim() : Array.isArray(rawId) ? rawId[0]?.trim() ?? "" : "";
+    typeof rawId === "string"
+      ? rawId.trim()
+      : Array.isArray(rawId)
+        ? (rawId[0]?.trim() ?? "")
+        : "";
 
   if (!groupId) {
-    return res
-      .status(400)
-      .json({ ok: false, message: "Group ID is required" });
+    return res.status(400).json({ ok: false, message: "Group ID is required" });
   }
 
   const db = admin.firestore();
@@ -682,54 +753,78 @@ export async function getGroupMembers(req: Request, res: Response) {
       return res.json({ ok: true, data: [] });
     }
 
-    const memberDetails = await Promise.all(
-      members.map(
-        async (userRef: admin.firestore.DocumentReference) => {
-          const travellerSnap = await db
-            .collection(COLLECTIONS.TRAVELLER_DATA)
-            .where(TRAVELLER_FIELDS.USER_REF, "==", userRef)
-            .where(TRAVELLER_FIELDS.GROUP_REF, "==", groupRef)
-            .limit(1)
-            .get();
+    // Single query for all traveller docs in this group (1 query, N reads)
+    const travellerSnap = await db
+      .collection(COLLECTIONS.TRAVELLER_DATA)
+      .where(TRAVELLER_FIELDS.GROUP_REF, "==", groupRef)
+      .get();
 
-          if (travellerSnap.empty) {
-            const userSnap = await userRef.get();
-            const user = userSnap.data();
-            return {
-              id: userRef.id,
-              name: `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim() || "Unknown",
-              gender: user?.[USER_FIELDS.IS_FEMALE] ? "Female" : "Male",
-              destination: "N/A",
-              terminal: "N/A",
-              flightNumber: "—",
-            };
-          }
+    const travellerByUserId = new Map<string, admin.firestore.DocumentData>();
+    const uniqueUserRefs = new Map<string, admin.firestore.DocumentReference>();
+    const uniqueFlightRefs = new Map<string, admin.firestore.DocumentReference>();
+    for (const m of members) {
+      if (m?.id) uniqueUserRefs.set(m.id, m);
+    }
+    for (const d of travellerSnap.docs) {
+      const trav = d.data();
+      const uRef = trav[TRAVELLER_FIELDS.USER_REF] as admin.firestore.DocumentReference;
+      const fRef = trav[TRAVELLER_FIELDS.FLIGHT_REF] as admin.firestore.DocumentReference;
+      if (uRef?.id) {
+        travellerByUserId.set(uRef.id, trav);
+        uniqueUserRefs.set(uRef.id, uRef);
+      }
+      if (fRef?.id) uniqueFlightRefs.set(fRef.id, fRef);
+    }
 
-          const trav = travellerSnap.docs[0].data();
-          const [userSnap, flightSnap] = await Promise.all([
-            (trav[TRAVELLER_FIELDS.USER_REF] as admin.firestore.DocumentReference).get(),
-            (trav[TRAVELLER_FIELDS.FLIGHT_REF] as admin.firestore.DocumentReference).get(),
-          ]);
-          const user = userSnap.data();
-          const flight = flightSnap.data();
-          const dest = trav[TRAVELLER_FIELDS.DESTINATION];
-          const destinationAddress =
-            typeof dest === "string"
-              ? dest
-              : (dest?.address ?? "N/A");
+    const userRefList = Array.from(uniqueUserRefs.values());
+    const flightRefList = Array.from(uniqueFlightRefs.values());
+    const BATCH = 100;
+    const userSnapMap = new Map<string, admin.firestore.DocumentSnapshot>();
+    const flightSnapMap = new Map<string, admin.firestore.DocumentSnapshot>();
+    for (let i = 0; i < userRefList.length; i += BATCH) {
+      const snaps = await db.getAll(...userRefList.slice(i, i + BATCH));
+      for (const snap of snaps) userSnapMap.set(snap.id, snap);
+    }
+    for (let i = 0; i < flightRefList.length; i += BATCH) {
+      const snaps = await db.getAll(...flightRefList.slice(i, i + BATCH));
+      for (const snap of snaps) flightSnapMap.set(snap.id, snap);
+    }
 
-          return {
-            id: userRef.id,
-            name: `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim() || "Unknown",
-            gender: user?.[USER_FIELDS.IS_FEMALE] ? "Female" : "Male",
-            destination: destinationAddress,
-            terminal: trav[TRAVELLER_FIELDS.TERMINAL] || "N/A",
-            flightNumber:
-              `${flight?.[FLIGHT_FIELDS.CARRIER] ?? ""} ${flight?.[FLIGHT_FIELDS.FLIGHT_NUMBER] ?? ""}`.trim() || "—",
-          };
-        },
-      ),
-    );
+    const memberDetails = members.map((userRef: admin.firestore.DocumentReference) => {
+      const trav = travellerByUserId.get(userRef.id);
+      const userSnap = userSnapMap.get(userRef.id);
+      const user = userSnap?.data();
+      if (!trav) {
+        return {
+          id: userRef.id,
+          name:
+            `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim() ||
+            "Unknown",
+          gender: user?.[USER_FIELDS.IS_FEMALE] ? "Female" : "Male",
+          destination: "N/A",
+          terminal: "N/A",
+          flightNumber: "—",
+        };
+      }
+      const flightRef = trav[TRAVELLER_FIELDS.FLIGHT_REF] as admin.firestore.DocumentReference;
+      const flightSnap = flightRef?.id ? flightSnapMap.get(flightRef.id) : null;
+      const flight = flightSnap?.data();
+      const dest = trav[TRAVELLER_FIELDS.DESTINATION];
+      const destinationAddress =
+        typeof dest === "string" ? dest : (dest?.address ?? "N/A");
+      return {
+        id: userRef.id,
+        name:
+          `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim() ||
+          "Unknown",
+        gender: user?.[USER_FIELDS.IS_FEMALE] ? "Female" : "Male",
+        destination: destinationAddress,
+        terminal: trav[TRAVELLER_FIELDS.TERMINAL] || "N/A",
+        flightNumber:
+          `${flight?.[FLIGHT_FIELDS.CARRIER] ?? ""} ${flight?.[FLIGHT_FIELDS.FLIGHT_NUMBER] ?? ""}`.trim() ||
+          "—",
+      };
+    });
 
     return res.json({ ok: true, data: memberDetails });
   } catch (error: any) {
@@ -773,9 +868,7 @@ export async function leaveGroup(req: Request, res: Response) {
   }
 
   if (!groupId || typeof groupId !== "string" || !groupId.trim()) {
-    return res
-      .status(400)
-      .json({ ok: false, error: "groupId is required" });
+    return res.status(400).json({ ok: false, error: "groupId is required" });
   }
 
   const db = admin.firestore();
@@ -792,7 +885,9 @@ export async function leaveGroup(req: Request, res: Response) {
       data?.[GROUP_FIELDS.MEMBERS] || [];
 
     const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
-    const isMember = members.some((ref: admin.firestore.DocumentReference) => ref.id === uid);
+    const isMember = members.some(
+      (ref: admin.firestore.DocumentReference) => ref.id === uid,
+    );
     if (!isMember) {
       return res
         .status(403)
@@ -842,6 +937,61 @@ export async function leaveGroup(req: Request, res: Response) {
   }
 }
 
+/**
+ * POST /revoke-listing
+ * Body: { airportCode: string }
+ * Revokes the current user's active listing at the given airport.
+ * Only allowed when the user is not in a group; otherwise use leave-group first.
+ */
+export async function revokeListing(req: Request, res: Response) {
+  const { airportCode } = req.body as { airportCode?: string };
+  const uid = req.auth?.uid;
+
+  if (!uid) {
+    return res.status(401).json({ ok: false, error: "Unauthorized" });
+  }
+
+  if (!airportCode || typeof airportCode !== "string" || !airportCode.trim()) {
+    return res
+      .status(400)
+      .json({ ok: false, error: "airportCode is required" });
+  }
+
+  const db = admin.firestore();
+  const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
+  const code = String(airportCode).trim().toUpperCase();
+
+  try {
+    const snapshot = await db
+      .collection(COLLECTIONS.TRAVELLER_DATA)
+      .where(TRAVELLER_FIELDS.USER_REF, "==", userRef)
+      .where(TRAVELLER_FIELDS.FLIGHT_ARRIVAL, "==", code)
+      .where(TRAVELLER_FIELDS.IS_COMPLETED, "==", false)
+      .where(TRAVELLER_FIELDS.GROUP_REF, "==", null)
+      .limit(1)
+      .get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({
+        ok: false,
+        error: "No active listing found for this airport",
+      });
+    }
+
+    const travellerDoc = snapshot.docs[0];
+
+    await travellerDoc.ref.delete();
+
+    return res.json({
+      ok: true,
+      message: "Listing revoked successfully",
+    });
+  } catch (error: any) {
+    console.error("Revoke listing error:", error.message);
+    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+  }
+}
+
 const MAX_GROUP_USERS = 6;
 
 /**
@@ -857,9 +1007,7 @@ export async function requestJoinGroup(req: Request, res: Response) {
     return res.status(401).json({ ok: false, error: "Unauthorized" });
   }
   if (!groupId || typeof groupId !== "string" || !groupId.trim()) {
-    return res
-      .status(400)
-      .json({ ok: false, error: "groupId is required" });
+    return res.status(400).json({ ok: false, error: "groupId is required" });
   }
 
   const db = admin.firestore();
@@ -877,23 +1025,28 @@ export async function requestJoinGroup(req: Request, res: Response) {
       data?.[GROUP_FIELDS.MEMBERS] || [];
     const pendingRequests: admin.firestore.DocumentReference[] =
       data?.[GROUP_FIELDS.PENDING_REQUESTS] || [];
-    const flightArrivalAirport =
-      data?.[GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT] as string | undefined;
+    const flightArrivalAirport = data?.[GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT] as
+      | string
+      | undefined;
 
-    if (members.some((ref: admin.firestore.DocumentReference) => ref.id === uid)) {
+    if (
+      members.some((ref: admin.firestore.DocumentReference) => ref.id === uid)
+    ) {
       return res
         .status(400)
         .json({ ok: false, error: "You are already a member of this group" });
     }
-    if (pendingRequests.some((ref: admin.firestore.DocumentReference) => ref.id === uid)) {
+    if (
+      pendingRequests.some(
+        (ref: admin.firestore.DocumentReference) => ref.id === uid,
+      )
+    ) {
       return res
         .status(400)
         .json({ ok: false, error: "You already have a pending join request" });
     }
     if (members.length >= MAX_GROUP_USERS) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "Group is full" });
+      return res.status(400).json({ ok: false, error: "Group is full" });
     }
 
     if (!flightArrivalAirport) {
@@ -913,7 +1066,10 @@ export async function requestJoinGroup(req: Request, res: Response) {
     if (requesterTravellerSnap.empty) {
       return res
         .status(400)
-        .json({ ok: false, error: "You need an active listing at this airport to join the group" });
+        .json({
+          ok: false,
+          error: "You need an active listing at this airport to join the group",
+        });
     }
 
     const newPending = [...pendingRequests, userRef];
@@ -941,16 +1097,18 @@ export async function requestJoinGroup(req: Request, res: Response) {
 export async function getGroupJoinRequests(req: Request, res: Response) {
   const rawId = req.params.groupId;
   const groupId =
-    typeof rawId === "string" ? rawId.trim() : Array.isArray(rawId) ? rawId[0]?.trim() ?? "" : "";
+    typeof rawId === "string"
+      ? rawId.trim()
+      : Array.isArray(rawId)
+        ? (rawId[0]?.trim() ?? "")
+        : "";
   const uid = req.auth?.uid;
 
   if (!uid) {
     return res.status(401).json({ ok: false, error: "Unauthorized" });
   }
   if (!groupId) {
-    return res
-      .status(400)
-      .json({ ok: false, message: "Group ID is required" });
+    return res.status(400).json({ ok: false, message: "Group ID is required" });
   }
 
   const db = admin.firestore();
@@ -968,18 +1126,25 @@ export async function getGroupJoinRequests(req: Request, res: Response) {
     const pendingRequests: admin.firestore.DocumentReference[] =
       data?.[GROUP_FIELDS.PENDING_REQUESTS] || [];
 
-    const isMember = members.some((ref: admin.firestore.DocumentReference) => ref.id === uid);
+    const isMember = members.some(
+      (ref: admin.firestore.DocumentReference) => ref.id === uid,
+    );
     if (!isMember) {
       return res
         .status(403)
-        .json({ ok: false, error: "Only group members can view join requests" });
+        .json({
+          ok: false,
+          error: "Only group members can view join requests",
+        });
     }
 
     if (pendingRequests.length === 0) {
       return res.json({ ok: true, data: [] });
     }
 
-    const flightArrivalAirport = data?.[GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT] as string | undefined;
+    const flightArrivalAirport = data?.[GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT] as
+      | string
+      | undefined;
     const code = flightArrivalAirport ?? "";
 
     const requestDetails = await Promise.all(
@@ -1000,22 +1165,25 @@ export async function getGroupJoinRequests(req: Request, res: Response) {
 
           if (!travellerSnap.empty) {
             const trav = travellerSnap.docs[0].data();
-            const flightRef = trav[TRAVELLER_FIELDS.FLIGHT_REF] as admin.firestore.DocumentReference;
+            const flightRef = trav[
+              TRAVELLER_FIELDS.FLIGHT_REF
+            ] as admin.firestore.DocumentReference;
             const flightSnap = await flightRef.get();
             const flight = flightSnap.data();
             const dest = trav[TRAVELLER_FIELDS.DESTINATION];
             destination =
-              typeof dest === "string"
-                ? dest
-                : (dest?.address ?? "N/A");
+              typeof dest === "string" ? dest : (dest?.address ?? "N/A");
             terminal = trav[TRAVELLER_FIELDS.TERMINAL] || "N/A";
             flightNumber =
-              `${flight?.[FLIGHT_FIELDS.CARRIER] ?? ""} ${flight?.[FLIGHT_FIELDS.FLIGHT_NUMBER] ?? ""}`.trim() || "—";
+              `${flight?.[FLIGHT_FIELDS.CARRIER] ?? ""} ${flight?.[FLIGHT_FIELDS.FLIGHT_NUMBER] ?? ""}`.trim() ||
+              "—";
           }
 
           return {
             id: userRef.id,
-            name: `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim() || "Unknown",
+            name:
+              `${user?.[USER_FIELDS.FIRST_NAME] ?? ""} ${user?.[USER_FIELDS.LAST_NAME] ?? ""}`.trim() ||
+              "Unknown",
             gender: user?.[USER_FIELDS.IS_FEMALE] ? "Female" : "Male",
             destination,
             terminal,
@@ -1071,7 +1239,9 @@ export async function respondToJoinRequest(req: Request, res: Response) {
   const db = admin.firestore();
   const groupRef = db.collection(COLLECTIONS.GROUPS).doc(groupId.trim());
   const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
-  const requesterUserRef = db.collection(COLLECTIONS.USERS).doc(requesterUserId.trim());
+  const requesterUserRef = db
+    .collection(COLLECTIONS.USERS)
+    .doc(requesterUserId.trim());
 
   try {
     const groupSnap = await groupRef.get();
@@ -1084,23 +1254,33 @@ export async function respondToJoinRequest(req: Request, res: Response) {
       data?.[GROUP_FIELDS.MEMBERS] || [];
     let pendingRequests: admin.firestore.DocumentReference[] =
       data?.[GROUP_FIELDS.PENDING_REQUESTS] || [];
-    const flightArrivalAirport =
-      data?.[GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT] as string | undefined;
+    const flightArrivalAirport = data?.[GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT] as
+      | string
+      | undefined;
 
-    const isMember = members.some((ref: admin.firestore.DocumentReference) => ref.id === uid);
+    const isMember = members.some(
+      (ref: admin.firestore.DocumentReference) => ref.id === uid,
+    );
     if (!isMember) {
       return res
         .status(403)
-        .json({ ok: false, error: "Only group members can respond to join requests" });
+        .json({
+          ok: false,
+          error: "Only group members can respond to join requests",
+        });
     }
 
     const requesterInPending = pendingRequests.some(
-      (ref: admin.firestore.DocumentReference) => ref.id === requesterUserId.trim(),
+      (ref: admin.firestore.DocumentReference) =>
+        ref.id === requesterUserId.trim(),
     );
     if (!requesterInPending) {
       return res
         .status(404)
-        .json({ ok: false, error: "Join request not found or already handled" });
+        .json({
+          ok: false,
+          error: "Join request not found or already handled",
+        });
     }
 
     const [deciderSnap, requesterSnap] = await Promise.all([
@@ -1113,7 +1293,8 @@ export async function respondToJoinRequest(req: Request, res: Response) {
       requesterSnap.data()?.[USER_FIELDS.FIRST_NAME] ?? "Someone";
 
     pendingRequests = pendingRequests.filter(
-      (ref: admin.firestore.DocumentReference) => ref.id !== requesterUserId.trim(),
+      (ref: admin.firestore.DocumentReference) =>
+        ref.id !== requesterUserId.trim(),
     );
 
     if (isAccept) {
@@ -1139,7 +1320,10 @@ export async function respondToJoinRequest(req: Request, res: Response) {
       if (requesterTravellerSnap.empty) {
         return res
           .status(400)
-          .json({ ok: false, error: "Requester no longer has an active listing at this airport" });
+          .json({
+            ok: false,
+            error: "Requester no longer has an active listing at this airport",
+          });
       }
 
       const newMembers = [...members, requesterUserRef];
@@ -1154,7 +1338,9 @@ export async function respondToJoinRequest(req: Request, res: Response) {
       });
 
       await notifyUserJoinAccepted(groupId.trim(), requesterUserId.trim());
-      const memberIds = newMembers.map((ref: admin.firestore.DocumentReference) => ref.id);
+      const memberIds = newMembers.map(
+        (ref: admin.firestore.DocumentReference) => ref.id,
+      );
       await notifyOtherMembersJoinDecided(
         memberIds,
         groupId.trim(),
@@ -1181,7 +1367,9 @@ export async function respondToJoinRequest(req: Request, res: Response) {
         groupId.trim(),
         deciderName,
       );
-      const memberIds = members.map((ref: admin.firestore.DocumentReference) => ref.id);
+      const memberIds = members.map(
+        (ref: admin.firestore.DocumentReference) => ref.id,
+      );
       await notifyOtherMembersJoinDecided(
         memberIds,
         groupId.trim(),

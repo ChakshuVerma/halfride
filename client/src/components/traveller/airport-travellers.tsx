@@ -2,8 +2,21 @@ import { useEffect, useCallback, useMemo, useState, useRef } from "react";
 import { Card, CardContent } from "../ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTitle, DialogDescription } from "../ui/dialog";
-import { UsersRound, Loader2, ArrowUpDown, User, Plane, Mars, Venus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  DialogDescription,
+} from "../ui/dialog";
+import {
+  UsersRound,
+  Loader2,
+  ArrowUpDown,
+  User,
+  Plane,
+  Mars,
+  Venus,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useGetTravellerApi } from "@/hooks/useGetTravellerApi";
 import { useGetAirportsApi, type Airport } from "@/hooks/useGetAirportApi";
@@ -77,6 +90,7 @@ const AirportTravellers = () => {
   const [filterTerminal, setFilterTerminal] = useState<string[]>([]);
   const [open, setOpen] = useState(false);
   const [isWaitlistModalOpen, setIsWaitlistModalOpen] = useState(false);
+  const [isRevoking, setIsRevoking] = useState(false);
   const [initialDataFetchCompleted, setInitialDataFetchCompleted] =
     useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
@@ -88,6 +102,7 @@ const AirportTravellers = () => {
     fetchTravellers,
     fetchGroups,
     fetchUserDestination,
+    revokeListing,
     loading: isFetchingList,
   } = useGetTravellerApi();
   const {
@@ -136,18 +151,18 @@ const AirportTravellers = () => {
     const loadData = async () => {
       const code = selectedAirport?.airportCode;
       if (viewMode === VIEW_MODE.INDIVIDUAL) {
-        const { travellers: fetchedTravellers, isUserInGroup, userGroupId: gid } =
-          await fetchTravellers(code);
+        const {
+          travellers: fetchedTravellers,
+          isUserInGroup,
+          userGroupId: gid,
+        } = await fetchTravellers(code);
         setTravellers(fetchedTravellers);
         setIsUserInGroup(isUserInGroup);
         setUserGroupId(gid);
       } else {
         const [travellersResult, fetchedGroups] = await Promise.all([
           fetchTravellers(code),
-          fetchGroups(
-            selectedAirport.airportCode,
-            selectedAirport.airportName,
-          ),
+          fetchGroups(selectedAirport.airportCode, selectedAirport.airportName),
         ]);
         setTravellers(travellersResult.travellers);
         setIsUserInGroup(travellersResult.isUserInGroup);
@@ -226,6 +241,31 @@ const AirportTravellers = () => {
     setUserGroupId(travellersResult.userGroupId);
   }, [selectedAirport, fetchUserDestination, fetchTravellers]);
 
+  const handleRevokeListing = useCallback(
+    async (closeModalAfter?: boolean): Promise<boolean> => {
+      if (!selectedAirport?.airportCode || isRevoking) return false;
+      setIsRevoking(true);
+      const result = await revokeListing(selectedAirport.airportCode);
+      setIsRevoking(false);
+      if (result.ok) {
+        setUserDestination(null);
+        setIsUserInGroup(false);
+        setUserGroupId(null);
+        const code = selectedAirport.airportCode;
+        const [travellersResult, fetchedGroups] = await Promise.all([
+          fetchTravellers(code),
+          fetchGroups(selectedAirport.airportCode, selectedAirport.airportName),
+        ]);
+        setTravellers(travellersResult.travellers);
+        setGroups(fetchedGroups);
+        if (closeModalAfter) setSelectedEntity(null);
+        return true;
+      }
+      return false;
+    },
+    [selectedAirport, revokeListing, isRevoking, fetchTravellers, fetchGroups],
+  );
+
   const listSectionContent = useMemo(() => {
     if (!selectedAirport) return null;
 
@@ -274,9 +314,7 @@ const AirportTravellers = () => {
         ? groups.filter((g) => g.id !== userGroupId)
         : [...groups];
       otherGroups.sort(sortFn);
-      processedGroups = userGroup
-        ? [userGroup, ...otherGroups]
-        : otherGroups;
+      processedGroups = userGroup ? [userGroup, ...otherGroups] : otherGroups;
     }
 
     return (
@@ -457,7 +495,9 @@ const AirportTravellers = () => {
                                     "T",
                                   )}
                                 </span>
-                                <span className="hidden sm:inline">{t.name}</span>
+                                <span className="hidden sm:inline">
+                                  {t.name}
+                                </span>
                               </button>
                             ))}
                           </div>
@@ -532,9 +572,9 @@ const AirportTravellers = () => {
 
                 {/* USER STATUS / ACTION */}
                 <div className="flex justify-center">
-                  {userDestination
+                  {userDestination && !isUserInGroup
                     ? initialDataFetchCompleted && (
-                        <div className="inline-flex items-center gap-3 pl-4 pr-6 py-2 bg-zinc-50 text-zinc-900 rounded-full border border-zinc-200 animate-in zoom-in duration-300">
+                        <div className="inline-flex items-center gap-3 pl-4 pr-2 py-2 bg-zinc-50 text-zinc-900 rounded-full border border-zinc-200 animate-in zoom-in duration-300">
                           <div className="relative flex h-2 w-2">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-zinc-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-2 w-2 bg-zinc-900"></span>
@@ -545,21 +585,34 @@ const AirportTravellers = () => {
                           </span>
                         </div>
                       )
-                    : initialDataFetchCompleted && (
-                        <Button
-                          onClick={() => setIsWaitlistModalOpen(true)}
-                          className="h-12 px-8 rounded-full font-bold shadow-xl shadow-zinc-300/40 hover:shadow-zinc-300/60 hover:-translate-y-0.5 transition-all bg-zinc-900 hover:bg-black text-white"
-                        >
-                          <Plane className="w-4 h-4 mr-2" />
-                          {CONSTANTS.LABELS.JOIN_WAITLIST}
-                        </Button>
-                      )}
+                    : userDestination && isUserInGroup
+                      ? initialDataFetchCompleted && (
+                          <div className="inline-flex items-center gap-3 pl-4 pr-6 py-2 bg-zinc-50 text-zinc-900 rounded-full border border-zinc-200 animate-in zoom-in duration-300">
+                            <div className="relative flex h-2 w-2">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-zinc-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-zinc-900"></span>
+                            </div>
+                            <span className="text-sm font-medium">
+                              You are listed for{" "}
+                              <span className="font-bold">
+                                {userDestination}
+                              </span>
+                            </span>
+                          </div>
+                        )
+                      : initialDataFetchCompleted && (
+                          <Button
+                            onClick={() => setIsWaitlistModalOpen(true)}
+                            className="h-12 px-8 rounded-full font-bold shadow-xl shadow-zinc-300/40 hover:shadow-zinc-300/60 hover:-translate-y-0.5 transition-all bg-zinc-900 hover:bg-black text-white"
+                          >
+                            <Plane className="w-4 h-4 mr-2" />
+                            {CONSTANTS.LABELS.JOIN_WAITLIST}
+                          </Button>
+                        )}
                 </div>
 
                 {/* MAIN LIST */}
-                <div className="min-h-[300px]">
-                  {listSectionContent}
-                </div>
+                <div className="min-h-[300px]">{listSectionContent}</div>
               </div>
             )}
 
@@ -580,6 +633,14 @@ const AirportTravellers = () => {
                     traveller={selectedEntity.data}
                     isUserInGroup={isUserInGroup}
                     onConnectionResponded={handleConnectionResponded}
+                    onRevokeListing={
+                      selectedEntity.data.isOwnListing
+                        ? async () => {
+                            await handleRevokeListing(true);
+                          }
+                        : undefined
+                    }
+                    isRevokingListing={isRevoking}
                   />
                 ) : (
                   selectedEntity && (
