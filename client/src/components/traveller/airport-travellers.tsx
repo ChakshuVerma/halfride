@@ -632,7 +632,7 @@ const AirportTravellers = () => {
               open={selectedEntity !== null}
               onOpenChange={(open) => !open && setSelectedEntity(null)}
             >
-              <DialogContent className="w-[95vw] max-w-xl max-h-[85vh] overflow-y-auto rounded-3xl border-zinc-200 bg-white/95 backdrop-blur-xl p-0 shadow-2xl">
+              <DialogContent className="w-[95vw] max-w-xl max-h-[85vh] overflow-y-auto rounded-3xl border-zinc-200 bg-white/95 backdrop-blur-xl p-0 shadow-2xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                 <DialogTitle className="sr-only">
                   {CONSTANTS.LABELS.DETAILS}
                 </DialogTitle>

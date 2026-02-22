@@ -391,71 +391,21 @@ export function GroupModal({
           <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest block">
             {CONSTANTS.LABELS.MEMBERS} ({members.length})
           </span>
-          <div className="space-y-2 max-h-[120px] sm:max-h-[160px] overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin">
-            {fetchGroupMembersLoading ? (
-              <div className="flex items-center justify-center py-6 text-primary/80">
-                <Loader2 className="w-6 h-6 animate-spin" />
-              </div>
-            ) : members.length > 0 ? (
-              members.map((member) => (
-                <div
-                  key={member.id}
-                  className="flex items-center gap-2 sm:gap-3 p-2 rounded-xl hover:bg-muted/10 transition-colors border border-transparent hover:border-border/5 min-w-0"
-                >
-                  <div
-                    className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0 border shadow-sm ${
-                      member.gender === CONSTANTS.GENDER.MALE
-                        ? "bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/10 text-blue-600"
-                        : "bg-gradient-to-br from-pink-500/10 to-pink-500/5 border-pink-500/10 text-pink-600"
-                    }`}
-                  >
-                    <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  </div>
-                  <div className="flex-1 min-w-0 overflow-hidden">
-                    <p className="text-xs sm:text-sm font-semibold text-foreground truncate">
-                      {member.name}
-                    </p>
-                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium overflow-x-auto overflow-y-hidden scrollbar-thin scrollbar-thumb-zinc-300 scrollbar-track-transparent min-w-0">
-                      <span className="bg-muted/30 px-1.5 py-0.5 rounded-md border border-border/20 text-foreground/80 shrink-0">
-                        {member.flightNumber}
-                      </span>
-                      <span className="shrink-0">•</span>
-                      <span className="whitespace-nowrap">
-                        {member.destination}
-                      </span>
-                    </div>
-                  </div>
+          <div className="relative">
+            <div className="space-y-2 max-h-[120px] sm:max-h-[160px] overflow-y-auto overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+              {fetchGroupMembersLoading ? (
+                <div className="flex items-center justify-center py-6 text-primary/80">
+                  <Loader2 className="w-6 h-6 animate-spin" />
                 </div>
-              ))
-            ) : (
-              <p className="text-xs text-muted-foreground py-2 text-center">
-                {CONSTANTS.LABELS.NO_MEMBERS}
-              </p>
-            )}
-          </div>
-        </div>
-
-        {/* Join Requests (only for members) */}
-        {isCurrentUserInGroup && (
-          <div className="space-y-2 sm:space-y-2.5 pt-2 border-t border-border/10 min-w-0">
-            <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest flex items-center gap-1.5">
-              <UserPlus className="w-3.5 h-3.5" />
-              {CONSTANTS.LABELS.JOIN_REQUESTS} ({joinRequests.length})
-            </span>
-            <div className="space-y-2 max-h-[140px] overflow-y-auto overflow-x-hidden pr-1 scrollbar-thin">
-              {fetchGroupJoinRequestsLoading ? (
-                <div className="flex items-center justify-center py-4 text-primary/80">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                </div>
-              ) : joinRequests.length > 0 ? (
-                joinRequests.map((req) => (
+              ) : members.length > 0 ? (
+                members.map((member) => (
                   <div
-                    key={req.id}
-                    className="flex items-center gap-2 sm:gap-3 p-2 rounded-xl border border-border/10 bg-muted/5 min-w-0"
+                    key={member.id}
+                    className="flex items-center gap-2 sm:gap-3 p-2 rounded-xl hover:bg-muted/10 transition-colors border border-transparent hover:border-border/5 min-w-0"
                   >
                     <div
                       className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0 border shadow-sm ${
-                        req.gender === CONSTANTS.GENDER.MALE
+                        member.gender === CONSTANTS.GENDER.MALE
                           ? "bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/10 text-blue-600"
                           : "bg-gradient-to-br from-pink-500/10 to-pink-500/5 border-pink-500/10 text-pink-600"
                       }`}
@@ -464,83 +414,151 @@ export function GroupModal({
                     </div>
                     <div className="flex-1 min-w-0 overflow-hidden">
                       <p className="text-xs sm:text-sm font-semibold text-foreground truncate">
-                        {req.name}
+                        {member.name}
                       </p>
-                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium overflow-x-auto overflow-y-hidden scrollbar-thin min-w-0">
-                        <span className="bg-muted/30 px-1.5 py-0.5 rounded-md border border-border/20 shrink-0">
-                          {req.flightNumber}
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium overflow-x-auto overflow-y-hidden min-w-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                        <span className="bg-muted/30 px-1.5 py-0.5 rounded-md border border-border/20 text-foreground/80 shrink-0">
+                          {member.flightNumber}
                         </span>
                         <span className="shrink-0">•</span>
-                        <span className="whitespace-nowrap truncate">
-                          {req.destination}
+                        <span className="whitespace-nowrap">
+                          {member.destination}
                         </span>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        type="button"
-                        disabled={respondToJoinRequestLoading || respondingId === req.id}
-                        className="p-2 rounded-lg bg-green-500/15 text-green-700 hover:bg-green-500/25 border border-green-500/20 transition-colors disabled:opacity-50"
-                        title={CONSTANTS.LABELS.ACCEPT}
-                        onClick={async () => {
-                          setRespondingId(req.id);
-                          const result = await respondToJoinRequest(
-                            group.id,
-                            req.id,
-                            "accept",
-                          );
-                          setRespondingId(null);
-                          if (result.ok) {
-                            setJoinRequests((prev) =>
-                              prev.filter((r) => r.id !== req.id),
-                            );
-                            const freshMembers = await fetchGroupMembers(
-                              group.id,
-                            );
-                            setMembers(freshMembers);
-                          }
-                        }}
-                      >
-                        {respondingId === req.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <Check className="w-4 h-4" />
-                        )}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={respondToJoinRequestLoading || respondingId === req.id}
-                        className="p-2 rounded-lg bg-red-500/15 text-red-700 hover:bg-red-500/25 border border-red-500/20 transition-colors disabled:opacity-50"
-                        title={CONSTANTS.LABELS.REJECT}
-                        onClick={async () => {
-                          setRespondingId(req.id);
-                          const result = await respondToJoinRequest(
-                            group.id,
-                            req.id,
-                            "reject",
-                          );
-                          setRespondingId(null);
-                          if (result.ok) {
-                            setJoinRequests((prev) =>
-                              prev.filter((r) => r.id !== req.id),
-                            );
-                          }
-                        }}
-                      >
-                        {respondingId === req.id ? (
-                          <Loader2 className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <X className="w-4 h-4" />
-                        )}
-                      </button>
                     </div>
                   </div>
                 ))
               ) : (
                 <p className="text-xs text-muted-foreground py-2 text-center">
-                  {CONSTANTS.LABELS.NO_JOIN_REQUESTS}
+                  {CONSTANTS.LABELS.NO_MEMBERS}
                 </p>
               )}
+            </div>
+            <div
+              className="pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-background to-transparent rounded-b"
+              aria-hidden
+            />
+          </div>
+        </div>
+
+        {/* Join Requests (only for members, when at least one request is pending) */}
+        {isCurrentUserInGroup && joinRequests.length > 0 && (
+          <div className="space-y-2 sm:space-y-2.5 pt-2 border-t border-border/10 min-w-0">
+            <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest flex items-center gap-1.5">
+              <UserPlus className="w-3.5 h-3.5" />
+              {CONSTANTS.LABELS.JOIN_REQUESTS} ({joinRequests.length})
+            </span>
+            <div className="relative">
+              <div className="space-y-2 max-h-[140px] overflow-y-auto overflow-x-hidden [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                {fetchGroupJoinRequestsLoading ? (
+                  <div className="flex items-center justify-center py-4 text-primary/80">
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  </div>
+                ) : joinRequests.length > 0 ? (
+                  joinRequests.map((req) => (
+                    <div
+                      key={req.id}
+                      className="flex items-center gap-2 sm:gap-3 p-2 rounded-xl border border-border/10 bg-muted/5 min-w-0"
+                    >
+                      <div
+                        className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0 border shadow-sm ${
+                          req.gender === CONSTANTS.GENDER.MALE
+                            ? "bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/10 text-blue-600"
+                            : "bg-gradient-to-br from-pink-500/10 to-pink-500/5 border-pink-500/10 text-pink-600"
+                        }`}
+                      >
+                        <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                      </div>
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <p className="text-xs sm:text-sm font-semibold text-foreground truncate">
+                          {req.name}
+                        </p>
+                        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium overflow-x-auto overflow-y-hidden min-w-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+                          <span className="bg-muted/30 px-1.5 py-0.5 rounded-md border border-border/20 shrink-0">
+                            {req.flightNumber}
+                          </span>
+                          <span className="shrink-0">•</span>
+                          <span className="whitespace-nowrap truncate">
+                            {req.destination}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          disabled={
+                            respondToJoinRequestLoading ||
+                            respondingId === req.id
+                          }
+                          className="p-2 rounded-lg bg-green-500/15 text-green-700 hover:bg-green-500/25 border border-green-500/20 transition-colors disabled:opacity-50"
+                          title={CONSTANTS.LABELS.ACCEPT}
+                          onClick={async () => {
+                            setRespondingId(req.id);
+                            const result = await respondToJoinRequest(
+                              group.id,
+                              req.id,
+                              "accept",
+                            );
+                            setRespondingId(null);
+                            if (result.ok) {
+                              setJoinRequests((prev) =>
+                                prev.filter((r) => r.id !== req.id),
+                              );
+                              const freshMembers = await fetchGroupMembers(
+                                group.id,
+                              );
+                              setMembers(freshMembers);
+                            }
+                          }}
+                        >
+                          {respondingId === req.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Check className="w-4 h-4" />
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          disabled={
+                            respondToJoinRequestLoading ||
+                            respondingId === req.id
+                          }
+                          className="p-2 rounded-lg bg-red-500/15 text-red-700 hover:bg-red-500/25 border border-red-500/20 transition-colors disabled:opacity-50"
+                          title={CONSTANTS.LABELS.REJECT}
+                          onClick={async () => {
+                            setRespondingId(req.id);
+                            const result = await respondToJoinRequest(
+                              group.id,
+                              req.id,
+                              "reject",
+                            );
+                            setRespondingId(null);
+                            if (result.ok) {
+                              setJoinRequests((prev) =>
+                                prev.filter((r) => r.id !== req.id),
+                              );
+                            }
+                          }}
+                        >
+                          {respondingId === req.id ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <X className="w-4 h-4" />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-muted-foreground py-2 text-center">
+                    {CONSTANTS.LABELS.NO_JOIN_REQUESTS}
+                  </p>
+                )}
+              </div>
+              <div
+                className="pointer-events-none absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-background to-transparent rounded-b"
+                aria-hidden
+              />
             </div>
           </div>
         )}
