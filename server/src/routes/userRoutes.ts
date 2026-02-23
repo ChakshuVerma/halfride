@@ -8,6 +8,7 @@ import {
   profileByUsername,
   uploadProfilePhotoHandler,
 } from '../controllers/userController';
+import { badRequest } from '../utils/errors';
 
 export const userRouter = Router();
 
@@ -19,12 +20,12 @@ userRouter.post(
   '/user/profile/photo',
   requireSession,
   (req, res, next) => {
-    uploadProfilePhoto(req, res, (err: any) => {
+    uploadProfilePhoto(req, res, (err: unknown) => {
       if (err) {
-        return res.status(400).json({
-          ok: false,
-          error: err.message || 'Invalid or missing photo file',
-        });
+        return badRequest(
+          res,
+          err instanceof Error ? err.message : 'Invalid or missing photo file',
+        );
       }
       next();
     });

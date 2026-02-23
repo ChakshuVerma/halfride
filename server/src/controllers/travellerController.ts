@@ -23,6 +23,13 @@ import {
   notifyOtherMembersJoinDecided,
   notifyDeciderJoinRequestDecided,
 } from "./notificationController";
+import {
+  badRequest,
+  unauthorized,
+  notFound,
+  forbidden,
+  internalServerError,
+} from "../utils/errors";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -263,7 +270,7 @@ export async function getTravellersByAirport(req: Request, res: Response) {
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";
     console.error("Fetch Travellers Error:", msg);
-    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+    return internalServerError(res);
   }
 }
 
@@ -272,7 +279,7 @@ export async function getTravellerByAirportAndUser(req: Request, res: Response) 
   const airportCode = parseStringParam(req.params.airportCode);
   const userId = parseStringParam(req.params.userId);
   if (!airportCode || !userId) {
-    return res.status(400).json({ ok: false, message: "Airport code and user ID are required" });
+    return badRequest(res, "Airport code and user ID are required");
   }
 
   const db = admin.firestore();
@@ -306,7 +313,7 @@ export async function getTravellerByAirportAndUser(req: Request, res: Response) 
       .get();
 
     if (snapshot.empty) {
-      return res.status(404).json({ ok: false, error: "Traveller not found" });
+      return notFound(res, "Traveller not found");
     }
 
     const doc = snapshot.docs[0];
@@ -332,7 +339,7 @@ export async function getTravellerByAirportAndUser(req: Request, res: Response) 
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";
     console.error("Get traveller by airport and user error:", msg);
-    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+    return internalServerError(res);
   }
 }
 
@@ -340,9 +347,9 @@ export async function getTravellerByAirportAndUser(req: Request, res: Response) 
 export async function checkTravellerHasListing(req: Request, res: Response) {
   const { airportCode } = req.query;
   const uid = req.auth?.uid;
-  if (!uid) return res.status(401).json({ ok: false, error: "Unauthorized" });
+  if (!uid) return unauthorized(res, "Unauthorized");
   if (!airportCode) {
-    return res.status(400).json({ ok: false, message: "Airport code is required" });
+    return badRequest(res, "Airport code is required");
   }
 
   try {
@@ -354,7 +361,7 @@ export async function checkTravellerHasListing(req: Request, res: Response) {
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";
     console.error("Check Listing Error:", msg);
-    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+    return internalServerError(res);
   }
 }
 
@@ -387,41 +394,28 @@ export async function requestConnection(req: Request, res: Response) {
   const { travellerUid, flightCarrier, flightNumber } = req.body;
   const requesterUid = req.auth?.uid;
   if (!requesterUid) {
-    return res.status(401).json({ ok: false, error: "Unauthorized" });
+    return unauthorized(res, "Unauthorized");
   }
 
   if (!isNonEmptyString(travellerUid)) {
-    return res.status(400).json({
-      ok: false,
-      error: "Traveller UID is required and must be a non-empty string",
-    });
+    return badRequest(res, "Traveller UID is required and must be a non-empty string");
   }
   const travellerUidTrimmed = travellerUid.trim();
   if (travellerUidTrimmed.length > UID_MAX_LENGTH) {
-    return res
-      .status(400)
-      .json({ ok: false, error: "Traveller UID is too long" });
+    return badRequest(res, "Traveller UID is too long");
   }
 
   if (!isNonEmptyString(flightCarrier)) {
-    return res.status(400).json({
-      ok: false,
-      error: "Flight carrier is required and must be a non-empty string",
-    });
+    return badRequest(res, "Flight carrier is required and must be a non-empty string");
   }
   if (!isNonEmptyString(flightNumber)) {
-    return res.status(400).json({
-      ok: false,
-      error: "Flight number is required and must be a non-empty string",
-    });
+    return badRequest(res, "Flight number is required and must be a non-empty string");
   }
   const flightCarrierTrimmed = (flightCarrier as string).trim();
   const flightNumberTrimmed = (flightNumber as string).trim();
 
   if (requesterUid === travellerUidTrimmed) {
-    return res
-      .status(400)
-      .json({ ok: false, error: "Cannot connect with yourself" });
+    return badRequest(res, "Cannot connect with yourself");
   }
 
   const db = admin.firestore();
@@ -434,9 +428,7 @@ export async function requestConnection(req: Request, res: Response) {
 
     const travellerUserSnap = await travellerUserRef.get();
     if (!travellerUserSnap.exists) {
-      return res
-        .status(404)
-        .json({ ok: false, error: "Traveller user not found" });
+      return notFound(res, "Traveller user not found");
     }
     // Target's active traveller listing (not in a group).
     const travellerSnapshot = await db
@@ -447,9 +439,7 @@ export async function requestConnection(req: Request, res: Response) {
       .get();
 
     if (travellerSnapshot.empty) {
-      return res
-        .status(404)
-        .json({ ok: false, error: "Traveller trip not found" });
+      return notFound(res, "Traveller trip not found");
     }
 
     // Match by carrier or flight number.
@@ -468,10 +458,7 @@ export async function requestConnection(req: Request, res: Response) {
       targetTravellerDoc = travellerSnapshot.docs[0];
     }
     if (!targetTravellerDoc) {
-      return res.status(404).json({
-        ok: false,
-        error: "Matching flight trip not found for this traveller",
-      });
+      return notFound(res, "Matching flight trip not found for this traveller");
     }
 
     // Add requester to connectionRequests and notify target.
@@ -490,7 +477,7 @@ export async function requestConnection(req: Request, res: Response) {
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";
     console.error("Request Connection Error:", msg);
-    return res.status(500).json({ ok: false, error: msg });
+    return internalServerError(res, msg);
   }
 }
 
@@ -498,38 +485,31 @@ export async function requestConnection(req: Request, res: Response) {
 export async function respondToConnectionRequest(req: Request, res: Response) {
   const body = req.body;
   if (!body || typeof body !== "object") {
-    return res
-      .status(400)
-      .json({ ok: false, error: "Request body must be a JSON object" });
+    return badRequest(res, "Request body must be a JSON object");
   }
 
   const { requesterUserId: rawRequesterUserId, action: rawAction } = body;
   const recipientUid = req.auth?.uid;
 
   if (!recipientUid) {
-    return res.status(401).json({ ok: false, error: "Unauthorized" });
+    return unauthorized(res, "Unauthorized");
   }
 
   if (!isNonEmptyString(rawRequesterUserId)) {
-    return res.status(400).json({
-      ok: false,
-      error: "requesterUserId is required and must be a non-empty string",
-    });
+    return badRequest(res, "requesterUserId is required and must be a non-empty string");
   }
   const requesterUserId = (rawRequesterUserId as string).trim();
 
   const action = parseConnectionResponseAction(rawAction);
   if (action === null) {
-    return res.status(400).json({
-      ok: false,
-      error: `action must be '${ConnectionResponseAction.ACCEPT}' or '${ConnectionResponseAction.REJECT}' (case-insensitive)`,
-    });
+    return badRequest(
+      res,
+      `action must be '${ConnectionResponseAction.ACCEPT}' or '${ConnectionResponseAction.REJECT}' (case-insensitive)`,
+    );
   }
 
   if (requesterUserId === recipientUid) {
-    return res
-      .status(400)
-      .json({ ok: false, error: "Cannot respond to your own request" });
+    return badRequest(res, "Cannot respond to your own request");
   }
 
   const db = admin.firestore();
@@ -541,9 +521,7 @@ export async function respondToConnectionRequest(req: Request, res: Response) {
   try {
     const requesterUserSnap = await requesterUserRef.get();
     if (!requesterUserSnap.exists) {
-      return res
-        .status(404)
-        .json({ ok: false, error: "Requester user not found" });
+      return notFound(res, "Requester user not found");
     }
 
     // Recipient's active listing (holder of the connection request).
@@ -556,10 +534,7 @@ export async function respondToConnectionRequest(req: Request, res: Response) {
       .get();
 
     if (recipientSnapshot.empty) {
-      return res.status(404).json({
-        ok: false,
-        error: "No active traveller listing found for you",
-      });
+      return notFound(res, "No active traveller listing found for you");
     }
 
     const recipientDoc = recipientSnapshot.docs[0];
@@ -571,9 +546,7 @@ export async function respondToConnectionRequest(req: Request, res: Response) {
       (ref: admin.firestore.DocumentReference) => ref.id === requesterUserId,
     );
     if (!hasRequest) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "No connection request from this user" });
+      return badRequest(res, "No connection request from this user");
     }
 
     // Reject: remove from list and notify.
@@ -596,9 +569,7 @@ export async function respondToConnectionRequest(req: Request, res: Response) {
     // Accept: create group, link both travellers, notify.
     const flightArrival = recipientData[TRAVELLER_FIELDS.FLIGHT_ARRIVAL];
     if (!flightArrival) {
-      return res
-        .status(500)
-        .json({ ok: false, error: "Traveller listing missing flight arrival" });
+      return internalServerError(res, "Traveller listing missing flight arrival");
     }
     const requesterSnapshot = await db
       .collection(COLLECTIONS.TRAVELLER_DATA)
@@ -610,11 +581,10 @@ export async function respondToConnectionRequest(req: Request, res: Response) {
       .get();
 
     if (requesterSnapshot.empty) {
-      return res.status(404).json({
-        ok: false,
-        error:
-          "Requester's trip not found for this airport (may have been removed)",
-      });
+      return notFound(
+        res,
+        "Requester's trip not found for this airport (may have been removed)",
+      );
     }
 
     const requesterTravellerDoc = requesterSnapshot.docs[0];
@@ -656,7 +626,7 @@ export async function respondToConnectionRequest(req: Request, res: Response) {
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";
     console.error("Respond to connection request error:", msg);
-    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+    return internalServerError(res);
   }
 }
 
@@ -747,7 +717,7 @@ function buildGroupSummary(
 export async function getGroupsByAirport(req: Request, res: Response) {
   const airportCode = parseStringParam(req.params.airportCode);
   if (!airportCode) {
-    return res.status(400).json({ ok: false, message: "Airport code is required" });
+    return badRequest(res, "Airport code is required");
   }
 
   const db = admin.firestore();
@@ -800,7 +770,7 @@ export async function getGroupsByAirport(req: Request, res: Response) {
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";
     console.error("Get groups by airport error:", msg);
-    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+    return internalServerError(res);
   }
 }
 
@@ -808,7 +778,7 @@ export async function getGroupsByAirport(req: Request, res: Response) {
 export async function getGroupById(req: Request, res: Response) {
   const groupId = parseStringParam(req.params.groupId);
   if (!groupId) {
-    return res.status(400).json({ ok: false, message: "Group ID is required" });
+    return badRequest(res, "Group ID is required");
   }
 
   const db = admin.firestore();
@@ -817,7 +787,7 @@ export async function getGroupById(req: Request, res: Response) {
   try {
     const groupDoc = await db.collection(COLLECTIONS.GROUPS).doc(groupId).get();
     if (!groupDoc.exists) {
-      return res.status(404).json({ ok: false, error: "Group not found" });
+      return notFound(res, "Group not found");
     }
     const data = groupDoc.data()!;
     const members = data[GROUP_FIELDS.MEMBERS] || [];
@@ -844,7 +814,7 @@ export async function getGroupById(req: Request, res: Response) {
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";
     console.error("Get group by ID error:", msg);
-    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+    return internalServerError(res);
   }
 }
 
@@ -852,7 +822,7 @@ export async function getGroupById(req: Request, res: Response) {
 export async function getGroupMembers(req: Request, res: Response) {
   const groupId = parseStringParam(req.params.groupId);
   if (!groupId) {
-    return res.status(400).json({ ok: false, message: "Group ID is required" });
+    return badRequest(res, "Group ID is required");
   }
 
   const db = admin.firestore();
@@ -861,7 +831,7 @@ export async function getGroupMembers(req: Request, res: Response) {
   try {
     const groupSnap = await groupRef.get();
     if (!groupSnap.exists) {
-      return res.status(404).json({ ok: false, error: "Group not found" });
+      return notFound(res, "Group not found");
     }
 
     const members = groupSnap.data()?.[GROUP_FIELDS.MEMBERS] || [];
@@ -924,7 +894,7 @@ export async function getGroupMembers(req: Request, res: Response) {
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";
     console.error("Get group members error:", msg);
-    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+    return internalServerError(res);
   }
 }
 
@@ -953,11 +923,11 @@ export async function leaveGroup(req: Request, res: Response) {
   const uid = req.auth?.uid;
 
   if (!uid) {
-    return res.status(401).json({ ok: false, error: "Unauthorized" });
+    return unauthorized(res, "Unauthorized");
   }
 
   if (!groupId || typeof groupId !== "string" || !groupId.trim()) {
-    return res.status(400).json({ ok: false, error: "groupId is required" });
+    return badRequest(res, "groupId is required");
   }
 
   const db = admin.firestore();
@@ -966,7 +936,7 @@ export async function leaveGroup(req: Request, res: Response) {
   try {
     const groupSnap = await groupRef.get();
     if (!groupSnap.exists) {
-      return res.status(404).json({ ok: false, error: "Group not found" });
+      return notFound(res, "Group not found");
     }
     const data = groupSnap.data();
     const members: admin.firestore.DocumentReference[] =
@@ -1020,7 +990,7 @@ export async function leaveGroup(req: Request, res: Response) {
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";
     console.error("Leave group error:", msg);
-    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+    return internalServerError(res);
   }
 }
 
@@ -1030,7 +1000,7 @@ export async function revokeListing(req: Request, res: Response) {
   const uid = req.auth?.uid;
 
   if (!uid) {
-    return res.status(401).json({ ok: false, error: "Unauthorized" });
+    return unauthorized(res, "Unauthorized");
   }
 
   if (!airportCode || typeof airportCode !== "string" || !airportCode.trim()) {
@@ -1053,10 +1023,7 @@ export async function revokeListing(req: Request, res: Response) {
       .limit(1)
       .get();
     if (snapshot.empty) {
-      return res.status(404).json({
-        ok: false,
-        error: "No active listing found for this airport",
-      });
+      return notFound(res, "No active listing found for this airport");
     }
     await snapshot.docs[0].ref.delete();
 
@@ -1067,7 +1034,7 @@ export async function revokeListing(req: Request, res: Response) {
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";
     console.error("Revoke listing error:", msg);
-    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+    return internalServerError(res);
   }
 }
 
@@ -1077,10 +1044,10 @@ export async function requestJoinGroup(req: Request, res: Response) {
   const uid = req.auth?.uid;
 
   if (!uid) {
-    return res.status(401).json({ ok: false, error: "Unauthorized" });
+    return unauthorized(res, "Unauthorized");
   }
   if (!groupId || typeof groupId !== "string" || !groupId.trim()) {
-    return res.status(400).json({ ok: false, error: "groupId is required" });
+    return badRequest(res, "groupId is required");
   }
 
   const db = admin.firestore();
@@ -1090,7 +1057,7 @@ export async function requestJoinGroup(req: Request, res: Response) {
   try {
     const groupSnap = await groupRef.get();
     if (!groupSnap.exists) {
-      return res.status(404).json({ ok: false, error: "Group not found" });
+      return notFound(res, "Group not found");
     }
 
     const data = groupSnap.data();
@@ -1102,27 +1069,21 @@ export async function requestJoinGroup(req: Request, res: Response) {
       | string
       | undefined;
     if (members.some((ref: admin.firestore.DocumentReference) => ref.id === uid)) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "You are already a member of this group" });
+      return badRequest(res, "You are already a member of this group");
     }
     if (
       pendingRequests.some(
         (ref: admin.firestore.DocumentReference) => ref.id === uid,
       )
     ) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "You already have a pending join request" });
+      return badRequest(res, "You already have a pending join request");
     }
     if (members.length >= MAX_GROUP_USERS) {
-      return res.status(400).json({ ok: false, error: "Group is full" });
+      return badRequest(res, "Group is full");
     }
 
     if (!flightArrivalAirport) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "Group has no airport; cannot join" });
+      return badRequest(res, "Group has no airport; cannot join");
     }
     // Requester must have an active listing at same airport.
     const requesterTravellerSnap = await db
@@ -1133,10 +1094,10 @@ export async function requestJoinGroup(req: Request, res: Response) {
       .limit(1)
       .get();
     if (requesterTravellerSnap.empty) {
-      return res.status(400).json({
-        ok: false,
-        error: "You need an active listing at this airport to join the group",
-      });
+      return badRequest(
+        res,
+        "You need an active listing at this airport to join the group",
+      );
     }
 
     const newPending = [...pendingRequests, userRef];
@@ -1153,7 +1114,7 @@ export async function requestJoinGroup(req: Request, res: Response) {
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";
     console.error("Request join group error:", msg);
-    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+    return internalServerError(res);
   }
 }
 
@@ -1163,10 +1124,10 @@ export async function getGroupJoinRequests(req: Request, res: Response) {
   const uid = req.auth?.uid;
 
   if (!uid) {
-    return res.status(401).json({ ok: false, error: "Unauthorized" });
+    return unauthorized(res, "Unauthorized");
   }
   if (!groupId) {
-    return res.status(400).json({ ok: false, message: "Group ID is required" });
+    return badRequest(res, "Group ID is required");
   }
 
   const db = admin.firestore();
@@ -1175,7 +1136,7 @@ export async function getGroupJoinRequests(req: Request, res: Response) {
   try {
     const groupSnap = await groupRef.get();
     if (!groupSnap.exists) {
-      return res.status(404).json({ ok: false, error: "Group not found" });
+      return notFound(res, "Group not found");
     }
 
     const data = groupSnap.data();
@@ -1188,10 +1149,7 @@ export async function getGroupJoinRequests(req: Request, res: Response) {
       (ref: admin.firestore.DocumentReference) => ref.id === uid,
     );
     if (!isMember) {
-      return res.status(403).json({
-        ok: false,
-        error: "Only group members can view join requests",
-      });
+      return forbidden(res, "Only group members can view join requests");
     }
     if (pendingRequests.length === 0) return res.json({ ok: true, data: [] });
 
@@ -1251,7 +1209,7 @@ export async function getGroupJoinRequests(req: Request, res: Response) {
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";
     console.error("Get group join requests error:", msg);
-    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+    return internalServerError(res);
   }
 }
 
@@ -1265,7 +1223,7 @@ export async function respondToJoinRequest(req: Request, res: Response) {
   const uid = req.auth?.uid;
 
   if (!uid) {
-    return res.status(401).json({ ok: false, error: "Unauthorized" });
+    return unauthorized(res, "Unauthorized");
   }
   if (
     !groupId ||
@@ -1275,16 +1233,12 @@ export async function respondToJoinRequest(req: Request, res: Response) {
     typeof requesterUserId !== "string" ||
     !requesterUserId.trim()
   ) {
-    return res
-      .status(400)
-      .json({ ok: false, error: "groupId and requesterUserId are required" });
+    return badRequest(res, "groupId and requesterUserId are required");
   }
   const isAccept = action === "accept";
   const isReject = action === "reject";
   if (!isAccept && !isReject) {
-    return res
-      .status(400)
-      .json({ ok: false, error: "action must be 'accept' or 'reject'" });
+    return badRequest(res, "action must be 'accept' or 'reject'");
   }
 
   const db = admin.firestore();
@@ -1297,7 +1251,7 @@ export async function respondToJoinRequest(req: Request, res: Response) {
   try {
     const groupSnap = await groupRef.get();
     if (!groupSnap.exists) {
-      return res.status(404).json({ ok: false, error: "Group not found" });
+      return notFound(res, "Group not found");
     }
 
     const data = groupSnap.data();
@@ -1313,10 +1267,7 @@ export async function respondToJoinRequest(req: Request, res: Response) {
       (ref: admin.firestore.DocumentReference) => ref.id === uid,
     );
     if (!isMember) {
-      return res.status(403).json({
-        ok: false,
-        error: "Only group members can respond to join requests",
-      });
+      return forbidden(res, "Only group members can respond to join requests");
     }
 
     const requesterInPending = pendingRequests.some(
@@ -1324,10 +1275,7 @@ export async function respondToJoinRequest(req: Request, res: Response) {
         ref.id === requesterUserId.trim(),
     );
     if (!requesterInPending) {
-      return res.status(404).json({
-        ok: false,
-        error: "Join request not found or already handled",
-      });
+      return notFound(res, "Join request not found or already handled");
     }
     const [deciderSnap, requesterSnap] = await Promise.all([
       userRef.get(),
@@ -1351,9 +1299,7 @@ export async function respondToJoinRequest(req: Request, res: Response) {
           .json({ ok: false, error: "Group is full; cannot add more members" });
       }
       if (!flightArrivalAirport) {
-        return res
-          .status(400)
-          .json({ ok: false, error: "Group has no airport" });
+        return badRequest(res, "Group has no airport");
       }
 
       const requesterTravellerSnap = await db
@@ -1365,10 +1311,10 @@ export async function respondToJoinRequest(req: Request, res: Response) {
         .get();
 
       if (requesterTravellerSnap.empty) {
-        return res.status(400).json({
-          ok: false,
-          error: "Requester no longer has an active listing at this airport",
-        });
+        return badRequest(
+          res,
+          "Requester no longer has an active listing at this airport",
+        );
       }
 
       const newMembers = [...members, requesterUserRef];
@@ -1440,7 +1386,7 @@ export async function respondToJoinRequest(req: Request, res: Response) {
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";
     console.error("Respond to join request error:", msg);
-    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+    return internalServerError(res);
   }
 }
 
@@ -1448,7 +1394,7 @@ export async function respondToJoinRequest(req: Request, res: Response) {
 export async function updateGroupName(req: Request, res: Response) {
   const uid = req.auth?.uid;
   if (!uid) {
-    return res.status(401).json({ ok: false, error: "Unauthorized" });
+    return unauthorized(res, "Unauthorized");
   }
 
   const body = req.body as { groupId?: string; name?: string };
@@ -1456,26 +1402,24 @@ export async function updateGroupName(req: Request, res: Response) {
   const rawName = typeof body?.name === "string" ? body.name : "";
 
   if (!groupId) {
-    return res.status(400).json({ ok: false, error: "groupId is required" });
+    return badRequest(res, "groupId is required");
   }
 
   const name = rawName.trim();
   if (name.length === 0) {
-    return res
-      .status(400)
-      .json({ ok: false, error: "Group name cannot be empty" });
+    return badRequest(res, "Group name cannot be empty");
   }
   if (name.length > GROUP_NAME_MAX_LENGTH) {
-    return res.status(400).json({
-      ok: false,
-      error: `Group name must be at most ${GROUP_NAME_MAX_LENGTH} characters`,
-    });
+    return badRequest(
+      res,
+      `Group name must be at most ${GROUP_NAME_MAX_LENGTH} characters`,
+    );
   }
   if (!GROUP_NAME_ALPHABETS_ONLY.test(name)) {
-    return res.status(400).json({
-      ok: false,
-      error: "Group name can only contain letters (A–Z, a–z) and spaces",
-    });
+    return badRequest(
+      res,
+      "Group name can only contain letters (A–Z, a–z) and spaces",
+    );
   }
 
   const db = admin.firestore();
@@ -1483,7 +1427,7 @@ export async function updateGroupName(req: Request, res: Response) {
   try {
     const groupSnap = await groupRef.get();
     if (!groupSnap.exists) {
-      return res.status(404).json({ ok: false, error: "Group not found" });
+      return notFound(res, "Group not found");
     }
     const data = groupSnap.data();
     const members = data?.[GROUP_FIELDS.MEMBERS] || [];
@@ -1491,10 +1435,7 @@ export async function updateGroupName(req: Request, res: Response) {
       (ref: admin.firestore.DocumentReference) => ref.id === uid,
     );
     if (!isMember) {
-      return res.status(403).json({
-        ok: false,
-        error: "Only group members can update the group name",
-      });
+      return forbidden(res, "Only group members can update the group name");
     }
     await groupRef.update({
       [GROUP_FIELDS.NAME]: name,
@@ -1505,6 +1446,6 @@ export async function updateGroupName(req: Request, res: Response) {
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";
     console.error("Update group name error:", msg);
-    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+    return internalServerError(res);
   }
 }

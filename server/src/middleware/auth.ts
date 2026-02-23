@@ -1,17 +1,16 @@
 import { Request, Response, NextFunction } from 'express';
 import { admin, adminInitialized, type DecodedIdToken } from '../firebase/admin';
+import { unauthorized, internalServerError } from '../utils/errors';
 
-const ERROR_SERVER_CONFIG = 'Server Configuration Error'
-const ERROR_UNAUTHORIZED = 'Unauthorized'
-const MESSAGE_ADMIN_NOT_CONFIGURED = 'Firebase Admin SDK is not properly configured. Please check server logs.'
-const MESSAGE_NO_TOKEN = 'No authorization token provided'
-const MESSAGE_TOKEN_EXPIRED = 'Token has expired. Please log in again.'
-const MESSAGE_ADMIN_NOT_INITIALIZED = 'Firebase Admin SDK is not initialized. Please check server configuration.'
-const MESSAGE_INVALID_TOKEN = 'Invalid or expired token'
+const MESSAGE_ADMIN_NOT_CONFIGURED = 'Firebase Admin SDK is not properly configured. Please check server logs.';
+const MESSAGE_NO_TOKEN = 'No authorization token provided';
+const MESSAGE_TOKEN_EXPIRED = 'Token has expired. Please log in again.';
+const MESSAGE_ADMIN_NOT_INITIALIZED = 'Firebase Admin SDK is not initialized. Please check server configuration.';
+const MESSAGE_INVALID_TOKEN = 'Invalid or expired token';
 
-const LOG_AUTH_ADMIN_NOT_INITIALIZED = '[Auth] Firebase Admin SDK not initialized'
-const LOG_AUTH_TOKEN_EXPIRED = (path: string) => `[Auth] Token expired: ${path}`
-const LOG_AUTH_VERIFICATION_FAILED = (errorInfo: string, path: string) => `[Auth] Token verification failed: ${errorInfo} ${path}`
+const LOG_AUTH_ADMIN_NOT_INITIALIZED = '[Auth] Firebase Admin SDK not initialized';
+const LOG_AUTH_TOKEN_EXPIRED = (path: string) => `[Auth] Token expired: ${path}`;
+const LOG_AUTH_VERIFICATION_FAILED = (errorInfo: string, path: string) => `[Auth] Token verification failed: ${errorInfo} ${path}`;
 
 /**
  * Middleware to verify Firebase ID token
@@ -22,53 +21,37 @@ export const verifyToken = async (
   res: Response,
   next: NextFunction
 ) => {
-  // Check if Firebase Admin is initialize
   if (!adminInitialized) {
     console.error(LOG_AUTH_ADMIN_NOT_INITIALIZED);
-    return res.status(500).json({ 
-      error: ERROR_SERVER_CONFIG,
-      message: MESSAGE_ADMIN_NOT_CONFIGURED
-    });
+    return internalServerError(res, MESSAGE_ADMIN_NOT_CONFIGURED, 'SERVER_CONFIG');
   }
 
   try {
     const authHeader = req.headers.authorization;
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ 
-        error: ERROR_UNAUTHORIZED,
-        message: MESSAGE_NO_TOKEN
-      });
+      return unauthorized(res, MESSAGE_NO_TOKEN);
     }
 
     const token = authHeader.split('Bearer ')[1];
     const decodedToken = await admin.auth().verifyIdToken(token);
-    
-    // Add user info to request object
+
     req.user = decodedToken;
     next();
-  } catch (error: any) {
-    if (error.code === 'auth/id-token-expired') {
+  } catch (error: unknown) {
+    const err = error as { code?: string; message?: string };
+    if (err.code === 'auth/id-token-expired') {
       console.error(LOG_AUTH_TOKEN_EXPIRED(req.path));
-      return res.status(401).json({ 
-        error: ERROR_UNAUTHORIZED,
-        message: MESSAGE_TOKEN_EXPIRED
-      });
+      return unauthorized(res, MESSAGE_TOKEN_EXPIRED);
     }
-    
-    if (error.code === 'app/no-app') {
+
+    if (err.code === 'app/no-app') {
       console.error(LOG_AUTH_ADMIN_NOT_INITIALIZED);
-      return res.status(500).json({ 
-        error: ERROR_SERVER_CONFIG,
-        message: MESSAGE_ADMIN_NOT_INITIALIZED
-      });
+      return internalServerError(res, MESSAGE_ADMIN_NOT_INITIALIZED, 'SERVER_CONFIG');
     }
-    
-    console.error(LOG_AUTH_VERIFICATION_FAILED(error.code || error.message, req.path));
-    return res.status(401).json({ 
-      error: ERROR_UNAUTHORIZED,
-      message: error.message || MESSAGE_INVALID_TOKEN
-    });
+
+    console.error(LOG_AUTH_VERIFICATION_FAILED(err.code || err.message || '', req.path));
+    return unauthorized(res, err.message || MESSAGE_INVALID_TOKEN);
   }
 };
 
