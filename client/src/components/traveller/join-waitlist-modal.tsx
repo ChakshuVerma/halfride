@@ -151,7 +151,7 @@ export function JoinWaitlistModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="w-[95vw] max-w-md max-h-[93vh] overflow-y-auto p-0 gap-0 rounded-2xl sm:rounded-3xl border border-border/50 bg-background/95 backdrop-blur-xl shadow-2xl custom-scrollbar [&>button]:hidden"
+        className="w-[95vw] max-w-md p-0 gap-0 rounded-2xl sm:rounded-3xl border border-border/50 bg-background/95 backdrop-blur-xl shadow-2xl custom-scrollbar [&>button]:hidden"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >

@@ -12,6 +12,9 @@ import {
   NotificationType,
   NOTIFICATION_ACTION_TYPES,
 } from "../types/notifications";
+import { roadDistanceBetweenTwoPoints } from "../utils/controllerUtils";
+
+const NEARBY_LISTING_MAX_DISTANCE_METERS = 5000;
 
 /**
  * Validates and creates a notification in Firestore.
@@ -44,7 +47,9 @@ export async function createNotification(payload: CreateNotificationPayload) {
 
     // Convert IDs to References (action is preserved as-is for the client)
     if (data.groupId) {
-      data.groupRef = db.collection(COLLECTIONS.GROUPS).doc(data.groupId as string);
+      data.groupRef = db
+        .collection(COLLECTIONS.GROUPS)
+        .doc(data.groupId as string);
       delete data.groupId;
     }
     if (data.actorUserId) {
@@ -110,19 +115,155 @@ async function getGroupDisplayName(
 /**
  * Use Case 1: Notify users near a new listing (traveller).
  * This should be called after a new Traveller is created.
+ *
+ * Strategy:
+ * - Use the new traveller's destination (placeId) and airport from the provided data
+ *   (no extra Firestore read for the new listing itself).
+ * - Find other active travellers at the same airport with a destination placeId.
+ * - For each, compute road distance between the two destinations using Google Distance Matrix.
+ * - If within NEARBY_LISTING_MAX_DISTANCE_METERS, send a NEW_LISTING notification
+ *   to the existing traveller, with an OPEN_TRAVELLER action pointing to the new listing.
  */
 export async function notifyUsersNearNewListing(
-  newTravellerId: string,
-  lat: number,
-  lng: number,
+  travellerRef: admin.firestore.DocumentReference,
+  travellerData: admin.firestore.DocumentData,
 ) {
-  // Implementation note: Firestore doesn't support native geo-queries easily without Geohash.
-  // For now, we stub this logic or use a simplistic approach if user locations are known.
-  // Real implementation would require storing user locations and querying them.
-  console.log(
-    `[Notification] Checking for users near traveller ${newTravellerId} at ${lat},${lng}`,
-  );
-  // TODO: specialized geo-query implementation
+  const db = admin.firestore();
+
+  try {
+    if (!travellerData) {
+      console.warn(
+        `[Notification] Missing traveller data for ${travellerRef.id} when checking nearby listings.`,
+      );
+      return;
+    }
+
+    const destination = travellerData[TRAVELLER_FIELDS.DESTINATION];
+    const flightArrival = travellerData[TRAVELLER_FIELDS.FLIGHT_ARRIVAL] as
+      | string
+      | undefined;
+    const userRef = travellerData[TRAVELLER_FIELDS.USER_REF] as
+      | admin.firestore.DocumentReference
+      | undefined;
+
+    const placeId =
+      destination &&
+      typeof destination === "object" &&
+      "placeId" in destination &&
+      (destination as { placeId?: string }).placeId
+        ? (destination as { placeId?: string }).placeId
+        : undefined;
+
+    const address =
+      typeof destination === "string"
+        ? destination
+        : ((destination?.address as string | undefined) ?? undefined);
+
+    if (!placeId || !flightArrival || !userRef?.id) {
+      console.warn(
+        `[Notification] Skipping nearby listing check for ${travellerRef.id} – missing placeId, airport or userRef.`,
+      );
+      return;
+    }
+
+    const airportCode = String(flightArrival).toUpperCase();
+    const newUserId = userRef.id;
+    const newTravellerId = travellerRef.id;
+
+    const userSnap = await db
+      .collection(COLLECTIONS.USERS)
+      .doc(newUserId)
+      .get();
+    const ownerFirstName = userSnap.exists
+      ? userSnap.data()?.["FirstName"]
+      : undefined;
+    const ownerDisplayName = ownerFirstName || "Another traveller";
+
+    const snapshot = await db
+      .collection(COLLECTIONS.TRAVELLER_DATA)
+      .where(TRAVELLER_FIELDS.FLIGHT_ARRIVAL, "==", airportCode)
+      .where(TRAVELLER_FIELDS.IS_COMPLETED, "==", false)
+      .get();
+
+    if (snapshot.empty) {
+      return;
+    }
+
+    const candidates = snapshot.docs.filter((doc) => doc.id !== newTravellerId);
+
+    const notifications: Promise<unknown>[] = [];
+
+    for (const doc of candidates) {
+      const data = doc.data();
+      const otherUserRef = data[TRAVELLER_FIELDS.USER_REF] as
+        | admin.firestore.DocumentReference
+        | undefined;
+      if (!otherUserRef?.id || otherUserRef.id === newUserId) continue;
+
+      const otherDestination = data[TRAVELLER_FIELDS.DESTINATION];
+      const otherPlaceId =
+        otherDestination &&
+        typeof otherDestination === "object" &&
+        "placeId" in otherDestination &&
+        (otherDestination as { placeId?: string }).placeId
+          ? (otherDestination as { placeId?: string }).placeId
+          : undefined;
+
+      if (!otherPlaceId) continue;
+
+      let distanceMeters: number;
+      try {
+        distanceMeters = await roadDistanceBetweenTwoPoints(
+          placeId,
+          otherPlaceId,
+        );
+      } catch (err) {
+        console.error(
+          "[Notification] Failed to compute distance between destinations:",
+          err,
+        );
+        continue;
+      }
+
+      if (distanceMeters > NEARBY_LISTING_MAX_DISTANCE_METERS) continue;
+
+      const distanceKm = distanceMeters / 1000;
+
+      const body = `New traveller nearby: ${distanceKm.toFixed(
+        1,
+      )} km from your destination.`;
+
+      notifications.push(
+        createNotification({
+          recipientUserId: otherUserRef.id,
+          type: NotificationType.NEW_LISTING,
+          title: "New traveller near your destination",
+          body,
+          data: {
+            listingId: newTravellerId,
+            actorUserId: newUserId,
+            airportCode,
+            metadata: {
+              distanceMeters,
+            },
+            action: {
+              type: NOTIFICATION_ACTION_TYPES.OPEN_TRAVELLER,
+              payload: {
+                airportCode,
+                userId: newUserId,
+              },
+            },
+          },
+        }),
+      );
+    }
+
+    if (notifications.length > 0) {
+      await Promise.all(notifications);
+    }
+  } catch (e) {
+    console.error("[Notification] Error notifying users near new listing:", e);
+  }
 }
 
 /**

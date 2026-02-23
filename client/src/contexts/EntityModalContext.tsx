@@ -194,7 +194,7 @@ export function EntityModalProvider({ children }: EntityModalProviderProps) {
         }}
       >
         <DialogContent
-          className="w-[95vw] max-w-xl max-h-[85vh] overflow-y-auto rounded-3xl border-zinc-200 bg-white/95 backdrop-blur-xl p-0 shadow-2xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          className="w-[95vw] max-w-xl rounded-3xl border-zinc-200 bg-white/95 backdrop-blur-xl p-0 shadow-2xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
           onInteractOutside={(e) => e.preventDefault()}
           onEscapeKeyDown={(e) => e.preventDefault()}
         >

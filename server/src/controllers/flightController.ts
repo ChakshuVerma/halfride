@@ -3,6 +3,7 @@ import type { Firestore } from "firebase-admin/firestore";
 import { admin } from "../firebase/admin";
 import { Timestamp, FieldValue } from "firebase-admin/firestore";
 import { checkUserExists } from "./userController";
+import { notifyUsersNearNewListing } from "./notificationController";
 import { COLLECTIONS, TRAVELLER_FIELDS } from "../constants/db";
 import {
   isDateTodayOrTomorrow,
@@ -409,6 +410,10 @@ export async function createFlightTracker(req: Request, res: Response) {
     }
 
     await travellerRef.set(travellerPayload, { merge: true });
+
+    if (isNewTraveller) {
+      void notifyUsersNearNewListing(travellerRef, travellerPayload);
+    }
 
     return res.status(201).json({
       ok: true,
