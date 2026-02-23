@@ -1,5 +1,5 @@
 import { useEffect, useCallback, useMemo, useRef, useState } from "react";
-import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Card, CardContent } from "../ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select";
@@ -80,11 +80,7 @@ export function AirportTravellersDashboard({
   onSelectOpenChange,
   searchInputRef,
 }: AirportTravellersDashboardProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>(() =>
-    typeof window !== "undefined" && new URLSearchParams(window.location.search).get("group")
-      ? VIEW_MODE.GROUP
-      : VIEW_MODE.INDIVIDUAL,
-  );
+  const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODE.INDIVIDUAL);
   const [selectedEntity, setSelectedEntity] = useState<SelectedEntity>(null);
   const [travellers, setTravellers] = useState<Traveller[]>([]);
   const [groups, setGroups] = useState<Group[]>([]);
@@ -103,16 +99,9 @@ export function AirportTravellersDashboard({
   const [isUserInGroup, setIsUserInGroup] = useState(false);
   const [userGroupId, setUserGroupId] = useState<string | null>(null);
   const [userDestination, setUserDestination] = useState<string | null>(null);
-  const lastOpenedGroupIdFromUrlRef = useRef<string | null>(null);
-  const lastOpenedTravellerIdFromUrlRef = useRef<string | null>(null);
   const lastRefetchedEntityRef = useRef<{ type: "traveller" | "group"; id: string } | null>(null);
-  const [openFromUrlTrigger, setOpenFromUrlTrigger] = useState(0);
 
   const [searchParams, setSearchParams] = useSearchParams();
-  const location = useLocation();
-  const navigate = useNavigate();
-  const groupIdFromUrl = searchParams.get("group");
-  const travellerIdFromUrl = searchParams.get("traveller");
 
   const clearModalParamsFromUrl = useCallback(() => {
     const next = new URLSearchParams(searchParams);
@@ -187,74 +176,6 @@ export function AirportTravellersDashboard({
     };
     checkUserListing();
   }, [selectedAirport, fetchUserDestination]);
-
-  // When user clicked a notification action, we navigated with state.fromNotification; reset refs so open-from-URL runs (handles same URL / no re-render)
-  useEffect(() => {
-    const fromNotification = (location.state as { fromNotification?: boolean } | null)?.fromNotification;
-    if (!fromNotification) return;
-    if (groupIdFromUrl) lastOpenedGroupIdFromUrlRef.current = null;
-    if (travellerIdFromUrl) lastOpenedTravellerIdFromUrlRef.current = null;
-    navigate(location.pathname + location.search, { replace: true, state: {} });
-    const id = requestAnimationFrame(() => setOpenFromUrlTrigger((t) => t + 1));
-    return () => cancelAnimationFrame(id);
-  }, [location.state, location.pathname, location.search, groupIdFromUrl, travellerIdFromUrl, navigate]);
-
-  // When URL has ?group=groupId, open that group's modal; use list data if available for instant open, else fetch
-  useEffect(() => {
-    if (!groupIdFromUrl) {
-      lastOpenedGroupIdFromUrlRef.current = null;
-      return;
-    }
-    if (!initialDataFetchCompleted) return;
-    if (groupIdFromUrl === lastOpenedGroupIdFromUrlRef.current) return;
-    const groupFromList = groups.find((g) => g.id === groupIdFromUrl);
-    lastOpenedGroupIdFromUrlRef.current = groupIdFromUrl;
-    setViewMode(VIEW_MODE.GROUP);
-    const id = groupIdFromUrl;
-    if (groupFromList) {
-      setSelectedEntity({ type: ENTITY_TYPE.GROUP, data: groupFromList });
-      return;
-    }
-    const airportName = selectedAirport.airportName;
-    fetchGroupById(groupIdFromUrl, airportName).then((freshGroup) => {
-      if (!freshGroup) return;
-      setSelectedEntity((prev) =>
-        prev === null || (prev?.type === ENTITY_TYPE.GROUP && prev.data.id === id)
-          ? { type: ENTITY_TYPE.GROUP, data: freshGroup }
-          : prev,
-      );
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchGroupById/selectedAirport intentionally omitted to avoid re-run before fetch completes
-  }, [groupIdFromUrl, initialDataFetchCompleted, groups, openFromUrlTrigger]);
-
-  // When URL has ?traveller=userId, open that traveller's modal; use list data if available for instant open, else fetch
-  useEffect(() => {
-    if (!travellerIdFromUrl) {
-      lastOpenedTravellerIdFromUrlRef.current = null;
-      return;
-    }
-    if (!initialDataFetchCompleted) return;
-    if (travellerIdFromUrl === lastOpenedTravellerIdFromUrlRef.current) return;
-    const travellerFromList = travellers.find((t) => t.id === travellerIdFromUrl);
-    lastOpenedTravellerIdFromUrlRef.current = travellerIdFromUrl;
-    setViewMode(VIEW_MODE.INDIVIDUAL);
-    const id = travellerIdFromUrl;
-    if (travellerFromList) {
-      setSelectedEntity({ type: ENTITY_TYPE.TRAVELLER, data: travellerFromList });
-      return;
-    }
-    const code = selectedAirport.airportCode;
-    const airportName = selectedAirport.airportName;
-    fetchTravellerByAirportAndUser(code, travellerIdFromUrl, airportName).then((freshTraveller) => {
-      if (!freshTraveller) return;
-      setSelectedEntity((prev) =>
-        prev === null || (prev?.type === ENTITY_TYPE.TRAVELLER && prev.data.id === id)
-          ? { type: ENTITY_TYPE.TRAVELLER, data: freshTraveller }
-          : prev,
-      );
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- fetchTravellerByAirportAndUser/selectedAirport intentionally omitted
-  }, [travellerIdFromUrl, initialDataFetchCompleted, travellers, openFromUrlTrigger]);
 
   // Whenever a group modal is open, refetch group so data is always fresh (e.g. after leave). Traveller modal fetches connection status itself.
   useEffect(() => {

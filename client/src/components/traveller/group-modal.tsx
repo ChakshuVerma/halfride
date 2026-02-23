@@ -137,11 +137,6 @@ export function GroupModal({
   );
   const isFull = group.groupSize >= group.maxUsers;
 
-  useEffect(() => {
-    setDisplayName(group.name);
-    setEditNameValue(group.name);
-  }, [group.id, group.name]);
-
   const handleStartEditName = () => {
     setEditNameValue(displayName);
     setNameUpdateError(null);

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, type ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
 import { Bell, Inbox } from "lucide-react";
+import { useEntityModal } from "@/contexts/EntityModalContext";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -13,10 +13,6 @@ import {
   NOTIFICATIONS_PAGE_SIZE,
   type Notification,
 } from "@/hooks/useNotificationApi";
-import {
-  getAirportGroupPath,
-  getAirportTravellerPath,
-} from "@/constants/routes";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -101,7 +97,7 @@ function renderNotificationBody(
 }
 
 export function NotificationBell() {
-  const navigate = useNavigate();
+  const { openEntityModal } = useEntityModal();
   const {
     fetchNotifications,
     getUnreadCount,
@@ -180,11 +176,18 @@ export function NotificationBell() {
     if (action) {
       setIsOpen(false);
       const { airportCode } = action.payload;
-      const state = { fromNotification: true };
       if (action.type === NOTIFICATION_ACTION_TYPES.OPEN_GROUP && action.payload.groupId) {
-        navigate(getAirportGroupPath(airportCode, action.payload.groupId), { state });
+        openEntityModal({
+          type: "group",
+          airportCode,
+          entityId: action.payload.groupId,
+        });
       } else if (action.type === NOTIFICATION_ACTION_TYPES.OPEN_TRAVELLER && action.payload.userId) {
-        navigate(getAirportTravellerPath(airportCode, action.payload.userId), { state });
+        openEntityModal({
+          type: "traveller",
+          airportCode,
+          entityId: action.payload.userId,
+        });
       }
     }
   };
