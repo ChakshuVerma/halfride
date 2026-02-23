@@ -1,12 +1,21 @@
 import { API_ROUTES } from "./apiRoutes"
+import { ApiError, parseApiErrorResponse } from "./apiErrors"
 
 const ERROR_REQUEST_FAILED = (status: number) => `Request failed with status ${status}`
-const ERROR_HTTP_ERROR = (status: number) => `HTTP error! status: ${status}`
 
 async function refreshSessionOnce() {
-  // backend rotates refresh token + returns new access cookie
   const res = await fetch(API_ROUTES.AUTH_REFRESH, { method: "POST", credentials: "include" })
   return res.ok
+}
+
+async function parseErrorResponse(response: Response): Promise<ApiError> {
+  const body = await response.json().catch(() => null)
+  const { message, code, body: errorBody } = parseApiErrorResponse(
+    response.status,
+    body,
+    ERROR_REQUEST_FAILED(response.status),
+  )
+  return new ApiError(response.status, message, code, errorBody)
 }
 
 export async function publicRequest<T>(
@@ -26,10 +35,7 @@ export async function publicRequest<T>(
   })
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ 
-      message: ERROR_HTTP_ERROR(response.status)
-    }))
-    throw new Error(error.message || ERROR_REQUEST_FAILED(response.status))
+    throw await parseErrorResponse(response)
   }
 
   return response.json()
@@ -64,10 +70,7 @@ export async function sessionRequest<T>(endpoint: string, options: RequestInit =
         if (retry.ok) return retry.json()
       }
     }
-    const error = await response.json().catch(() => ({
-      message: ERROR_HTTP_ERROR(response.status),
-    }))
-    throw new Error(error.message || ERROR_REQUEST_FAILED(response.status))
+    throw await parseErrorResponse(response)
   }
 
   return response.json()

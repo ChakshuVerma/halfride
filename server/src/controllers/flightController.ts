@@ -9,6 +9,13 @@ import {
   isDateTodayOrTomorrow,
   checkRoadDistance,
 } from "../utils/controllerUtils";
+import {
+  ApiError,
+  badRequest,
+  notFound,
+  internalServerError,
+  sendError,
+} from "../utils/errors";
 
 interface CachedAirport {
   airportCode: string;
@@ -133,13 +140,21 @@ async function fetchAndMapFlightData(
   });
 
   if (!apiResponse.ok)
-    throw new Error(`Upstream API returned ${apiResponse.status}`);
+    throw new ApiError({
+      statusCode: 502,
+      code: "UPSTREAM_ERROR",
+      message: `Upstream API returned ${apiResponse.status}`,
+    });
 
   const raw = (await apiResponse.json()) as FlightStatsResponse;
   const f = raw?.data;
 
   if (!f || (!f.status && !f.schedule)) {
-    throw new Error("Flight not found in external tracking system");
+    throw new ApiError({
+      statusCode: 404,
+      code: "FLIGHT_NOT_FOUND",
+      message: "Flight not found in external tracking system",
+    });
   }
 
   const isLanded =
@@ -228,21 +243,12 @@ export async function createFlightTracker(req: Request, res: Response) {
     !userTerminal ||
     !airportCode
   ) {
-    return res.status(400).json({
-      ok: false,
-      error: "Bad Request",
-      message: "Missing required parameters",
-    });
+    return badRequest(res, "Missing required parameters");
   }
 
-  // 1. Verify User record actually exists in Firestore
   const userCheck = await checkUserExists(uid);
   if (!userCheck.ok || !userCheck.exists) {
-    return res.status(400).json({
-      ok: false,
-      error: "Bad Request",
-      message: "User record not found",
-    });
+    return badRequest(res, "User record not found");
   }
 
   const carrier = String(rawCarrier ?? "")
@@ -261,9 +267,7 @@ export async function createFlightTracker(req: Request, res: Response) {
     isNaN(d) ||
     !isDateTodayOrTomorrow(new Date(Date.UTC(y, m - 1, d)))
   ) {
-    return res
-      .status(400)
-      .json({ ok: false, error: "Bad Request", message: "Invalid params" });
+    return badRequest(res, "Invalid params");
   }
 
   const flightDateStr = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -288,55 +292,45 @@ export async function createFlightTracker(req: Request, res: Response) {
       flightData = await fetchAndMapFlightData(carrier, fNum, y, m, d);
     }
 
-    // 3. Validate Arrival Airport
     const arrivalCode = flightData.arrival?.airportCode;
     if (!arrivalCode) {
-      return res.status(400).json({
-        ok: false,
-        error: "Bad Request",
-        message: "Flight arrival airport not found",
-      });
+      return badRequest(res, "Flight arrival airport not found");
     }
 
     if (airportCode && arrivalCode !== String(airportCode).toUpperCase()) {
-      return res.status(400).json({
-        ok: false,
-        error: "Bad Request",
-        message: `This flight arrives at ${arrivalCode}, not ${airportCode}.`,
-      });
+      return badRequest(
+        res,
+        `This flight arrives at ${arrivalCode}, not ${airportCode}.`,
+      );
     }
 
-    // 4. Validate that the distance between airport and destination is less than MAX_DISTANCE
     if (destination.placeId) {
       try {
         const distance = await checkRoadDistance(
           arrivalCode,
           destination.placeId,
         );
-
         if (distance > MAX_DISTANCE) {
-          return res.status(400).json({
-            ok: false,
-            error: "Bad Request",
-            message: `This flight is too far from ${arrivalCode}.`,
-          });
+          return badRequest(
+            res,
+            `This flight is too far from ${arrivalCode}.`,
+          );
         }
       } catch (error) {
         console.error("Error checking road distance:", error);
-        return res.status(500).json({
-          ok: false,
-          error: "Internal Server Error",
-          message: "Error checking road distance",
-        });
+        return internalServerError(
+          res,
+          "Error checking road distance",
+          "DISTANCE_CHECK_FAILED",
+        );
       }
     }
     const { byCode } = await ensureAirportsCache(db);
     if (!byCode.has(String(arrivalCode).toUpperCase())) {
-      return res.status(400).json({
-        ok: false,
-        error: "Bad Request",
-        message: `Arrival airport ${arrivalCode} is not supported`,
-      });
+      return badRequest(
+        res,
+        `Arrival airport ${arrivalCode} is not supported`,
+      );
     }
 
     // 4. Persist Flight if new
@@ -375,12 +369,10 @@ export async function createFlightTracker(req: Request, res: Response) {
     if (!activeListingSnap.empty) {
       const otherActive = activeListingSnap.docs.find((d) => d.id !== travellerRef.id);
       if (otherActive) {
-        return res.status(400).json({
-          ok: false,
-          error: "Bad Request",
-          message:
-            "You already have an active listing. Complete or remove it before adding another.",
-        });
+        return badRequest(
+          res,
+          "You already have an active listing. Complete or remove it before adding another.",
+        );
       }
     }
 
@@ -421,12 +413,20 @@ export async function createFlightTracker(req: Request, res: Response) {
       flightId: flightDocId,
       travellerId: travellerDocId,
     });
-  } catch (error: any) {
-    console.error("Create Flight Error:", error.message);
-    const code = error.message.includes("not found") ? 404 : 500;
-    return res
-      .status(code)
-      .json({ ok: false, error: "Internal Error", message: error.message });
+  } catch (error: unknown) {
+    console.error("Create Flight Error:", error);
+    if (error instanceof ApiError) {
+      return sendError(res, {
+        statusCode: error.statusCode,
+        code: error.code,
+        message: error.message,
+        details: error.details,
+      });
+    }
+    return internalServerError(
+      res,
+      error instanceof Error ? error.message : "Failed to create flight tracker",
+    );
   }
 }
 /**
@@ -451,11 +451,7 @@ export async function getFlightTracker(req: Request, res: Response) {
   try {
     const doc = await flightRef.get();
     if (!doc.exists) {
-      return res.status(404).json({
-        ok: false,
-        error: "Not Found",
-        message: "Flight not registered",
-      });
+      return notFound(res, "Flight not registered");
     }
 
     const existing = doc.data() as FlightDoc;
@@ -474,9 +470,17 @@ export async function getFlightTracker(req: Request, res: Response) {
     });
 
     return res.json({ ok: true, valid: true, data: flightData });
-  } catch (error: any) {
-    console.error("Tracker Error:", error.message);
-    return res.status(500).json({ ok: false, error: "Internal Server Error" });
+  } catch (error: unknown) {
+    console.error("Tracker Error:", error);
+    if (error instanceof ApiError) {
+      return sendError(res, {
+        statusCode: error.statusCode,
+        code: error.code,
+        message: error.message,
+        details: error.details,
+      });
+    }
+    return internalServerError(res);
   }
 }
 
@@ -489,13 +493,12 @@ export async function getAirports(_req: Request, res: Response) {
     const db = admin.firestore();
     const { list } = await ensureAirportsCache(db);
     return res.json({ ok: true, data: list });
-  } catch (error: any) {
-    console.error("Get Airports Error:", error.message);
-    return res.status(500).json({
-      ok: false,
-      error: "Internal Server Error",
-      message: error.message,
-    });
+  } catch (error: unknown) {
+    console.error("Get Airports Error:", error);
+    return internalServerError(
+      res,
+      error instanceof Error ? error.message : "Failed to load airports",
+    );
   }
 }
 
@@ -507,11 +510,7 @@ export async function getTerminals(req: Request, res: Response) {
   const { airportCode } = req.body;
 
   if (!airportCode) {
-    return res.status(400).json({
-      ok: false,
-      error: "Bad Request",
-      message: "Airport Code is required",
-    });
+    return badRequest(res, "Airport Code is required");
   }
 
   const code = String(airportCode).toUpperCase();
@@ -522,20 +521,15 @@ export async function getTerminals(req: Request, res: Response) {
     const cached = byCode.get(code);
 
     if (!cached) {
-      return res.status(404).json({
-        ok: false,
-        error: "Not Found",
-        message: `Airport ${airportCode} not found`,
-      });
+      return notFound(res, `Airport ${airportCode} not found`);
     }
 
     return res.json({ ok: true, data: cached.terminals });
-  } catch (error: any) {
-    console.error("Get Terminals Error:", error.message);
-    return res.status(500).json({
-      ok: false,
-      error: "Internal Server Error",
-      message: error.message,
-    });
+  } catch (error: unknown) {
+    console.error("Get Terminals Error:", error);
+    return internalServerError(
+      res,
+      error instanceof Error ? error.message : "Failed to load terminals",
+    );
   }
 }

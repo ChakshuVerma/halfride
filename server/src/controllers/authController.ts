@@ -6,10 +6,12 @@ import { serializeCookie, readCookie } from "../utils/cookies";
 import { hashPassword, verifyPassword } from "../utils/password";
 import { randomJti, signJwt, verifyJwt } from "../utils/jwt";
 import { COLLECTIONS, USER_FIELDS } from "../constants/db";
-
-const ERROR_SERVER_CONFIG = "Server Configuration Error";
-const ERROR_BAD_REQUEST = "Bad Request";
-const ERROR_UNAUTHORIZED = "Unauthorized";
+import {
+  badRequest,
+  unauthorized,
+  conflict,
+  internalServerError,
+} from "../utils/errors";
 
 const MESSAGE_ADMIN_NOT_CONFIGURED =
   "Firebase Admin SDK is not properly configured. Please check server logs.";
@@ -37,15 +39,26 @@ function hashRefreshJti(jti: string) {
 
 export async function signupComplete(req: Request, res: Response) {
   if (!adminInitialized) {
-    return res
-      .status(500)
-      .json({
-        error: ERROR_SERVER_CONFIG,
-        message: MESSAGE_ADMIN_NOT_CONFIGURED,
-      });
+    return internalServerError(
+      res,
+      MESSAGE_ADMIN_NOT_CONFIGURED,
+      "SERVER_CONFIG",
+    );
   }
 
-  const { accessSecret, refreshSecret } = requireSecrets();
+  let accessSecret: string;
+  let refreshSecret: string;
+  try {
+    const secrets = requireSecrets();
+    accessSecret = secrets.accessSecret;
+    refreshSecret = secrets.refreshSecret;
+  } catch (e) {
+    return internalServerError(
+      res,
+      e instanceof Error ? e.message : "Server configuration error",
+      "SERVER_CONFIG",
+    );
+  }
 
   const firebaseIdToken = req.body?.firebaseIdToken as string | undefined;
   const username = (req.body?.username as string | undefined)?.trim();
@@ -57,20 +70,10 @@ export async function signupComplete(req: Request, res: Response) {
   const isFemale = req.body?.isFemale as boolean | undefined;
 
   if (!firebaseIdToken || !username || !password) {
-    return res
-      .status(400)
-      .json({
-        error: ERROR_BAD_REQUEST,
-        message: "firebaseIdToken, username, password are required",
-      });
+    return badRequest(res, "firebaseIdToken, username, password are required");
   }
   if (!DOB || !FirstName || !LastName || typeof isFemale !== "boolean") {
-    return res
-      .status(400)
-      .json({
-        error: ERROR_BAD_REQUEST,
-        message: "DOB, FirstName, LastName, isFemale are required",
-      });
+    return badRequest(res, "DOB, FirstName, LastName, isFemale are required");
   }
 
   try {
@@ -79,12 +82,7 @@ export async function signupComplete(req: Request, res: Response) {
     const phone = decoded.phone_number ?? null;
 
     if (!phone) {
-      return res
-        .status(400)
-        .json({
-          error: ERROR_BAD_REQUEST,
-          message: "Phone number missing in token",
-        });
+      return badRequest(res, "Phone number missing in token");
     }
 
     // Enforce unique username
@@ -96,9 +94,7 @@ export async function signupComplete(req: Request, res: Response) {
       .limit(1)
       .get();
     if (!existingByUsername.empty) {
-      return res
-        .status(409)
-        .json({ error: "Conflict", message: "Username already taken" });
+      return conflict(res, "Username already taken");
     }
 
     const users = admin.firestore().collection(COLLECTIONS.USERS);
@@ -161,28 +157,33 @@ export async function signupComplete(req: Request, res: Response) {
       }),
     ]);
     return res.status(201).json({ ok: true, uid });
-  } catch (e: any) {
-    return res
-      .status(401)
-      .json({
-        error: ERROR_UNAUTHORIZED,
-        message: e?.message ?? "Invalid token",
-      });
+  } catch (e: unknown) {
+    return unauthorized(
+      res,
+      e instanceof Error ? e.message : "Invalid token",
+    );
   }
 }
 
 export async function login(req: Request, res: Response) {
-  const { accessSecret, refreshSecret } = requireSecrets();
+  let accessSecret: string;
+  let refreshSecret: string;
+  try {
+    const secrets = requireSecrets();
+    accessSecret = secrets.accessSecret;
+    refreshSecret = secrets.refreshSecret;
+  } catch (e) {
+    return internalServerError(
+      res,
+      e instanceof Error ? e.message : "Server configuration error",
+      "SERVER_CONFIG",
+    );
+  }
 
   const username = (req.body?.username as string | undefined)?.trim();
   const password = req.body?.password as string | undefined;
   if (!username || !password) {
-    return res
-      .status(400)
-      .json({
-        error: ERROR_BAD_REQUEST,
-        message: "username and password are required",
-      });
+    return badRequest(res, "username and password are required");
   }
 
   const qs = await admin
@@ -192,20 +193,12 @@ export async function login(req: Request, res: Response) {
     .limit(1)
     .get();
 
-  if (qs.empty)
-    return res
-      .status(401)
-      .json({ error: ERROR_UNAUTHORIZED, message: "Invalid credentials" });
+  if (qs.empty) return unauthorized(res, "Invalid credentials");
 
   const doc = qs.docs[0];
   const data = doc.data() as any;
   if (!data[USER_FIELDS.PASSWORD_SALT] || !data[USER_FIELDS.PASSWORD_HASH]) {
-    return res
-      .status(401)
-      .json({
-        error: ERROR_UNAUTHORIZED,
-        message: "Password login not enabled for this user",
-      });
+    return unauthorized(res, "Password login not enabled for this user");
   }
 
   const ok = await verifyPassword({
@@ -214,10 +207,7 @@ export async function login(req: Request, res: Response) {
     hashB64: data[USER_FIELDS.PASSWORD_HASH],
   });
 
-  if (!ok)
-    return res
-      .status(401)
-      .json({ error: ERROR_UNAUTHORIZED, message: "Invalid credentials" });
+  if (!ok) return unauthorized(res, "Invalid credentials");
 
   const refreshJti = randomJti();
   await doc.ref.set(
@@ -267,19 +257,27 @@ export async function login(req: Request, res: Response) {
 }
 
 export async function refresh(req: Request, res: Response) {
-  const { accessSecret, refreshSecret } = requireSecrets();
+  let accessSecret: string;
+  let refreshSecret: string;
+  try {
+    const secrets = requireSecrets();
+    accessSecret = secrets.accessSecret;
+    refreshSecret = secrets.refreshSecret;
+  } catch (e) {
+    return internalServerError(
+      res,
+      e instanceof Error ? e.message : "Server configuration error",
+      "SERVER_CONFIG",
+    );
+  }
 
   const refreshToken = readCookie(req.headers.cookie, REFRESH_COOKIE);
   if (!refreshToken)
-    return res
-      .status(401)
-      .json({ error: ERROR_UNAUTHORIZED, message: "Missing refresh token" });
+    return unauthorized(res, "Missing refresh token");
 
   const verified = verifyJwt({ token: refreshToken, secret: refreshSecret });
   if (!verified.valid)
-    return res
-      .status(401)
-      .json({ error: ERROR_UNAUTHORIZED, message: verified.error });
+    return unauthorized(res, verified.error);
 
   const uid = String(verified.payload.sub);
   const refreshJti = String(verified.payload.jti);
@@ -289,18 +287,14 @@ export async function refresh(req: Request, res: Response) {
 
   const snap = await docRef.get();
   if (!snap.exists)
-    return res
-      .status(401)
-      .json({ error: ERROR_UNAUTHORIZED, message: "Invalid session" });
+    return unauthorized(res, "Invalid session");
 
   const data = snap.data() as any;
   if (
     !data[USER_FIELDS.REFRESH_JTI_HASH] ||
     data[USER_FIELDS.REFRESH_JTI_HASH] !== hashRefreshJti(refreshJti)
   ) {
-    return res
-      .status(401)
-      .json({ error: ERROR_UNAUTHORIZED, message: "Refresh token revoked" });
+    return unauthorized(res, "Refresh token revoked");
   }
 
   // rotate refresh token
@@ -401,25 +395,20 @@ export async function logout(req: Request, res: Response) {
 export async function me(req: Request, res: Response) {
   const accessToken = readCookie(req.headers.cookie, ACCESS_COOKIE);
   if (!accessToken)
-    return res
-      .status(401)
-      .json({ error: ERROR_UNAUTHORIZED, message: "Missing access token" });
+    return unauthorized(res, "Missing access token");
 
   const accessSecret = process.env.ACCESS_TOKEN_SECRET;
   if (!accessSecret) {
-    return res
-      .status(500)
-      .json({
-        error: ERROR_SERVER_CONFIG,
-        message: "ACCESS_TOKEN_SECRET is not set",
-      });
+    return internalServerError(
+      res,
+      "ACCESS_TOKEN_SECRET is not set",
+      "SERVER_CONFIG",
+    );
   }
 
   const verified = verifyJwt({ token: accessToken, secret: accessSecret });
   if (!verified.valid)
-    return res
-      .status(401)
-      .json({ error: ERROR_UNAUTHORIZED, message: verified.error });
+    return unauthorized(res, verified.error);
 
   return res.json({
     ok: true,
@@ -430,12 +419,11 @@ export async function me(req: Request, res: Response) {
 
 export async function forgotPasswordComplete(req: Request, res: Response) {
   if (!adminInitialized) {
-    return res
-      .status(500)
-      .json({
-        error: ERROR_SERVER_CONFIG,
-        message: MESSAGE_ADMIN_NOT_CONFIGURED,
-      });
+    return internalServerError(
+      res,
+      MESSAGE_ADMIN_NOT_CONFIGURED,
+      "SERVER_CONFIG",
+    );
   }
 
   const firebaseIdToken = req.body?.firebaseIdToken as string | undefined;
@@ -443,22 +431,14 @@ export async function forgotPasswordComplete(req: Request, res: Response) {
   const newPassword = req.body?.newPassword as string | undefined;
 
   if (!firebaseIdToken || !username || !newPassword) {
-    return res.status(400).json({
-      error: ERROR_BAD_REQUEST,
-      message: "firebaseIdToken, username, newPassword are required",
-    });
+    return badRequest(res, "firebaseIdToken, username, newPassword are required");
   }
 
   try {
     const decoded = await admin.auth().verifyIdToken(firebaseIdToken);
     const phoneFromToken = decoded.phone_number ?? null;
     if (!phoneFromToken) {
-      return res
-        .status(400)
-        .json({
-          error: ERROR_BAD_REQUEST,
-          message: "Phone number missing in token",
-        });
+      return badRequest(res, "Phone number missing in token");
     }
 
     const qs = await admin
@@ -469,19 +449,14 @@ export async function forgotPasswordComplete(req: Request, res: Response) {
       .get();
 
     if (qs.empty) {
-      // Avoid username enumeration: return generic error
-      return res
-        .status(401)
-        .json({ error: ERROR_UNAUTHORIZED, message: "Invalid verification" });
+      return unauthorized(res, "Invalid verification");
     }
 
     const doc = qs.docs[0];
     const data = doc.data() as any;
     const storedPhone = data.Phone ?? null;
     if (!storedPhone || storedPhone !== phoneFromToken) {
-      return res
-        .status(401)
-        .json({ error: ERROR_UNAUTHORIZED, message: "Invalid verification" });
+      return unauthorized(res, "Invalid verification");
     }
 
     const pwd = await hashPassword(newPassword);
@@ -515,12 +490,10 @@ export async function forgotPasswordComplete(req: Request, res: Response) {
     ]);
 
     return res.json({ ok: true });
-  } catch (e: any) {
-    return res
-      .status(401)
-      .json({
-        error: ERROR_UNAUTHORIZED,
-        message: e?.message ?? "Invalid token",
-      });
+  } catch (e: unknown) {
+    return unauthorized(
+      res,
+      e instanceof Error ? e.message : "Invalid token",
+    );
   }
 }

@@ -13,6 +13,13 @@ import {
   NOTIFICATION_ACTION_TYPES,
 } from "../types/notifications";
 import { roadDistanceBetweenTwoPoints } from "../utils/controllerUtils";
+import {
+  badRequest,
+  unauthorized,
+  notFound,
+  forbidden,
+  internalServerError,
+} from "../utils/errors";
 
 const NEARBY_LISTING_MAX_DISTANCE_METERS = 5000;
 
@@ -635,7 +642,7 @@ export async function notifyConnectionRequestResponded(
 export async function getMyNotifications(req: Request, res: Response) {
   const uid = req.auth?.uid;
   if (!uid) {
-    return res.status(401).json({ ok: false, error: "Unauthorized" });
+    return unauthorized(res, "Unauthorized");
   }
   // Pagination params: max NOTIFICATIONS_PAGE_SIZE per page
   const rawLimit = parseInt(
@@ -690,16 +697,18 @@ export async function getMyNotifications(req: Request, res: Response) {
 
     const hasMore = snapshot.docs.length === limit;
     return res.json({ ok: true, data: notifications, hasMore });
-  } catch (error: any) {
-    console.error("Get Notifications Error:", error.message);
-    // Return specific error message to help debugging (e.g. missing index)
-    return res.status(500).json({ ok: false, error: error.message });
+  } catch (error: unknown) {
+    console.error("Get Notifications Error:", error);
+    return internalServerError(
+      res,
+      error instanceof Error ? error.message : "Failed to load notifications",
+    );
   }
 }
 
 export async function getUnreadCount(req: Request, res: Response) {
   const uid = req.auth?.uid;
-  if (!uid) return res.status(401).json({ ok: false, error: "Unauthorized" });
+  if (!uid) return unauthorized(res, "Unauthorized");
 
   const db = admin.firestore();
   try {
@@ -712,8 +721,11 @@ export async function getUnreadCount(req: Request, res: Response) {
       .get();
 
     return res.json({ ok: true, count: snapshot.data().count });
-  } catch (error: any) {
-    return res.status(500).json({ ok: false, error: error.message });
+  } catch (error: unknown) {
+    return internalServerError(
+      res,
+      error instanceof Error ? error.message : "Failed to get unread count",
+    );
   }
 }
 
@@ -724,11 +736,9 @@ export async function markNotificationRead(req: Request, res: Response) {
   const uid = req.auth?.uid;
   const notificationId = String(req.params.notificationId);
 
-  if (!uid) return res.status(401).json({ ok: false, error: "Unauthorized" });
+  if (!uid) return unauthorized(res, "Unauthorized");
   if (!notificationId)
-    return res
-      .status(400)
-      .json({ ok: false, error: "Failed to mark notification as read" });
+    return badRequest(res, "Notification ID is required");
 
   const db = admin.firestore();
   try {
@@ -736,20 +746,15 @@ export async function markNotificationRead(req: Request, res: Response) {
     const doc = await ref.get();
 
     if (!doc.exists) {
-      return res
-        .status(404)
-        .json({ ok: false, error: "Failed to mark notification as read" });
+      return notFound(res, "Notification not found");
     }
 
     const data = doc.data();
-    // Check ownership using Ref path comparison
     const recipientRef = data?.[NOTIFICATION_FIELDS.RECIPIENT_REF];
     const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
 
     if (!recipientRef || recipientRef.path !== userRef.path) {
-      return res
-        .status(403)
-        .json({ ok: false, error: "Failed to mark notification as read" });
+      return forbidden(res, "Not allowed to mark this notification as read");
     }
 
     await ref.update({
@@ -757,15 +762,18 @@ export async function markNotificationRead(req: Request, res: Response) {
     });
 
     return res.json({ ok: true });
-  } catch (error: any) {
-    console.error("Mark Read Error:", error.message);
-    return res.status(500).json({ ok: false, error: error.message });
+  } catch (error: unknown) {
+    console.error("Mark Read Error:", error);
+    return internalServerError(
+      res,
+      error instanceof Error ? error.message : "Failed to mark as read",
+    );
   }
 }
 
 export async function markAllNotificationsRead(req: Request, res: Response) {
   const uid = req.auth?.uid;
-  if (!uid) return res.status(401).json({ ok: false, error: "Unauthorized" });
+  if (!uid) return unauthorized(res, "Unauthorized");
 
   const db = admin.firestore();
   try {
@@ -786,8 +794,11 @@ export async function markAllNotificationsRead(req: Request, res: Response) {
 
     await batch.commit();
     return res.json({ ok: true, count: snapshot.size });
-  } catch (error: any) {
-    return res.status(500).json({ ok: false, error: error.message });
+  } catch (error: unknown) {
+    return internalServerError(
+      res,
+      error instanceof Error ? error.message : "Failed to mark all as read",
+    );
   }
 }
 
@@ -796,7 +807,7 @@ export async function markAllNotificationsRead(req: Request, res: Response) {
  */
 export async function seedDummyNotifications(req: Request, res: Response) {
   const uid = req.auth?.uid;
-  if (!uid) return res.status(401).json({ ok: false, error: "Unauthorized" });
+  if (!uid) return unauthorized(res, "Unauthorized");
 
   try {
     const dummyData: CreateNotificationPayload[] = [
@@ -834,7 +845,10 @@ export async function seedDummyNotifications(req: Request, res: Response) {
       message: "Seeded 3 dummy notifications",
       results,
     });
-  } catch (error: any) {
-    return res.status(500).json({ ok: false, error: error.message });
+  } catch (error: unknown) {
+    return internalServerError(
+      res,
+      error instanceof Error ? error.message : "Failed to seed notifications",
+    );
   }
 }

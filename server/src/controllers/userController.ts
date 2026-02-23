@@ -9,10 +9,17 @@ import {
   GROUP_FIELDS,
   FLIGHT_FIELDS,
 } from '../constants/db';
+import {
+  badRequest,
+  unauthorized,
+  notFound,
+  conflict,
+  internalServerError,
+} from '../utils/errors';
 
 export async function profile(req: Request, res: Response) {
   const uid = req.auth?.uid;
-  if (!uid) return res.status(401).json({ ok: false, error: 'Unauthorized' });
+  if (!uid) return unauthorized(res, 'Unauthorized');
 
   const snap = await admin.firestore().collection(COLLECTIONS.USERS).doc(uid).get();
 
@@ -26,10 +33,10 @@ export async function profile(req: Request, res: Response) {
  */
 export async function profileByUsername(req: Request, res: Response) {
   const viewerUid = req.auth?.uid;
-  if (!viewerUid) return res.status(401).json({ ok: false, error: 'Unauthorized' });
+  if (!viewerUid) return unauthorized(res, 'Unauthorized');
 
   const username = typeof req.params.username === 'string' ? req.params.username.trim() : '';
-  if (!username) return res.status(400).json({ ok: false, error: 'Username is required' });
+  if (!username) return badRequest(res, 'Username is required');
 
   const db = admin.firestore();
 
@@ -41,7 +48,7 @@ export async function profileByUsername(req: Request, res: Response) {
       .get();
 
     if (userSnap.empty) {
-      return res.status(404).json({ ok: false, error: 'User not found' });
+      return notFound(res, 'User not found');
     }
 
     const profileDoc = userSnap.docs[0];
@@ -185,14 +192,13 @@ export async function profileByUsername(req: Request, res: Response) {
       currentGroup,
       activeTrip,
     });
-  } catch (e: any) {
-    console.error('profileByUsername error:', e?.message ?? e);
-    if (e?.stack) console.error(e.stack);
-    return res.status(500).json({
-      ok: false,
-      error: 'Internal Server Error',
-      message: e?.message ?? undefined,
-    });
+  } catch (e: unknown) {
+    console.error('profileByUsername error:', e);
+    if (e instanceof Error && e.stack) console.error(e.stack);
+    return internalServerError(
+      res,
+      e instanceof Error ? e.message : 'Failed to load profile',
+    );
   }
 }
 
@@ -208,19 +214,16 @@ export async function createMe(req: Request, res: Response) {
   const uid = req.auth?.uid;
   const phoneFromToken = null;
 
-  if (!uid) return res.status(401).json({ ok: false, error: 'Missing user context' });
+  if (!uid) return unauthorized(res, 'Missing user context');
 
   const body = (req.body ?? {}) as Partial<CreateUserBody>;
 
   if (!body.DOB || !body.FirstName || !body.LastName || typeof body.isFemale !== 'boolean') {
-    return res.status(400).json({
-      ok: false,
-      error: 'Invalid body. Required: DOB, FirstName, LastName, isFemale',
-    });
+    return badRequest(res, 'Invalid body. Required: DOB, FirstName, LastName, isFemale');
   }
 
   if (body.Phone && phoneFromToken && body.Phone !== phoneFromToken) {
-    return res.status(400).json({ ok: false, error: 'Phone must match authenticated phone_number' });
+    return badRequest(res, 'Phone must match authenticated phone_number');
   }
 
   const users = admin.firestore().collection(COLLECTIONS.USERS);
@@ -243,12 +246,15 @@ export async function createMe(req: Request, res: Response) {
     // create() guarantees uniqueness: fails if doc already exists
     await docRef.create(payload);
     return res.status(201).json({ ok: true, uid });
-  } catch (e: any) {
-    // Firestore gRPC ALREADY_EXISTS is code 6
-    if (e?.code === 6) {
-      return res.status(409).json({ ok: false, error: 'User already exists' });
+  } catch (e: unknown) {
+    const err = e as { code?: number };
+    if (err?.code === 6) {
+      return conflict(res, 'User already exists');
     }
-    return res.status(500).json({ ok: false, error: 'Failed to create user', detail: e?.message });
+    return internalServerError(
+      res,
+      e instanceof Error ? e.message : 'Failed to create user',
+    );
   }
 }
 
@@ -257,18 +263,24 @@ export async function checkUserExists(uid: string) {
     const snap = await admin.firestore().collection(COLLECTIONS.USERS).doc(uid).get();
 
     return { ok: true, exists: snap.exists, data: snap.exists ? snap.data() : null };
-  } catch (error: any) {
-    return { ok: false, error: error.message };
+  } catch (error: unknown) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
+    };
   }
 }
 
 export async function meExists(req: Request, res: Response) {
   const uid = req.auth?.uid;
-  if (!uid) return res.status(401).json({ ok: false, error: 'Missing user context' });
+  if (!uid) return unauthorized(res, 'Missing user context');
 
   const result = await checkUserExists(uid);
   if (!result.ok) {
-    return res.status(500).json({ ok: false, error: 'Failed to check user', detail: result.error });
+    return internalServerError(
+      res,
+      result.error ?? 'Failed to check user',
+    );
   }
 
   return res.json({
@@ -287,11 +299,11 @@ const AVATAR_JPEG_QUALITY = 85;
  */
 export async function uploadProfilePhotoHandler(req: Request, res: Response) {
   const uid = req.auth?.uid;
-  if (!uid) return res.status(401).json({ ok: false, error: 'Unauthorized' });
+  if (!uid) return unauthorized(res, 'Unauthorized');
 
   const file = (req as any).file;
   if (!file || !file.buffer) {
-    return res.status(400).json({ ok: false, error: 'No photo file provided' });
+    return badRequest(res, 'No photo file provided');
   }
 
   try {
@@ -308,12 +320,11 @@ export async function uploadProfilePhotoHandler(req: Request, res: Response) {
     });
 
     return res.json({ ok: true, photoURL });
-  } catch (e: any) {
-    console.error('uploadProfilePhoto error:', e?.message ?? e);
-    return res.status(500).json({
-      ok: false,
-      error: 'Failed to process or save photo',
-      message: e?.message ?? undefined,
-    });
+  } catch (e: unknown) {
+    console.error('uploadProfilePhoto error:', e);
+    return internalServerError(
+      res,
+      e instanceof Error ? e.message : 'Failed to process or save photo',
+    );
   }
 }
