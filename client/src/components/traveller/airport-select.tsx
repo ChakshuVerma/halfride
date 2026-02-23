@@ -98,7 +98,7 @@ export function AirportSelect({
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <div className="flex flex-col h-[70vh] sm:h-[600px]">
-          <div className="px-4 py-4 border-b border-zinc-100">
+          <div className="px-4 pr-12 sm:pr-14 py-4 border-b border-zinc-100">
             <DialogTitle className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-2 mb-2">
               {LABELS.SELECT_AIRPORT_TITLE}
             </DialogTitle>
@@ -111,6 +111,7 @@ export function AirportSelect({
                 <CommandInput
                   ref={searchInputRef}
                   placeholder={LABELS.SEARCH_AIRPORT_PLACEHOLDER}
+                  showIcon={false}
                   className="border-none focus:ring-0 text-lg h-12 bg-transparent w-full placeholder:text-zinc-400 text-zinc-900"
                 />
               </div>

@@ -269,8 +269,16 @@ export function TravellerModal({
         <div className="flex items-start gap-5">
           {/* Avatar */}
           <div className="relative shrink-0">
-            <div className="w-16 h-16 rounded-2xl bg-zinc-100 flex items-center justify-center border border-zinc-200 text-zinc-400">
-              <User className="w-8 h-8" strokeWidth={1.5} />
+            <div className="w-16 h-16 rounded-2xl bg-zinc-100 flex items-center justify-center border border-zinc-200 text-zinc-400 overflow-hidden">
+              {effectiveTraveller.photoURL ? (
+                <img
+                  src={effectiveTraveller.photoURL}
+                  alt={effectiveTraveller.name}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User className="w-8 h-8" strokeWidth={1.5} />
+              )}
             </div>
             {/* Online Indicator */}
             <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
@@ -299,6 +307,12 @@ export function TravellerModal({
             </div>
           </div>
         </div>
+        {traveller.destination && (
+          <div className="mt-2 flex items-start gap-1.5 text-sm font-medium text-zinc-500">
+            <MapPin className="w-3.5 h-3.5 shrink-0 text-zinc-400 mt-0.5" />
+            <span className="min-w-0 break-words">To {traveller.destination}</span>
+          </div>
+        )}
       </DialogHeader>
 
       {/* 2. Scrollable Content */}
@@ -534,9 +548,6 @@ export function TravellerModal({
       {/* 3. Footer Action */}
       {traveller.isOwnListing ? (
         <div className="p-6 pt-2 border-t border-zinc-100 bg-white space-y-3">
-          <div className="w-full py-3 rounded-xl bg-muted/50 text-muted-foreground text-sm font-medium text-center border border-border/50">
-            This is your listing. Others can send you connection requests from here.
-          </div>
           {onRevokeListing && (
             <>
               <button
