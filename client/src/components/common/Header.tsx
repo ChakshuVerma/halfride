@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { LogOut, User, Settings, ChevronDown } from "lucide-react"; // Added icons for visual fullness
+import { LogOut, User, ChevronDown } from "lucide-react"; // Added icons for visual fullness
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -17,7 +17,6 @@ const HEADER_CONSTANTS = {
   BRAND: "HalfRide",
   MENU: {
     PROFILE: "Profile",
-    SETTINGS: "Settings",
     LOGOUT: "Log out",
   },
   ERRORS: {
@@ -97,7 +96,11 @@ export function Header() {
                 {/* Avatar Circle */}
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-xs ring-2 ring-background shadow-sm overflow-hidden">
                   {hasPhoto ? (
-                    <img src={userProfile!.photoURL!} alt="" className="w-full h-full object-cover" />
+                    <img
+                      src={userProfile!.photoURL!}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
                     initials
                   )}
@@ -128,7 +131,11 @@ export function Header() {
               <div className="flex items-center gap-3 p-3 mb-1 bg-muted/40 rounded-md border border-border/50">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-background border border-border text-primary font-bold shadow-sm overflow-hidden">
                   {hasPhoto ? (
-                    <img src={userProfile!.photoURL!} alt="" className="w-full h-full object-cover" />
+                    <img
+                      src={userProfile!.photoURL!}
+                      alt=""
+                      className="w-full h-full object-cover"
+                    />
                   ) : (
                     initials
                   )}
@@ -156,13 +163,6 @@ export function Header() {
                 >
                   <User className="mr-2 h-4 w-4 opacity-70" />
                   {HEADER_CONSTANTS.MENU.PROFILE}
-                </Button>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start h-9 px-2 text-sm font-normal text-muted-foreground hover:text-foreground"
-                >
-                  <Settings className="mr-2 h-4 w-4 opacity-70" />
-                  {HEADER_CONSTANTS.MENU.SETTINGS}
                 </Button>
               </div>
 
