@@ -795,6 +795,8 @@ export async function getGroupById(req: Request, res: Response) {
     const code = (data[GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT] as string) || "";
     const hasPendingJoinRequest =
       !!uid && pendingRequests.some((ref: { id: string }) => ref.id === uid);
+    const isCurrentUserMember =
+      !!uid && members.some((ref: { id: string }) => ref.id === uid);
 
     // Load member users, then their destinations at this airport.
     const userSnapMap = await batchGetAll(db, members, BATCH_SIZE);
@@ -810,7 +812,10 @@ export async function getGroupById(req: Request, res: Response) {
       genderBreakdown,
       hasPendingJoinRequest,
     );
-    return res.json({ ok: true, data: group });
+    return res.json({
+      ok: true,
+      data: { ...group, isCurrentUserMember },
+    });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";
     console.error("Get group by ID error:", msg);
