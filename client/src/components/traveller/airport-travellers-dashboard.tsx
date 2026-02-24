@@ -35,7 +35,7 @@ import {
   ENTITY_TYPE,
   VIEW_MODE,
 } from "./types";
-import ListSection from "./list-section";
+import { ListSection } from "@/components/common/ListSection";
 
 const CONSTANTS = {
   LABELS: {

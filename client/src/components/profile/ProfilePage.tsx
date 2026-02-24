@@ -29,24 +29,11 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useProfileByUsername } from "@/hooks/useProfileByUsername";
 import { useUserProfileApi } from "@/hooks/useUserProfileApi";
 import { ROUTES } from "@/constants/routes";
-import { useEntityModal } from "@/contexts/EntityModalContext";
+import { useEntityModal } from "@/contexts/useEntityModal";
 import { cn } from "@/lib/utils";
-
-function formatDate(dateStr: string) {
-  if (!dateStr) return "—";
-  try {
-    const d = new Date(dateStr + "T00:00:00");
-    return isNaN(d.getTime())
-      ? dateStr
-      : d.toLocaleDateString(undefined, {
-          year: "numeric",
-          month: "short",
-          day: "numeric",
-        });
-  } catch {
-    return dateStr;
-  }
-}
+import { formatShortDate } from "@/lib/date";
+import { LoadingState } from "@/components/common/LoadingState";
+import { ErrorState } from "@/components/common/ErrorState";
 
 export default function ProfilePage() {
   const { username } = useParams<{ username: string }>();
@@ -85,16 +72,7 @@ export default function ProfilePage() {
   }, [username, fetchProfile]);
 
   if (loading && !data) {
-    return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center px-4">
-        <div className="flex flex-col items-center gap-4">
-          <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center">
-            <Loader2 className="h-7 w-7 animate-spin text-muted-foreground" />
-          </div>
-          <p className="text-sm text-muted-foreground">Loading profile…</p>
-        </div>
-      </div>
-    );
+    return <LoadingState message="Loading profile…" />;
   }
 
   if (error && !data) {
@@ -113,25 +91,18 @@ export default function ProfilePage() {
           Back
         </Button>
         <Card className="border-border/80 overflow-hidden">
-          <div className="p-8 md:p-10 text-center">
-            <div className="mx-auto h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center mb-4">
-              <User className="h-8 w-8 text-destructive/80" />
-            </div>
-            <h1 className="text-xl font-semibold text-foreground">
-              {is404 ? "Profile not found" : "Something went wrong"}
-            </h1>
-            <p className="text-muted-foreground mt-2 max-w-sm mx-auto">
-              {is404 ? "No user exists with this username." : error}
-            </p>
-            <Button
-              variant="outline"
-              size="sm"
-              className="mt-6"
-              onClick={() => navigate(ROUTES.DASHBOARD)}
-            >
-              Back to dashboard
-            </Button>
-          </div>
+          <ErrorState
+            icon={<User className="h-6 w-6 text-destructive/80" />}
+            title={is404 ? "Profile not found" : "Something went wrong"}
+            description={
+              is404 ? "No user exists with this username." : error
+            }
+            primaryAction={{
+              label: "Back to dashboard",
+              onClick: () => navigate(ROUTES.DASHBOARD),
+            }}
+            className="p-8 md:p-10"
+          />
         </Card>
       </div>
     );
@@ -305,7 +276,7 @@ export default function ProfilePage() {
                         <Calendar className="h-4 w-4 text-muted-foreground" />
                       </span>
                       <span className="text-foreground">
-                        Born {formatDate(profileUser.DOB)}
+                        Born {formatShortDate(profileUser.DOB)}
                       </span>
                     </li>
                   )}
@@ -521,7 +492,7 @@ export default function ProfilePage() {
                         </p>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0 sm:pl-4">
-                        <span>{formatDate(trip.date)}</span>
+                        <span>{formatShortDate(trip.date)}</span>
                         <span className="font-medium text-foreground/70">
                           {trip.flightNumber}
                         </span>

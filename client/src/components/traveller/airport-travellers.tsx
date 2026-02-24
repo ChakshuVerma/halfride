@@ -1,9 +1,9 @@
 import { useEffect, useState, useRef } from "react";
-import { Loader2 } from "lucide-react";
 import { useGetAirportsApi, type Airport } from "@/hooks/useGetAirportApi";
 import { useAirportFromUrl } from "@/hooks/useAirportFromUrl";
 import { AirportPickerView } from "./airport-picker-view";
 import { AirportTravellersDashboard } from "./airport-travellers-dashboard";
+import { LoadingState } from "@/components/common/LoadingState";
 
 const LOADING_LABEL = "Loading...";
 
@@ -32,12 +32,10 @@ const AirportTravellers = () => {
 
   if (isLoading)
     return (
-      <div className="flex flex-col items-center justify-center min-h-[50vh] gap-4">
-        <Loader2 className="w-8 h-8 animate-spin text-zinc-900" />
-        <span className="text-zinc-500 text-sm font-medium animate-pulse">
-          {LOADING_LABEL}
-        </span>
-      </div>
+      <LoadingState
+        message={LOADING_LABEL}
+        className="min-h-[50vh]"
+      />
     );
 
   if (!selectedAirport) {

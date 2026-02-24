@@ -6,11 +6,11 @@ import {
   ArrowRight,
   Calendar,
   Sparkles,
-  Loader2,
 } from "lucide-react";
 import type { Traveller } from "./types";
 import { formatDateAndTime, calculateWaitText } from "./utils";
 import { cn } from "@/lib/utils";
+import { Spinner } from "@/components/ui/spinner";
 
 const CONSTANTS = {
   GENDER: {
@@ -57,7 +57,7 @@ export const TravellerCard = memo(function TravellerCard({
     >
       {isOpening && (
         <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[2rem] bg-white/80 dark:bg-zinc-900/80">
-          <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+          <Spinner size="lg" className="text-violet-600" />
         </div>
       )}
       {/* 1. Identity Header */}

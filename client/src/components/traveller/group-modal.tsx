@@ -17,6 +17,8 @@ import { DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useGetTravellerApi } from "@/hooks/useGetTravellerApi";
 import type { Group, Traveller } from "./types";
+import { formatShortDate } from "@/lib/date";
+import { LoadingState } from "@/components/common/LoadingState";
 
 type JoinRequestUser = {
   id: string;
@@ -294,8 +296,11 @@ export function GroupModal({
 
   if (!modalLoaded) {
     return (
-      <div className="p-4 sm:p-6 pr-12 sm:pr-14 min-w-0 max-w-full flex items-center justify-center min-h-[220px]">
-        <Loader2 className="w-6 h-6 animate-spin text-primary" />
+      <div className="p-4 sm:p-6 pr-12 sm:pr-14 min-w-0 max-w-full">
+        <LoadingState
+          message="Loading group…"
+          className="min-h-[220px]"
+        />
       </div>
     );
   }
@@ -398,17 +403,7 @@ export function GroupModal({
                   </span>
                   <span className="text-muted-foreground/40 shrink-0">•</span>
                   <span className="truncate min-w-0">
-                    Created{" "}
-                    {group.createdAt
-                      ? new Date(group.createdAt).toLocaleDateString(
-                          undefined,
-                          {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          },
-                        )
-                      : "—"}
+                    Created {formatShortDate(group.createdAt)}
                   </span>
                 </DialogDescription>
               </>

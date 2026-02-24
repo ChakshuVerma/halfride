@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { Bell, Inbox, MessageCircle, Loader2, ChevronDown } from "lucide-react";
-import { useEntityModal } from "@/contexts/EntityModalContext";
+import { useEntityModal } from "@/contexts/useEntityModal";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
