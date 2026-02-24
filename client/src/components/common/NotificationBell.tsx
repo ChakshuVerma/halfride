@@ -1,6 +1,12 @@
-import { useState, useEffect, useMemo, type ReactNode } from "react";
+import {
+  useState,
+  useEffect,
+  useMemo,
+  type ReactNode,
+  type MouseEvent,
+} from "react";
 import { Bell, Inbox, MessageCircle, Loader2, ChevronDown } from "lucide-react";
-import { useEntityModal } from "@/contexts/EntityModalContext";
+import { useEntityModal } from "@/contexts/useEntityModal";
 import { Button } from "@/components/ui/button";
 import {
   Popover,
@@ -192,6 +198,14 @@ export function NotificationBell() {
     }
   };
 
+  const handleNotificationActionClick = async (
+    event: MouseEvent<HTMLSpanElement>,
+    n: Notification,
+  ) => {
+    event.stopPropagation();
+    await handleNotificationClick(n);
+  };
+
   const handleMarkAllRead = async () => {
     const success = await markAllRead();
     if (success) {
@@ -371,7 +385,12 @@ export function NotificationBell() {
                           {renderNotificationBody(n.body, n.data?.groupName)}
                         </p>
                         {action && (
-                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-primary mt-2">
+                          <span
+                            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary mt-2"
+                            onClick={(event) =>
+                              handleNotificationActionClick(event, n)
+                            }
+                          >
                             {action.type === NOTIFICATION_ACTION_TYPES.OPEN_GROUP
                               ? "View group"
                               : "View request"}

@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
-import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import {
   UsersRound,
   User,
@@ -12,9 +10,15 @@ import {
   X,
   UserPlus,
   Pencil,
+  CheckCircle2,
 } from "lucide-react";
+
+import { DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { useGetTravellerApi } from "@/hooks/useGetTravellerApi";
 import type { Group, Traveller } from "./types";
+import { formatShortDate } from "@/lib/date";
+import { LoadingState } from "@/components/common/LoadingState";
 
 type JoinRequestUser = {
   id: string;
@@ -101,13 +105,14 @@ const GROUP_NAME_ALPHABETS_ONLY = /^[A-Za-z\s]*$/;
 
 export function GroupModal({
   group,
-  isCurrentUserInGroup = false,
+  isCurrentUserInGroup: isCurrentUserInGroupProp = false,
   hasListingAtThisAirport = false,
   onLeaveGroup,
   onJoinRequestSuccess,
   onGroupNameUpdated,
 }: GroupModalProps) {
   const {
+    fetchGroupById,
     fetchGroupMembers,
     leaveGroup,
     requestJoinGroup,
@@ -121,6 +126,7 @@ export function GroupModal({
     requestJoinGroupLoading,
     respondToJoinRequestLoading,
   } = useGetTravellerApi();
+
   const [members, setMembers] = useState<Traveller[]>([]);
   const [leaveError, setLeaveError] = useState<string | null>(null);
   const [joinRequests, setJoinRequests] = useState<JoinRequestUser[]>([]);
@@ -131,6 +137,16 @@ export function GroupModal({
   const [editNameValue, setEditNameValue] = useState(group.name);
   const [nameUpdateError, setNameUpdateError] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState(group.name);
+  const [refreshedStatus, setRefreshedStatus] = useState<{
+    hasPendingJoinRequest: boolean;
+    isCurrentUserMember: boolean;
+  } | null>(null);
+  const [modalLoaded, setModalLoaded] = useState(false);
+
+  const hasPendingJoinRequest =
+    refreshedStatus?.hasPendingJoinRequest ?? group.hasPendingJoinRequest ?? false;
+  const isCurrentUserInGroup =
+    refreshedStatus?.isCurrentUserMember ?? isCurrentUserInGroupProp;
 
   const capacityPercentage = Math.round(
     (group.groupSize / group.maxUsers) * 100,
@@ -142,11 +158,13 @@ export function GroupModal({
     setNameUpdateError(null);
     setEditingName(true);
   };
+
   const handleCancelEditName = () => {
     setEditingName(false);
     setEditNameValue(displayName);
     setNameUpdateError(null);
   };
+
   const handleSaveName = async () => {
     const trimmed = editNameValue.trim();
     if (trimmed.length === 0) {
@@ -163,6 +181,7 @@ export function GroupModal({
     }
     setNameUpdateError(null);
     const result = await updateGroupName(group.id, trimmed);
+
     if (result.ok) {
       setDisplayName(trimmed);
       setEditingName(false);
@@ -174,66 +193,99 @@ export function GroupModal({
       toast.error(msg);
     }
   };
+
   const handleEditNameKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") void handleSaveName();
     if (e.key === "Escape") handleCancelEditName();
   };
 
+  // On modal open or when switching groups, load all data, then show UI
   useEffect(() => {
-    const loadMembers = async () => {
-      try {
-        const data = await fetchGroupMembers(group.id);
-        setMembers(data);
-      } catch (err) {
-        console.error(CONSTANTS.LOGS.LOAD_FAILED, err);
-      }
-    };
-    void loadMembers();
-  }, [group.id, fetchGroupMembers]);
+    let isCancelled = false;
 
-  useEffect(() => {
-    if (!isCurrentUserInGroup) return;
-    const loadJoinRequests = async () => {
+    const loadModalData = async () => {
+      setModalLoaded(false);
       try {
-        const data = await fetchGroupJoinRequests(group.id);
-        setJoinRequests(data);
+        const [latest, membersData] = await Promise.all([
+          fetchGroupById(group.id, group.airportName),
+          fetchGroupMembers(group.id),
+        ]);
+
+        if (isCancelled) return;
+
+        setMembers(membersData);
+
+        if (latest) {
+          setRefreshedStatus({
+            hasPendingJoinRequest: latest.hasPendingJoinRequest ?? false,
+            isCurrentUserMember: latest.isCurrentUserMember ?? false,
+          });
+
+          if (latest.isCurrentUserMember ?? false) {
+            try {
+              const requests = await fetchGroupJoinRequests(group.id);
+              if (!isCancelled) {
+                setJoinRequests(requests);
+              }
+            } catch (err) {
+              console.error("Failed to load join requests", err);
+              if (!isCancelled) {
+                setJoinRequests([]);
+              }
+            }
+          } else {
+            setJoinRequests([]);
+          }
+        } else {
+          setRefreshedStatus(null);
+          setJoinRequests([]);
+        }
       } catch (err) {
-        console.error("Failed to load join requests", err);
+        console.error("Failed to load group modal data", err);
+        if (!isCancelled) {
+          setMembers([]);
+          setRefreshedStatus(null);
+          setJoinRequests([]);
+        }
+      } finally {
+        if (!isCancelled) {
+          setModalLoaded(true);
+        }
       }
     };
-    void loadJoinRequests();
-  }, [group.id, isCurrentUserInGroup, fetchGroupJoinRequests]);
+
+    void loadModalData();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [group.id, group.airportName, fetchGroupById, fetchGroupMembers, fetchGroupJoinRequests]);
 
   const renderGenderBar = (type: "Male" | "Female") => {
     const isMale = type === CONSTANTS.GENDER.MALE;
     const count = isMale
       ? group.genderBreakdown.male
       : group.genderBreakdown.female;
-    const className = isMale
-      ? "rounded-l-lg border-l"
-      : "rounded-r-lg border-r";
+
+    const containerClass = isMale
+      ? "rounded-l-lg border-l bg-blue-100/50 border-blue-200/50"
+      : "rounded-r-lg border-r bg-pink-100/50 border-pink-200/50";
+
+    const overlayClass = isMale
+      ? "bg-blue-500/5 group-hover:bg-blue-500/10"
+      : "bg-pink-500/5 group-hover:bg-pink-500/10";
+
+    const textClass = isMale ? "text-blue-700" : "text-pink-700";
 
     return (
       <div
         key={type}
-        className={`h-8 flex items-center justify-center border-y relative group overflow-hidden ${
-          isMale
-            ? "bg-blue-100/50 border-blue-200/50"
-            : "bg-pink-100/50 border-pink-200/50"
-        } ${className}`}
+        className={`h-8 flex items-center justify-center border-y relative group overflow-hidden ${containerClass}`}
         style={{ flex: Math.max(1, count) }}
       >
-        <div
-          className={`absolute inset-0 transition-colors ${
-            isMale
-              ? "bg-blue-500/5 group-hover:bg-blue-500/10"
-              : "bg-pink-500/5 group-hover:bg-pink-500/10"
-          }`}
-        />
+        <div className={`absolute inset-0 transition-colors ${overlayClass}`} />
         <span
-          className={`relative z-10 text-xs font-bold flex items-center gap-1 ${
-            isMale ? "text-blue-700" : "text-pink-700"
-          }`}
+          className={`relative z-10 text-xs font-bold flex items-center gap-1 ${textClass}`}
         >
           <User className="w-3 h-3" />
           {count}
@@ -242,9 +294,20 @@ export function GroupModal({
     );
   };
 
+  if (!modalLoaded) {
+    return (
+      <div className="p-4 sm:p-6 pr-12 sm:pr-14 min-w-0 max-w-full">
+        <LoadingState
+          message="Loading group…"
+          className="min-h-[220px]"
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 sm:p-6 pr-12 sm:pr-14 space-y-4 sm:space-y-5 min-w-0 max-w-full">
-      {/* Header Section - pr-12 reserves space for dialog close button */}
+      {/* Header Section */}
       <DialogHeader className="space-y-0 pb-4 border-b border-border/10 min-w-0">
         <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 min-w-0">
           <div className="relative shrink-0">
@@ -301,9 +364,9 @@ export function GroupModal({
                     onClick={handleSaveName}
                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-semibold hover:opacity-90 disabled:opacity-50"
                   >
-                    {updateGroupNameLoading ? (
+                    {updateGroupNameLoading && (
                       <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : null}
+                    )}
                     {CONSTANTS.LABELS.SAVE}
                   </button>
                   <button
@@ -340,17 +403,7 @@ export function GroupModal({
                   </span>
                   <span className="text-muted-foreground/40 shrink-0">•</span>
                   <span className="truncate min-w-0">
-                    Created{" "}
-                    {group.createdAt
-                      ? new Date(group.createdAt).toLocaleDateString(
-                          undefined,
-                          {
-                            month: "short",
-                            day: "numeric",
-                            year: "numeric",
-                          },
-                        )
-                      : "—"}
+                    Created {formatShortDate(group.createdAt)}
                   </span>
                 </DialogDescription>
               </>
@@ -461,7 +514,7 @@ export function GroupModal({
           </div>
         </div>
 
-        {/* Join Requests (only for members, when at least one request is pending) */}
+        {/* Join Requests */}
         {isCurrentUserInGroup && joinRequests.length > 0 && (
           <div className="space-y-2 sm:space-y-2.5 pt-2 border-t border-border/10 min-w-0">
             <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest flex items-center gap-1.5">
@@ -648,15 +701,18 @@ export function GroupModal({
             )}
             {!isCurrentUserInGroup && (
               <>
-                {group.hasPendingJoinRequest ? (
-                  <p className="text-xs text-muted-foreground text-center py-2 px-4 flex-1">
-                    {CONSTANTS.LABELS.REQUEST_PENDING}
-                  </p>
+                {hasPendingJoinRequest ? (
+                  <div
+                    className="flex-1 min-w-0 w-full h-12 rounded-xl bg-emerald-500 text-white text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/20 cursor-not-allowed opacity-80"
+                    aria-live="polite"
+                  >
+                    {CONSTANTS.LABELS.REQUEST_PENDING}{" "}
+                    <CheckCircle2 className="w-4 h-4" />
+                  </div>
                 ) : hasListingAtThisAirport ? (
                   <button
                     disabled={isFull || requestJoinGroupLoading}
-                    className={`flex-1 min-w-0 group relative overflow-hidden rounded-xl px-4 py-2.5 transition-all
-                    ${
+                    className={`flex-1 min-w-0 group relative overflow-hidden rounded-xl px-4 py-2.5 transition-all ${
                       isFull
                         ? "bg-muted text-muted-foreground cursor-not-allowed"
                         : "bg-primary text-primary-foreground hover:shadow-lg hover:shadow-primary/25 active:scale-[0.99]"
@@ -665,6 +721,11 @@ export function GroupModal({
                       setJoinError(null);
                       const result = await requestJoinGroup(group.id);
                       if (result.ok) {
+                        setRefreshedStatus((prev) => ({
+                          ...prev,
+                          hasPendingJoinRequest: true,
+                          isCurrentUserMember: prev?.isCurrentUserMember ?? false,
+                        }));
                         onJoinRequestSuccess?.();
                         toast.success(CONSTANTS.TOASTS.JOIN_REQUEST_SENT);
                       } else {

@@ -111,6 +111,7 @@ export function useGetTravellerApi() {
             genderBreakdown: { male: number; female: number };
             createdAt: string;
             hasPendingJoinRequest?: boolean;
+            isCurrentUserMember?: boolean;
           };
         }>(url);
         if (!response.ok || !response.data) return null;
@@ -123,6 +124,7 @@ export function useGetTravellerApi() {
               ? g.createdAt
               : new Date(g.createdAt).toISOString(),
           hasPendingJoinRequest: g.hasPendingJoinRequest ?? false,
+          isCurrentUserMember: g.isCurrentUserMember ?? false,
         } as Group;
       } catch (error) {
         console.error("Failed to fetch group by ID:", error);

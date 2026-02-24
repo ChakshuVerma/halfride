@@ -37,6 +37,8 @@ export type Group = {
   createdAt: string | Date;
   /** True when the current user has a pending join request for this group (request sent, not yet accepted/rejected). */
   hasPendingJoinRequest?: boolean;
+  /** True when the current user is a member of this group. Returned by GET group/:id. */
+  isCurrentUserMember?: boolean;
 };
 
 export const ENTITY_TYPE = {

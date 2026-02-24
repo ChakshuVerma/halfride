@@ -1,9 +1,8 @@
 import { type ReactNode } from "react";
-// import { ScrollArea } from "../ui/scroll-area"
-import { Loader2, Ghost, Sparkles } from "lucide-react";
+import { Ghost, Sparkles } from "lucide-react";
+import { Spinner } from "@/components/ui/spinner";
 
-// Reusable list section component for travellers and groups
-interface ListSectionProps {
+export interface ListSectionProps {
   title: string;
   subtitle: string;
   count: number;
@@ -21,7 +20,7 @@ const CONSTANTS = {
   EMPTY_TITLE: "It's a bit quiet here",
 };
 
-function ListSection({
+export function ListSection({
   title,
   subtitle,
   count,
@@ -40,7 +39,7 @@ function ListSection({
         <div className="relative">
           <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full" />
           <div className="relative">
-            <Loader2 className="w-10 h-10 animate-spin text-primary" />
+            <Spinner size="xl" className="text-primary" />
           </div>
         </div>
         <span className="text-sm font-medium animate-pulse tracking-wide">
@@ -122,5 +121,3 @@ function ListSection({
     </div>
   );
 }
-
-export default ListSection;

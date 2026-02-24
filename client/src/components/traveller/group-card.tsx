@@ -1,4 +1,6 @@
-import { Users, MapPin, ArrowRight, Loader2 } from "lucide-react";
+import { Users, MapPin, ArrowRight } from "lucide-react";
+import { formatShortDate } from "@/lib/date";
+import { Spinner } from "@/components/ui/spinner";
 import type { Group } from "./types";
 
 const CONSTANTS = {
@@ -51,7 +53,7 @@ export function GroupCard({ group, onClick, isYourGroup = false, isOpening = fal
     >
       {isOpening && (
         <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[2rem] bg-white/80 dark:bg-zinc-900/80">
-          <Loader2 className="h-8 w-8 animate-spin text-violet-600" />
+          <Spinner size="lg" className="text-violet-600" />
         </div>
       )}
       {/* Top Section - Gray Background */}
@@ -152,13 +154,7 @@ export function GroupCard({ group, onClick, isYourGroup = false, isOpening = fal
               {CONSTANTS.LABELS.CREATED}
             </span>
             <span className="text-xs font-bold text-foreground">
-              {group.createdAt
-                ? new Date(group.createdAt).toLocaleDateString(undefined, {
-                    month: "short",
-                    day: "numeric",
-                    year: "numeric",
-                  })
-                : "—"}
+              {formatShortDate(group.createdAt)}
             </span>
           </div>
         </div>

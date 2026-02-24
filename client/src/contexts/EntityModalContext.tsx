@@ -1,24 +1,22 @@
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import {
   Dialog,
   DialogContent,
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { Loader2, AlertCircle } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { useGetTravellerApi } from "@/hooks/useGetTravellerApi";
 import { TravellerModal } from "@/components/traveller/traveller-modal";
 import { GroupModal } from "@/components/traveller/group-modal";
 import type { Group, Traveller } from "@/components/traveller/types";
 import { ENTITY_TYPE } from "@/components/traveller/types";
+import {
+  EntityModalContext,
+  type EntityModalParams,
+} from "@/contexts/useEntityModal";
+import { LoadingState } from "@/components/common/LoadingState";
+import { ErrorState } from "@/components/common/ErrorState";
 
 const MODAL_LABELS = {
   DETAILS: "Details",
@@ -27,32 +25,11 @@ const MODAL_LABELS = {
 
 const ERROR_MESSAGES = {
   GENERIC: "Something went wrong. Please try again.",
-  GROUP_NOT_FOUND: "Group not found. It may have been removed or is no longer active.",
-  TRAVELLER_NOT_FOUND: "Traveller or listing not found. It may have been removed or is no longer active.",
+  GROUP_NOT_FOUND:
+    "Group not found. It may have been removed or is no longer active.",
+  TRAVELLER_NOT_FOUND:
+    "Traveller or listing not found. It may have been removed or is no longer active.",
 } as const;
-
-type EntityModalParams = {
-  type: "group" | "traveller";
-  airportCode: string;
-  entityId: string;
-  /** Optional airport name for display/fetch; falls back to airportCode. */
-  airportName?: string;
-};
-
-type EntityModalContextValue = {
-  openEntityModal: (params: EntityModalParams) => void;
-  closeEntityModal: () => void;
-};
-
-const EntityModalContext = createContext<EntityModalContextValue | null>(null);
-
-export function useEntityModal() {
-  const ctx = useContext(EntityModalContext);
-  if (!ctx) {
-    throw new Error("useEntityModal must be used within EntityModalProvider");
-  }
-  return ctx;
-}
 
 type EntityModalProviderProps = { children: ReactNode };
 
@@ -124,12 +101,7 @@ export function EntityModalProvider({ children }: EntityModalProviderProps) {
     } finally {
       setLoading(false);
     }
-  }, [
-    params,
-    airportName,
-    fetchGroupById,
-    fetchTravellerByAirportAndUser,
-  ]);
+  }, [params, airportName, fetchGroupById, fetchTravellerByAirportAndUser]);
 
   useEffect(() => {
     if (params) void fetchEntity();
@@ -203,29 +175,18 @@ export function EntityModalProvider({ children }: EntityModalProviderProps) {
             {MODAL_LABELS.VIEW_MORE_INFO}
           </DialogDescription>
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-16 px-6">
-              <Loader2 className="h-10 w-10 animate-spin text-muted-foreground" />
-              <p className="mt-3 text-sm text-muted-foreground">Loading…</p>
-            </div>
+            <LoadingState message="Loading…" className="py-16 px-6" />
           ) : error ? (
-            <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-              <span className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive">
-                <AlertCircle className="h-6 w-6" />
-              </span>
-              <p className="mt-4 text-sm text-muted-foreground">{error}</p>
-              <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => void fetchEntity()}
-                >
-                  Try again
-                </Button>
-                <Button variant="secondary" size="sm" onClick={closeEntityModal}>
-                  Close
-                </Button>
-              </div>
-            </div>
+            <ErrorState
+              icon={<AlertCircle className="h-6 w-6" />}
+              description={error}
+              primaryAction={{
+                label: "Try again",
+                onClick: () => void fetchEntity(),
+              }}
+              secondaryAction={{ label: "Close", onClick: closeEntityModal }}
+              className="py-16 px-6"
+            />
           ) : entity && params?.type === ENTITY_TYPE.TRAVELLER ? (
             <TravellerModal
               traveller={entity as Traveller}
