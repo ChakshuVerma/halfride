@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, type ReactNode } from "react";
-import { Bell, Inbox } from "lucide-react";
+import { Bell, Inbox, MessageCircle, Loader2, ChevronDown } from "lucide-react";
 import { useEntityModal } from "@/contexts/EntityModalContext";
 import { Button } from "@/components/ui/button";
 import {
@@ -242,143 +242,172 @@ export function NotificationBell() {
       </PopoverTrigger>
 
       <PopoverContent
-        className="w-[380px] p-0 border-border/60 shadow-xl"
+        className="w-[calc(100vw-2rem)] max-w-[400px] mx-4 p-0 rounded-2xl border-0 shadow-[0_8px_30px_rgba(0,0,0,0.12)] dark:shadow-[0_8px_30px_rgba(0,0,0,0.4)] overflow-hidden bg-card/95 backdrop-blur-xl"
         align="end"
-        sideOffset={5}
+        sideOffset={8}
       >
-        {/* Header Area */}
-        <div className="flex flex-col border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <div className="flex items-center justify-between px-4 py-3">
-            <h4 className="font-semibold text-sm tracking-tight">
-              {NOTIFICATION_CONSTANTS.TITLE}
-            </h4>
+        {/* Header */}
+        <div className="px-4 sm:px-5 pt-5 pb-4 border-b border-border/50">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Bell className="h-4.5 w-4.5" />
+              </div>
+              <h4 className="font-semibold text-base tracking-tight text-foreground">
+                {NOTIFICATION_CONSTANTS.TITLE}
+              </h4>
+            </div>
             {unreadCount > 0 && (
-              <button
-                className="text-[11px] font-medium text-muted-foreground hover:text-primary transition-colors"
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-xs h-8 text-muted-foreground hover:text-primary hover:bg-primary/5"
                 onClick={handleMarkAllRead}
               >
                 {NOTIFICATION_CONSTANTS.ACTIONS.MARK_ALL_READ}
-              </button>
+              </Button>
             )}
           </div>
 
-          {/* Segmented Control Filter */}
-          <div className="px-4 pb-3">
-            <div className="flex p-1 bg-muted/40 rounded-lg">
-              {(
-                [
-                  NOTIFICATION_CONSTANTS.FILTERS.ALL,
-                  NOTIFICATION_CONSTANTS.FILTERS.UNREAD,
-                ] as const
-              ).map((tab) => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveFilter(tab)}
-                  className={cn(
-                    "flex-1 text-xs font-medium py-1.5 rounded-md transition-all duration-200 capitalize",
-                    activeFilter === tab
-                      ? "bg-background text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground hover:bg-background/50",
-                  )}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
+          {/* Filter pills */}
+          <div className="flex gap-1.5 mt-4 px-0">
+            {(
+              [
+                NOTIFICATION_CONSTANTS.FILTERS.ALL,
+                NOTIFICATION_CONSTANTS.FILTERS.UNREAD,
+              ] as const
+            ).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveFilter(tab)}
+                className={cn(
+                  "flex-1 text-xs font-medium py-2 px-3 rounded-xl transition-all duration-200 capitalize",
+                  activeFilter === tab
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                )}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
         </div>
 
-        {/* Notification List */}
-        <ScrollArea className="h-[400px]">
-          {filteredNotifications.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
-              <div className="bg-muted/30 p-4 rounded-full mb-3">
-                <Inbox className="h-8 w-8 text-muted-foreground/40" />
+        {/* List */}
+        <ScrollArea className="h-[420px]">
+          <div className="px-4 py-4 sm:px-3 sm:py-3">
+            {filteredNotifications.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-14 px-6 text-center rounded-2xl bg-muted/20 border border-dashed border-border/60">
+                <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/40 mb-4">
+                  <Inbox className="h-7 w-7 text-muted-foreground/50" />
+                </div>
+                <p className="text-sm font-semibold text-foreground">
+                  {activeFilter === NOTIFICATION_CONSTANTS.FILTERS.UNREAD
+                    ? NOTIFICATION_CONSTANTS.EMPTY_STATES.ALL_CAUGHT_UP
+                    : NOTIFICATION_CONSTANTS.EMPTY_STATES.NO_NOTIFICATIONS}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1.5 max-w-[200px] leading-relaxed">
+                  {activeFilter === NOTIFICATION_CONSTANTS.FILTERS.UNREAD
+                    ? NOTIFICATION_CONSTANTS.EMPTY_STATES.NO_UNREAD_MESSAGES
+                    : NOTIFICATION_CONSTANTS.EMPTY_STATES.IMPORTANT_NOTIFICATIONS}
+                </p>
               </div>
-              <p className="text-sm font-medium text-foreground">
-                {activeFilter === NOTIFICATION_CONSTANTS.FILTERS.UNREAD
-                  ? NOTIFICATION_CONSTANTS.EMPTY_STATES.ALL_CAUGHT_UP
-                  : NOTIFICATION_CONSTANTS.EMPTY_STATES.NO_NOTIFICATIONS}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1 max-w-[180px]">
-                {activeFilter === NOTIFICATION_CONSTANTS.FILTERS.UNREAD
-                  ? NOTIFICATION_CONSTANTS.EMPTY_STATES.NO_UNREAD_MESSAGES
-                  : NOTIFICATION_CONSTANTS.EMPTY_STATES.IMPORTANT_NOTIFICATIONS}
-              </p>
-            </div>
-          ) : (
-            <div className="flex flex-col">
-              {filteredNotifications.map((n) => {
-                const isUnread = !n.isRead;
-                const action = getNotificationAction(n);
-                return (
-                  <div
-                    key={n.notificationId}
-                    onClick={() => handleNotificationClick(n)}
-                    className={cn(
-                      "relative flex gap-3 px-4 py-3.5 border-b last:border-0 cursor-pointer transition-all duration-200 group",
-                      "hover:bg-muted/40",
-                      isUnread ? "bg-background" : "bg-background/40",
-                    )}
-                  >
-                    {/* Unread Indicator Bar */}
-                    {isUnread && (
-                      <div className="absolute left-0 top-0 bottom-0 w-[3px] bg-blue-600 rounded-r-full" />
-                    )}
-
-                    <div className="flex-1 space-y-1">
-                      <div className="flex items-center justify-between gap-2">
-                        <span
+            ) : (
+              <div className="flex flex-col gap-2">
+                {filteredNotifications.map((n) => {
+                  const isUnread = !n.isRead;
+                  const action = getNotificationAction(n);
+                  return (
+                    <button
+                      key={n.notificationId}
+                      type="button"
+                      onClick={() => handleNotificationClick(n)}
+                      className={cn(
+                        "relative w-full flex gap-3 text-left px-4 py-3.5 rounded-xl cursor-pointer transition-all duration-200",
+                        "hover:shadow-md hover:scale-[1.01] active:scale-[0.99]",
+                        "border border-transparent hover:border-border/50",
+                        isUnread
+                          ? "bg-primary/5 hover:bg-primary/10"
+                          : "bg-muted/20 hover:bg-muted/40",
+                      )}
+                    >
+                      <div className="relative shrink-0">
+                        <div
                           className={cn(
-                            "text-sm leading-none",
-                            isUnread
-                              ? "font-semibold text-foreground"
-                              : "font-medium text-muted-foreground",
+                            "flex h-9 w-9 items-center justify-center rounded-lg",
+                            isUnread ? "bg-primary/15 text-primary" : "bg-muted/50 text-muted-foreground",
                           )}
                         >
-                          {n.title}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground/70 shrink-0">
-                          {formatTime(n.createdAt)}
-                        </span>
-                      </div>
-
-                      <p
-                        className={cn(
-                          "text-xs line-clamp-2 leading-relaxed pr-2",
-                          isUnread
-                            ? "text-muted-foreground"
-                            : "text-muted-foreground/60",
+                          <MessageCircle className="h-4 w-4" />
+                        </div>
+                        {isUnread && (
+                          <span className="absolute -top-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-primary border-2 border-card" />
                         )}
-                      >
-                        {renderNotificationBody(n.body, n.data?.groupName)}
-                      </p>
-                      {action && (
-                        <span className="text-[11px] font-medium text-primary">
-                          {action.type === NOTIFICATION_ACTION_TYPES.OPEN_GROUP
-                            ? "View group →"
-                            : "View request →"}
-                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0 pt-0.5">
+                        <div className="flex items-start justify-between gap-2">
+                          <span
+                            className={cn(
+                              "text-sm leading-snug",
+                              isUnread
+                                ? "font-semibold text-foreground"
+                                : "font-medium text-muted-foreground",
+                            )}
+                          >
+                            {n.title}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground/80 shrink-0 mt-0.5">
+                            {formatTime(n.createdAt)}
+                          </span>
+                        </div>
+                        <p
+                          className={cn(
+                            "text-xs line-clamp-2 leading-relaxed mt-1",
+                            isUnread
+                              ? "text-muted-foreground"
+                              : "text-muted-foreground/70",
+                          )}
+                        >
+                          {renderNotificationBody(n.body, n.data?.groupName)}
+                        </p>
+                        {action && (
+                          <span className="inline-flex items-center gap-1 text-[11px] font-medium text-primary mt-2">
+                            {action.type === NOTIFICATION_ACTION_TYPES.OPEN_GROUP
+                              ? "View group"
+                              : "View request"}
+                            <ChevronDown className="h-3 w-3 rotate-270" />
+                          </span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+                {hasMore && activeFilter === NOTIFICATION_CONSTANTS.FILTERS.ALL && (
+                  <div className="pt-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-full rounded-xl text-xs h-9 border-dashed text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                      onClick={loadMore}
+                      disabled={loadMoreLoading}
+                    >
+                      {loadMoreLoading ? (
+                        <>
+                          <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" />
+                          Loading…
+                        </>
+                      ) : (
+                        <>
+                          <ChevronDown className="h-3.5 w-3.5 mr-2" />
+                          Load more
+                        </>
                       )}
-                    </div>
+                    </Button>
                   </div>
-                );
-              })}
-              {hasMore && activeFilter === NOTIFICATION_CONSTANTS.FILTERS.ALL && (
-                <div className="p-2 border-t">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-xs text-muted-foreground hover:text-foreground"
-                    onClick={loadMore}
-                    disabled={loadMoreLoading}
-                  >
-                    {loadMoreLoading ? "Loading…" : "Load more"}
-                  </Button>
-                </div>
-              )}
-            </div>
-          )}
+                )}
+              </div>
+            )}
+          </div>
         </ScrollArea>
       </PopoverContent>
     </Popover>

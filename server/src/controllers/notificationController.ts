@@ -737,8 +737,7 @@ export async function markNotificationRead(req: Request, res: Response) {
   const notificationId = String(req.params.notificationId);
 
   if (!uid) return unauthorized(res, "Unauthorized");
-  if (!notificationId)
-    return badRequest(res, "Notification ID is required");
+  if (!notificationId) return badRequest(res, "Notification ID is required");
 
   const db = admin.firestore();
   try {
