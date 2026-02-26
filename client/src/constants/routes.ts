@@ -8,6 +8,7 @@ export const ROUTES = {
   AIRPORT_BY_CODE: "/airport/:airportCode",
   PROFILE: "/profile/:username",
   GROUP_CHAT: "/groups/:groupId/chat",
+  NOT_FOUND: "/not-found",
 } as const;
 
 /** Build path for a specific airport page (e.g. /airport/DEL). Use for links and after selecting an airport. */
@@ -23,4 +24,9 @@ export function getProfilePath(username: string): string {
 /** Build path for a specific group chat (e.g. /groups/abc123/chat). */
 export function getGroupChatPath(groupId: string): string {
   return `/groups/${encodeURIComponent(groupId)}/chat`;
+}
+
+/** Path for the not-found page. Pass custom message via navigate(ROUTES.NOT_FOUND, { state: { message: "..." } }). */
+export function getNotFoundPath(): string {
+  return ROUTES.NOT_FOUND;
 }
