@@ -266,7 +266,7 @@ export function GroupChatPage() {
         </aside>
 
         {/* Right panel: chat header, messages & composer */}
-        <div className="flex flex-col flex-1 min-w-0">
+        <div className="flex flex-col flex-1 min-w-0 min-h-0">
           {/* Header */}
           <header className="flex items-center gap-3 px-4 py-3 border-b border-border/60 bg-linear-to-r from-background to-muted/40">
             <button
@@ -325,6 +325,7 @@ export function GroupChatPage() {
                 currentUserId={user?.uid ?? null}
                 onLoadMore={hasMore ? loadMore : undefined}
                 hasMore={hasMore && !loadingMore}
+                scrollKey={groupId ?? undefined}
               />
             )}
           </main>

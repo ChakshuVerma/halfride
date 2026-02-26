@@ -21,22 +21,22 @@ export function MessageBubble({ message, isOwn, showMeta }: MessageBubbleProps) 
       : "";
 
   return (
-    <div className={`flex flex-col gap-1 ${alignment}`}>
+    <div className={`flex w-full max-w-full flex-col gap-1 ${alignment}`}>
       {showMeta && !isOwn && (
         <span className="text-[10px] font-medium text-muted-foreground">
           {message.senderDisplayName ?? "Someone"}
         </span>
       )}
-      <div className="flex items-end gap-2 max-w-[80%] sm:max-w-[70%]">
+      <div className="flex w-fit max-w-[60%] items-end gap-2">
         {showMeta && !isOwn && message.senderPhotoURL && (
           <img
             src={message.senderPhotoURL}
             alt={message.senderDisplayName ?? "User"}
-            className="h-7 w-7 rounded-full object-cover shadow-sm"
+            className="h-7 w-7 shrink-0 rounded-full object-cover shadow-sm"
           />
         )}
         <div
-          className={`px-3 py-2 text-sm leading-relaxed whitespace-pre-wrap break-normal ${bubbleClasses}`}
+          className={`px-3 py-2 sm:px-4 sm:py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words ${bubbleClasses}`}
         >
           {message.text}
         </div>

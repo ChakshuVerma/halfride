@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Button } from "@/components/ui/button";
 import { Send } from "lucide-react";
 
@@ -19,6 +19,15 @@ export function MessageComposer({
 }: MessageComposerProps) {
   const [value, setValue] = useState("");
   const [sending, setSending] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const focusAfterSendRef = useRef(false);
+
+  useEffect(() => {
+    if (!sending && focusAfterSendRef.current) {
+      focusAfterSendRef.current = false;
+      textareaRef.current?.focus();
+    }
+  }, [sending]);
 
   const handleSubmit = async (e?: FormEvent) => {
     if (e) e.preventDefault();
@@ -29,6 +38,7 @@ export function MessageComposer({
       setSending(true);
       await onSend(trimmed);
       setValue("");
+      focusAfterSendRef.current = true;
     } finally {
       setSending(false);
     }
@@ -50,12 +60,10 @@ export function MessageComposer({
           {disabledHint}
         </div>
       )}
-      <form
-        onSubmit={handleSubmit}
-        className="flex items-end gap-2"
-      >
+      <form onSubmit={handleSubmit} className="flex items-end gap-2">
         <div className="flex-1 rounded-full bg-muted/60 px-3 py-1.5 border border-border/60 shadow-inner">
           <textarea
+            ref={textareaRef}
             value={value}
             onChange={(e) => {
               if (e.target.value.length <= maxLength) {
@@ -70,10 +78,14 @@ export function MessageComposer({
           />
         </div>
         <Button
-          type="submit"
+          type="button"
           size="icon"
           className="rounded-full h-9 w-9"
           disabled={isDisabled || !value.trim()}
+          onClick={(e) => {
+            (e.currentTarget as HTMLButtonElement).blur();
+            void handleSubmit();
+          }}
         >
           {sending ? (
             <span className="sr-only">Sending…</span>
@@ -85,4 +97,3 @@ export function MessageComposer({
     </div>
   );
 }
-
