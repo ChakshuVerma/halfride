@@ -589,10 +589,14 @@ export async function respondToConnectionRequest(req: Request, res: Response) {
 
     const requesterTravellerDoc = requesterSnapshot.docs[0];
     const groupRef = db.collection(COLLECTIONS.GROUPS).doc();
+    const initialMembers = [recipientUserRef, requesterUserRef];
     await groupRef.set({
       [GROUP_FIELDS.GROUP_ID]: groupRef.id,
       [GROUP_FIELDS.NAME]: "New Group",
-      [GROUP_FIELDS.MEMBERS]: [recipientUserRef, requesterUserRef],
+      [GROUP_FIELDS.MEMBERS]: initialMembers,
+      [GROUP_FIELDS.MEMBER_UIDS]: initialMembers.map(
+        (ref: admin.firestore.DocumentReference) => ref.id,
+      ),
       [GROUP_FIELDS.PENDING_REQUESTS]: [],
       [GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT]: flightArrival,
       [GROUP_FIELDS.CREATED_AT]: admin.firestore.FieldValue.serverTimestamp(),
@@ -980,6 +984,9 @@ export async function leaveGroup(req: Request, res: Response) {
 
     await groupRef.update({
       [GROUP_FIELDS.MEMBERS]: remainingMembers,
+      [GROUP_FIELDS.MEMBER_UIDS]: remainingMembers.map(
+        (ref: admin.firestore.DocumentReference) => ref.id,
+      ),
       [GROUP_FIELDS.UPDATED_AT]: admin.firestore.FieldValue.serverTimestamp(),
     });
 
@@ -1325,6 +1332,9 @@ export async function respondToJoinRequest(req: Request, res: Response) {
       const newMembers = [...members, requesterUserRef];
       await groupRef.update({
         [GROUP_FIELDS.MEMBERS]: newMembers,
+        [GROUP_FIELDS.MEMBER_UIDS]: newMembers.map(
+          (ref: admin.firestore.DocumentReference) => ref.id,
+        ),
         [GROUP_FIELDS.PENDING_REQUESTS]: pendingRequests,
         [GROUP_FIELDS.UPDATED_AT]: admin.firestore.FieldValue.serverTimestamp(),
       });

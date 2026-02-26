@@ -6,6 +6,7 @@ import { publicRouter } from "./publicRoutes";
 import { flightRouter } from "./flightRoutes";
 import { travellerRouter } from "./travellerRoutes";
 import { notificationRouter } from "./notificationRoutes";
+import { chatRouter } from "./chatRoutes";
 
 export const apiRouter = Router();
 
@@ -16,3 +17,4 @@ apiRouter.use(publicRouter);
 apiRouter.use(flightRouter);
 apiRouter.use(travellerRouter);
 apiRouter.use(notificationRouter);
+apiRouter.use(chatRouter);

@@ -1,8 +1,10 @@
-import { createContext, useContext, useEffect, useState } from "react"
+import { createContext, useContext, useEffect, useState, useCallback } from "react"
 import type { ReactNode } from "react"
 import { useAuthApi } from "../hooks/useAuthApi"
 import { useAuthMeApi } from "../hooks/useAuthMeApi"
 import { useUserProfileApi, type ProfileData } from "../hooks/useUserProfileApi"
+import { auth } from "../firebase/setup"
+import { signInWithCustomToken, signOut } from "firebase/auth"
 
 // Extended user data interface (from registration)
 export interface UserProfile {
@@ -30,15 +32,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<{ uid: string; username: string } | null>(null)
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
-  const { logout: backendLogout } = useAuthApi()
+  const { logout: backendLogout, getFirebaseCustomToken } = useAuthApi()
   const { fetchMe } = useAuthMeApi()
   const { fetchProfile } = useUserProfileApi()
+
+  const ensureFirebaseSession = useCallback(
+    async (uid: string) => {
+      try {
+        // If already signed into Firebase with the same uid, do nothing
+        if (auth.currentUser && auth.currentUser.uid === uid) {
+          return
+        }
+
+        const result = await getFirebaseCustomToken()
+        if (!result.ok || !result.token) {
+          return
+        }
+
+        await signInWithCustomToken(auth, result.token)
+      } catch (error) {
+        console.error("Failed to sync Firebase Auth session", error)
+      }
+    },
+    [getFirebaseCustomToken],
+  )
 
   useEffect(() => {
     const load = async () => {
       try {
         const me = await fetchMe()
         setUser({ uid: me.uid, username: me.username })
+        await ensureFirebaseSession(me.uid)
 
         const profile: ProfileData = await fetchProfile()
         const u = profile.user
@@ -65,11 +89,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     load()
     // fetchMe and fetchProfile are stable (wrapped in useCallback with stable deps)
     // so this effect will only run once on mount, matching original behavior
-  }, [fetchMe, fetchProfile])
+  }, [fetchMe, fetchProfile, ensureFirebaseSession])
 
   const logout = async () => {
     try {
       await backendLogout()
+      try {
+        await signOut(auth)
+      } catch (e) {
+        console.error("Error signing out of Firebase Auth:", e)
+      }
       setUserProfile(null)
       setUser(null)
     } catch (error) {

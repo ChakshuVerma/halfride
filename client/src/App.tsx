@@ -36,6 +36,11 @@ const AirportTravellers = lazy(
   () => import("./components/traveller/airport-travellers"),
 );
 const ProfilePage = lazy(() => import("./components/profile/ProfilePage"));
+const GroupChatPage = lazy(() =>
+  import("./components/chat/GroupChatPage").then((module) => ({
+    default: module.GroupChatPage,
+  })),
+);
 
 function AppRoutes() {
   const { loading } = useAuth();
@@ -61,6 +66,7 @@ function AppRoutes() {
           <Route path={ROUTES.AIRPORT} element={<AirportTravellers />} />
           <Route path={ROUTES.AIRPORT_BY_CODE} element={<AirportTravellers />} />
           <Route path={ROUTES.PROFILE} element={<ProfilePage />} />
+          <Route path={ROUTES.GROUP_CHAT} element={<GroupChatPage />} />
         </Route>
 
         {/* FALLBACK */}

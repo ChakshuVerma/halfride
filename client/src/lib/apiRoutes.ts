@@ -8,6 +8,7 @@ export const API_ROUTES = {
   AUTH_LOGOUT: `${API_BASE_URL}/auth/logout`,
   AUTH_REFRESH: `${API_BASE_URL}/auth/refresh`,
   AUTH_ME: `${API_BASE_URL}/auth/me`,
+  AUTH_FIREBASE_CUSTOM_TOKEN: `${API_BASE_URL}/auth/firebase/custom-token`,
 
   // User routes
   USER_PROFILE: `${API_BASE_URL}/user/profile`,
