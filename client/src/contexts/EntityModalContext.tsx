@@ -217,6 +217,7 @@ export function EntityModalProvider({ children }: EntityModalProviderProps) {
                 userContext.userGroupId === (entity as Group).id
               }
               hasListingAtThisAirport={!!userContext.userDestination}
+              onOpenChat={closeEntityModal}
               onLeaveGroup={handleLeaveGroup}
               onJoinRequestSuccess={handleJoinRequestSuccess}
               onGroupNameUpdated={() => {}}

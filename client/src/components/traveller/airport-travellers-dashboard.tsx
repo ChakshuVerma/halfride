@@ -661,6 +661,10 @@ export function AirportTravellersDashboard({
                         userGroupId === selectedEntity.data.id
                       }
                       hasListingAtThisAirport={!!userDestination}
+                      onOpenChat={() => {
+                        setSelectedEntity(null);
+                        clearModalParamsFromUrl();
+                      }}
                       onLeaveGroup={handleLeaveGroup}
                       onJoinRequestSuccess={handleJoinRequestSuccess}
                       onGroupNameUpdated={refreshAirportData}
