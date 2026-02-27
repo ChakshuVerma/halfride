@@ -1,9 +1,9 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { useApi } from "./useApi";
 import { API_ROUTES } from "@/lib/apiRoutes";
 import { toast } from "sonner";
 
-/** Max notifications per page (must match server NOTIFICATIONS_PAGE_SIZE) */
+/** Page size used for client-side notifications list */
 export const NOTIFICATIONS_PAGE_SIZE = 6;
 
 export interface Notification {
@@ -20,66 +20,6 @@ export interface Notification {
 export function useNotificationApi() {
   const { sessionRequest } = useApi();
   const [seedLoading, setSeedLoading] = useState(false);
-  const [listLoading, setListLoading] = useState(false);
-  const [loadMoreLoading, setLoadMoreLoading] = useState(false);
-  const listInFlightRef = useRef(0);
-
-  const fetchNotifications = useCallback(
-    async (
-      limit = NOTIFICATIONS_PAGE_SIZE,
-      lastId?: string,
-    ): Promise<{ data: Notification[]; hasMore: boolean }> => {
-      const isLoadMore = !!lastId;
-      if (isLoadMore) {
-        setLoadMoreLoading(true);
-      } else {
-        listInFlightRef.current += 1;
-        if (listInFlightRef.current === 1) setListLoading(true);
-      }
-      try {
-        const params = new URLSearchParams({ limit: limit.toString() });
-        if (lastId) params.append("lastId", lastId);
-
-        const response = await sessionRequest<{
-          ok: boolean;
-          data: Notification[];
-          hasMore?: boolean;
-        }>(`${API_ROUTES.NOTIFICATIONS}?${params.toString()}`);
-        const data = response.data || [];
-        const hasMore = response.hasMore ?? false;
-        return { data, hasMore };
-      } catch (error) {
-        console.error("Fetch Notifications Error:", error);
-        return { data: [], hasMore: false };
-      } finally {
-        if (isLoadMore) {
-          setLoadMoreLoading(false);
-        } else {
-          listInFlightRef.current = Math.max(0, listInFlightRef.current - 1);
-          if (listInFlightRef.current === 0) setListLoading(false);
-        }
-      }
-    },
-    [sessionRequest],
-  );
-
-  const getUnreadCount = useCallback(async () => {
-    listInFlightRef.current += 1;
-    if (listInFlightRef.current === 1) setListLoading(true);
-    try {
-      const response = await sessionRequest<{
-        ok: boolean;
-        count: number;
-      }>(API_ROUTES.NOTIFICATIONS_UNREAD);
-      return response.ok ? response.count : 0;
-    } catch (error) {
-      console.error("Get Unread Count Error:", error);
-      return 0;
-    } finally {
-      listInFlightRef.current = Math.max(0, listInFlightRef.current - 1);
-      if (listInFlightRef.current === 0) setListLoading(false);
-    }
-  }, [sessionRequest]);
 
   const markRead = useCallback(
     async (notificationId: string) => {
@@ -137,13 +77,9 @@ export function useNotificationApi() {
   }, [sessionRequest]);
 
   return {
-    fetchNotifications,
-    getUnreadCount,
     markRead,
     markAllRead,
     seedNotifications,
     seedLoading,
-    listLoading,
-    loadMoreLoading,
   };
 }

@@ -3,7 +3,6 @@ import { admin } from "../firebase/admin";
 import {
   COLLECTIONS,
   NOTIFICATION_FIELDS,
-  NOTIFICATIONS_PAGE_SIZE,
   GROUP_FIELDS,
   TRAVELLER_FIELDS,
 } from "../constants/db";
@@ -633,99 +632,6 @@ export async function notifyConnectionRequestResponded(
     }
   } catch (e) {
     console.error("Notify connection request responded error:", e);
-  }
-}
-
-/**
- * Get notifications for the authenticated user with Pagination.
- */
-export async function getMyNotifications(req: Request, res: Response) {
-  const uid = req.auth?.uid;
-  if (!uid) {
-    return unauthorized(res, "Unauthorized");
-  }
-  // Pagination params: max NOTIFICATIONS_PAGE_SIZE per page
-  const rawLimit = parseInt(
-    String(req.query.limit || NOTIFICATIONS_PAGE_SIZE),
-    10,
-  );
-  const limit = Math.min(
-    isNaN(rawLimit) ? NOTIFICATIONS_PAGE_SIZE : rawLimit,
-    NOTIFICATIONS_PAGE_SIZE,
-  );
-  const lastId = req.query.lastId ? String(req.query.lastId) : undefined;
-
-  const db = admin.firestore();
-  try {
-    const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
-
-    let query = db
-      .collection(COLLECTIONS.NOTIFICATIONS)
-      .where(NOTIFICATION_FIELDS.RECIPIENT_REF, "==", userRef)
-      .orderBy(NOTIFICATION_FIELDS.CREATED_AT, "desc")
-      .limit(limit);
-
-    if (lastId) {
-      const lastDoc = await db
-        .collection(COLLECTIONS.NOTIFICATIONS)
-        .doc(lastId)
-        .get();
-      if (lastDoc.exists) {
-        query = query.startAfter(lastDoc);
-      }
-    }
-
-    const snapshot = await query.get();
-
-    // Transform Refs back to IDs for client compatibility
-    const notifications = snapshot.docs.map((doc) => {
-      const d = doc.data();
-      return {
-        ...d,
-        [NOTIFICATION_FIELDS.RECIPIENT_REF]: undefined, // remove ref
-        recipientUserId: d[NOTIFICATION_FIELDS.RECIPIENT_REF]?.id, // add ID
-        data: {
-          ...d.data,
-          groupRef: undefined,
-          actorUserRef: undefined,
-          flightRef: undefined,
-          groupId: d.data?.groupRef?.id,
-          actorUserId: d.data?.actorUserRef?.id,
-        },
-      };
-    });
-
-    const hasMore = snapshot.docs.length === limit;
-    return res.json({ ok: true, data: notifications, hasMore });
-  } catch (error: unknown) {
-    console.error("Get Notifications Error:", error);
-    return internalServerError(
-      res,
-      error instanceof Error ? error.message : "Failed to load notifications",
-    );
-  }
-}
-
-export async function getUnreadCount(req: Request, res: Response) {
-  const uid = req.auth?.uid;
-  if (!uid) return unauthorized(res, "Unauthorized");
-
-  const db = admin.firestore();
-  try {
-    const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
-    const snapshot = await db
-      .collection(COLLECTIONS.NOTIFICATIONS)
-      .where(NOTIFICATION_FIELDS.RECIPIENT_REF, "==", userRef)
-      .where(NOTIFICATION_FIELDS.IS_READ, "==", false)
-      .count()
-      .get();
-
-    return res.json({ ok: true, count: snapshot.data().count });
-  } catch (error: unknown) {
-    return internalServerError(
-      res,
-      error instanceof Error ? error.message : "Failed to get unread count",
-    );
   }
 }
 

@@ -47,6 +47,5 @@ export const API_ROUTES = {
   // Notification routes
   NOTIFICATIONS_SEED: `${API_BASE_URL}/notifications/seed`,
   NOTIFICATIONS: `${API_BASE_URL}/notifications`,
-  NOTIFICATIONS_UNREAD: `${API_BASE_URL}/notifications/unread-count`,
   NOTIFICATIONS_READ_ALL: `${API_BASE_URL}/notifications/read-all`,
 } as const;

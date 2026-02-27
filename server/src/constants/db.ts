@@ -182,9 +182,6 @@ export const NOTIFICATION_FIELDS = {
   CREATED_AT: "createdAt",
 } as const;
 
-/** Max notifications per page when fetching list */
-export const NOTIFICATIONS_PAGE_SIZE = 6;
-
 // [NEW]
 export const GROUP_FIELDS = {
   GROUP_ID: "groupId",
