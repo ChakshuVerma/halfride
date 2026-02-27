@@ -93,6 +93,33 @@ export interface GroupSchema {
 }
 
 /**
+ * Group Chat Messages
+ */
+
+export interface GroupMessageSchema {
+  /** Firestore document ID (duplicated for easier querying/mapping if needed). */
+  messageId: string;
+  /** Parent group ID (denormalized for easier querying/aggregation). */
+  groupId: string;
+  /** UID of the sender (string, for simple checks and rules). */
+  senderId: string;
+  /** Cached display name (e.g. username or first name). */
+  senderDisplayName: string;
+  /** Cached avatar URL, if available. */
+  senderPhotoURL?: string | null;
+  /** Message text content. */
+  text: string;
+  /** When the message was created (server timestamp). */
+  createdAt: any;
+  /** Optional: when the message was last edited. */
+  editedAt?: any;
+  /** Optional: soft-delete timestamp. */
+  deletedAt?: any;
+  /** Optional: UID of the user who deleted the message. */
+  deletedBy?: string;
+}
+
+/**
  * Field Name Constants
  */
 
@@ -155,9 +182,6 @@ export const NOTIFICATION_FIELDS = {
   CREATED_AT: "createdAt",
 } as const;
 
-/** Max notifications per page when fetching list */
-export const NOTIFICATIONS_PAGE_SIZE = 6;
-
 // [NEW]
 export const GROUP_FIELDS = {
   GROUP_ID: "groupId",
@@ -165,6 +189,26 @@ export const GROUP_FIELDS = {
   MEMBERS: "members",
   PENDING_REQUESTS: "pendingRequests",
   FLIGHT_ARRIVAL_AIRPORT: "flightArrivalAirport",
+  MEMBER_UIDS: "memberUids",
   CREATED_AT: "createdAt",
   UPDATED_AT: "updatedAt",
+} as const;
+
+/** Group subcollections (per-group nested collections). */
+export const GROUP_SUBCOLLECTIONS = {
+  MESSAGES: "messages",
+} as const;
+
+/** Field names for documents under groups/{groupId}/messages/{messageId}. */
+export const GROUP_MESSAGE_FIELDS = {
+  MESSAGE_ID: "messageId",
+  GROUP_ID: "groupId",
+  SENDER_ID: "senderId",
+  SENDER_DISPLAY_NAME: "senderDisplayName",
+  SENDER_PHOTO_URL: "senderPhotoURL",
+  TEXT: "text",
+  CREATED_AT: "createdAt",
+  EDITED_AT: "editedAt",
+  DELETED_AT: "deletedAt",
+  DELETED_BY: "deletedBy",
 } as const;

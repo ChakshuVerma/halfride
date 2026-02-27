@@ -1,6 +1,5 @@
 import {
   useState,
-  useEffect,
   useMemo,
   type ReactNode,
   type MouseEvent,
@@ -14,11 +13,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  useNotificationApi,
-  NOTIFICATIONS_PAGE_SIZE,
-  type Notification,
-} from "@/hooks/useNotificationApi";
+import { useNotificationRealtime } from "@/hooks/useNotificationRealtime";
+import type { Notification } from "@/hooks/useNotificationApi";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -105,78 +101,28 @@ function renderNotificationBody(
 export function NotificationBell() {
   const { openEntityModal } = useEntityModal();
   const {
-    fetchNotifications,
-    getUnreadCount,
+    notifications,
+    unreadCount,
+    hasMore,
+    loading: listLoading,
+    loadMore,
+    loadMoreLoading,
     markRead,
     markAllRead,
-    loadMoreLoading,
-  } = useNotificationApi();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [hasMore, setHasMore] = useState(false);
+  } = useNotificationRealtime();
   const [isOpen, setIsOpen] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterType>(
     NOTIFICATION_CONSTANTS.FILTERS.ALL,
   );
 
-  const loadData = async () => {
-    try {
-      const [{ data: msgs, hasMore: more }, count] = await Promise.all([
-        fetchNotifications(NOTIFICATIONS_PAGE_SIZE),
-        getUnreadCount(),
-      ]);
-      setNotifications(msgs);
-      setHasMore(more);
-      setUnreadCount(count);
-    } catch (err) {
-      console.error(NOTIFICATION_CONSTANTS.ERRORS.LOAD_FAILED, err);
-    }
-  };
-
-  // Initial load & Polling
-  useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 15000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const loadMore = async () => {
-    if (!notifications.length || !hasMore || loadMoreLoading) return;
-    const lastId = notifications[notifications.length - 1]?.notificationId;
-    if (!lastId) return;
-    try {
-      const { data: nextPage, hasMore: more } = await fetchNotifications(
-        NOTIFICATIONS_PAGE_SIZE,
-        lastId,
-      );
-      setNotifications((prev) => [...prev, ...nextPage]);
-      setHasMore(more);
-    } catch (e) {
-      console.error(NOTIFICATION_CONSTANTS.ERRORS.LOAD_FAILED, e);
-    }
-  };
-
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
-    if (open) {
-      loadData();
-    }
   };
 
   const handleNotificationClick = async (n: Notification) => {
     const { notificationId, isRead } = n;
     if (!isRead) {
-      const success = await markRead(notificationId);
-      if (success) {
-        setNotifications((prev) =>
-          prev.map((item) =>
-            item.notificationId === notificationId
-              ? { ...item, isRead: true }
-              : item,
-          ),
-        );
-        setUnreadCount((c) => Math.max(0, c - 1));
-      }
+      await markRead(notificationId);
     }
     const action = getNotificationAction(n);
     if (action) {
@@ -207,11 +153,7 @@ export function NotificationBell() {
   };
 
   const handleMarkAllRead = async () => {
-    const success = await markAllRead();
-    if (success) {
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      setUnreadCount(0);
-    }
+    await markAllRead();
   };
 
   const formatTime = (createdAt: any) => {
@@ -310,7 +252,12 @@ export function NotificationBell() {
         {/* List */}
         <ScrollArea className="h-[420px]">
           <div className="px-4 py-4 sm:px-3 sm:py-3">
-            {filteredNotifications.length === 0 ? (
+            {listLoading ? (
+              <div className="flex flex-col items-center justify-center py-14">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <p className="text-sm text-muted-foreground mt-3">Loading…</p>
+              </div>
+            ) : filteredNotifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-14 px-6 text-center rounded-2xl bg-muted/20 border border-dashed border-border/60">
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-muted/40 mb-4">
                   <Inbox className="h-7 w-7 text-muted-foreground/50" />

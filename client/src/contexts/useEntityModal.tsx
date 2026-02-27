@@ -6,6 +6,8 @@ export type EntityModalParams = {
   entityId: string;
   /** Optional airport name for display/fetch; falls back to airportCode. */
   airportName?: string;
+  /** When true (e.g. opened from group chat), hide revoke listing and connection UI. */
+  viewOnly?: boolean;
 };
 
 export type EntityModalContextValue = {

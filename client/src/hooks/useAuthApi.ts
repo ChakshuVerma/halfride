@@ -80,11 +80,19 @@ export function useAuthApi() {
     })
   }, [sessionRequest])
 
+  const getFirebaseCustomToken = useCallback(async () => {
+    return sessionRequest<{ ok: boolean; token?: string }>(
+      API_ROUTES.AUTH_FIREBASE_CUSTOM_TOKEN,
+      { method: "POST" },
+    )
+  }, [sessionRequest])
+
   return {
     login,
     completeSignup,
     completeForgotPassword,
     logout,
+    getFirebaseCustomToken,
     loginLoading,
     completeSignupLoading,
     completeForgotPasswordLoading,

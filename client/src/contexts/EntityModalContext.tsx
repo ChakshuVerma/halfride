@@ -193,9 +193,11 @@ export function EntityModalProvider({ children }: EntityModalProviderProps) {
               isUserInGroup={userContext.isUserInGroup}
               onConnectionResponded={handleConnectionResponded}
               onRevokeListing={
-                (entity as Traveller).isOwnListing
-                  ? () => void handleRevokeListing()
-                  : undefined
+                params.viewOnly
+                  ? undefined
+                  : (entity as Traveller).isOwnListing
+                    ? () => void handleRevokeListing()
+                    : undefined
               }
               isRevokingListing={revokeListingLoading}
               onFetchTravellerDetail={(userId) =>
@@ -205,6 +207,7 @@ export function EntityModalProvider({ children }: EntityModalProviderProps) {
                   airportName,
                 )
               }
+              viewOnly={params.viewOnly}
             />
           ) : entity && params?.type === "group" ? (
             <GroupModal

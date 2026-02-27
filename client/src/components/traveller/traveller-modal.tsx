@@ -97,6 +97,8 @@ type TravellerModalProps = {
   isRevokingListing?: boolean;
   /** Fetches fresh traveller detail (e.g. connection status). When provided, modal fetches on open and shows loading until resolved. */
   onFetchTravellerDetail?: (userId: string) => Promise<Traveller | null>;
+  /** When true, hide footer: revoke listing button and connection / "already in group" UI. */
+  viewOnly?: boolean;
 };
 
 // ... existing code ...
@@ -152,6 +154,7 @@ export function TravellerModal({
   onRevokeListing,
   isRevokingListing = false,
   onFetchTravellerDetail,
+  viewOnly = false,
 }: TravellerModalProps) {
   const { fetchFlightTrackerByFlightNumber, loading: apiLoading } =
     useFlightTrackerApi();
@@ -546,7 +549,7 @@ export function TravellerModal({
       </div>
 
       {/* 3. Footer Action */}
-      {traveller.isOwnListing ? (
+      {!viewOnly && traveller.isOwnListing ? (
         <div className="p-6 pt-2 border-t border-zinc-100 bg-white space-y-3">
           {onRevokeListing && (
             <>
@@ -573,13 +576,13 @@ export function TravellerModal({
             </>
           )}
         </div>
-      ) : isUserInGroup ? (
+      ) : !viewOnly && isUserInGroup ? (
         <div className="p-6 pt-2 border-t border-zinc-100 bg-white">
           <div className="w-full py-3 rounded-xl bg-muted/50 text-muted-foreground text-sm font-medium text-center border border-border/50">
             {CONSTANTS.MESSAGES.ALREADY_IN_GROUP}
           </div>
         </div>
-      ) : (
+      ) : !viewOnly ? (
         <div className="p-6 pt-2 border-t border-zinc-100 bg-white">
           {connectionStatusLoading ? (
             <div className="h-12 rounded-xl bg-zinc-100 border border-zinc-200 flex items-center justify-center gap-2">
@@ -665,7 +668,7 @@ export function TravellerModal({
             </button>
           )}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

@@ -417,6 +417,31 @@ export async function me(req: Request, res: Response) {
   });
 }
 
+/**
+ * Issue a Firebase custom auth token for the currently authenticated user.
+ *
+ * This lets the frontend sign into Firebase Auth (for Firestore rules)
+ * using the same uid as our backend session.
+ */
+export async function getFirebaseCustomToken(req: Request, res: Response) {
+  const uid = (req as any).auth?.uid as string | undefined;
+  if (!uid) {
+    return unauthorized(res, "Unauthorized");
+  }
+
+  try {
+    const customToken = await admin.auth().createCustomToken(uid);
+    return res.json({ ok: true, token: customToken });
+  } catch (e: unknown) {
+    console.error("Failed to create Firebase custom token", e);
+    return internalServerError(
+      res,
+      e instanceof Error ? e.message : "Failed to create Firebase custom token",
+      "FIREBASE_CUSTOM_TOKEN",
+    );
+  }
+}
+
 export async function forgotPasswordComplete(req: Request, res: Response) {
   if (!adminInitialized) {
     return internalServerError(

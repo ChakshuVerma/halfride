@@ -19,6 +19,8 @@ import { useGetTravellerApi } from "@/hooks/useGetTravellerApi";
 import type { Group, Traveller } from "./types";
 import { formatShortDate } from "@/lib/date";
 import { LoadingState } from "@/components/common/LoadingState";
+import { useNavigate } from "react-router-dom";
+import { getGroupChatPath } from "@/constants/routes";
 
 type JoinRequestUser = {
   id: string;
@@ -111,6 +113,7 @@ export function GroupModal({
   onJoinRequestSuccess,
   onGroupNameUpdated,
 }: GroupModalProps) {
+  const navigate = useNavigate();
   const {
     fetchGroupById,
     fetchGroupMembers,
@@ -192,6 +195,10 @@ export function GroupModal({
       setNameUpdateError(msg);
       toast.error(msg);
     }
+  };
+
+  const handleOpenChat = () => {
+    navigate(getGroupChatPath(group.id));
   };
 
   const handleEditNameKeyDown = (e: React.KeyboardEvent) => {
@@ -665,6 +672,13 @@ export function GroupModal({
           <div className="flex flex-col-reverse sm:flex-row gap-2">
             {isCurrentUserInGroup && (
               <>
+                <button
+                  type="button"
+                  className="flex-1 min-w-0 rounded-xl px-4 py-2.5 sm:py-2.5 text-sm font-bold text-primary-foreground bg-primary hover:bg-primary/90 active:bg-primary/95 transition-colors"
+                  onClick={handleOpenChat}
+                >
+                  Open chat
+                </button>
                 <button
                   type="button"
                   className="flex-1 min-w-0 rounded-xl px-4 py-2.5 sm:py-2.5 text-sm font-bold text-white bg-zinc-600 hover:bg-zinc-700 active:bg-zinc-800 transition-colors disabled:opacity-50 disabled:pointer-events-none"
