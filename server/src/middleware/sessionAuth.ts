@@ -1,7 +1,8 @@
 import type { NextFunction, Request, Response } from 'express';
-import { readCookie } from '../utils/cookies';
-import { verifyJwt, type JwtPayload } from '../utils/jwt';
-import { unauthorized, internalServerError } from '../utils/errors';
+import { readCookie } from "../utils/cookies";
+import { verifyJwt, type JwtPayload } from "../utils/jwt";
+import { unauthorized, internalServerError } from "../core/errors";
+import { env } from "../config/env";
 
 const ACCESS_COOKIE = 'access_token';
 
@@ -16,12 +17,7 @@ export function requireSession(req: Request, res: Response, next: NextFunction) 
     return unauthorized(res, 'Missing access token');
   }
 
-  const secret = process.env.ACCESS_TOKEN_SECRET;
-  if (!secret) {
-    return internalServerError(res, 'ACCESS_TOKEN_SECRET is not set', 'SERVER_CONFIG');
-  }
-
-  const verified = verifyJwt({ token, secret });
+  const verified = verifyJwt({ token, secret: env.accessTokenSecret });
   if (!verified.valid) {
     return unauthorized(res, verified.error);
   }

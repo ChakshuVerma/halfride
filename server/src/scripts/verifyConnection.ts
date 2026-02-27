@@ -1,11 +1,11 @@
-import { admin, adminInitialized } from "../firebase/admin";
+import { admin, adminInitialized } from "../config/firebase";
 import { requestConnection } from "../controllers/travellerController";
 import {
   COLLECTIONS,
   TRAVELLER_FIELDS,
   GROUP_FIELDS,
   USER_FIELDS,
-} from "../constants/db";
+} from "../core/db";
 import { Request, Response } from "express";
 
 // Mock Express Request and Response

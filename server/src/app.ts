@@ -1,7 +1,8 @@
 import express from "express";
 import cors from "cors";
 import { apiRouter } from "./routes";
-import { ApiError, buildErrorBody } from "./utils/errors";
+import { env } from "./config/env";
+import { ApiError, buildErrorBody } from "./core/errors";
 
 export function createApp() {
   const app = express();
@@ -40,7 +41,7 @@ export function createApp() {
       // Fallback for unexpected errors
       console.error(err);
       const message =
-        process.env.NODE_ENV === "production"
+        env.nodeEnv === "production"
           ? "Something went wrong. Please try again."
           : err instanceof Error
             ? err.message

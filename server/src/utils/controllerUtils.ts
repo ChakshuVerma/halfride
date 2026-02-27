@@ -1,3 +1,5 @@
+import { env } from "../config/env";
+
 const isDateTodayOrTomorrow = (inputDate: Date): boolean => {
   const now = new Date();
 
@@ -24,7 +26,7 @@ const isDateTodayOrTomorrow = (inputDate: Date): boolean => {
 };
 
 const checkRoadDistance = async (originCode: string, destPlaceId: string) => {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  const apiKey = env.googleMapsApiKey;
 
   // We use "airport" prefix to help Google geocode the IATA code correctly
   const origin = `airport ${originCode}`;
@@ -54,7 +56,7 @@ const roadDistanceBetweenTwoPoints = async (
   originPlaceId: string,
   destPlaceId: string,
 ) => {
-  const apiKey = process.env.GOOGLE_MAPS_API_KEY;
+  const apiKey = env.googleMapsApiKey;
   const origin = `place_id:${originPlaceId}`;
   const destination = `place_id:${destPlaceId}`;
   const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${origin}&destinations=${destination}&key=${apiKey}`;

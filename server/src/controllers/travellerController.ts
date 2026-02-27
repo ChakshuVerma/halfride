@@ -1,12 +1,12 @@
 import type { Request, Response } from "express";
-import { admin } from "../firebase/admin";
+import { admin } from "../config/firebase";
 import {
   COLLECTIONS,
   FLIGHT_FIELDS,
   GROUP_FIELDS,
   TRAVELLER_FIELDS,
   USER_FIELDS,
-} from "../constants/db";
+} from "../core/db";
 import {
   ConnectionResponseAction,
   parseConnectionResponseAction,
@@ -29,7 +29,7 @@ import {
   notFound,
   forbidden,
   internalServerError,
-} from "../utils/errors";
+} from "../core/errors";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -172,9 +172,7 @@ async function buildTravellerListing(
 export async function getTravellersByAirport(req: Request, res: Response) {
   const { airportCode } = req.params;
   if (!airportCode) {
-    return res
-      .status(400)
-      .json({ ok: false, message: "Airport code is required" });
+    return badRequest(res, "Airport code is required");
   }
 
   const db = admin.firestore();
@@ -955,9 +953,7 @@ export async function leaveGroup(req: Request, res: Response) {
       (ref: admin.firestore.DocumentReference) => ref.id === uid,
     );
     if (!isMember) {
-      return res
-        .status(403)
-        .json({ ok: false, error: "You are not a member of this group" });
+      return forbidden(res, "You are not a member of this group");
     }
 
     const remainingMembers = members.filter(
@@ -1016,9 +1012,7 @@ export async function revokeListing(req: Request, res: Response) {
   }
 
   if (!airportCode || typeof airportCode !== "string" || !airportCode.trim()) {
-    return res
-      .status(400)
-      .json({ ok: false, error: "airportCode is required" });
+    return badRequest(res, "airportCode is required");
   }
 
   const db = admin.firestore();
@@ -1306,9 +1300,7 @@ export async function respondToJoinRequest(req: Request, res: Response) {
     // Accept: add to members, set groupRef on requester's traveller_data, notify all.
     if (isAccept) {
       if (members.length >= MAX_GROUP_USERS) {
-        return res
-          .status(400)
-          .json({ ok: false, error: "Group is full; cannot add more members" });
+      return badRequest(res, "Group is full; cannot add more members");
       }
       if (!flightArrivalAirport) {
         return badRequest(res, "Group has no airport");

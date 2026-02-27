@@ -1,21 +1,21 @@
 import type { Request, Response } from 'express';
 import { FieldValue } from 'firebase-admin/firestore';
 import sharp from 'sharp';
-import { admin } from '../firebase/admin';
+import { admin } from '../config/firebase';
 import {
   COLLECTIONS,
   USER_FIELDS,
   TRAVELLER_FIELDS,
   GROUP_FIELDS,
   FLIGHT_FIELDS,
-} from '../constants/db';
+} from '../core/db';
 import {
   badRequest,
   unauthorized,
   notFound,
   conflict,
   internalServerError,
-} from '../utils/errors';
+} from '../core/errors';
 
 export async function profile(req: Request, res: Response) {
   const uid = req.auth?.uid;

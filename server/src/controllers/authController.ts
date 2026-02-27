@@ -1,17 +1,18 @@
 import type { Request, Response } from "express";
 import crypto from "crypto";
 import { FieldValue } from "firebase-admin/firestore";
-import { admin, adminInitialized } from "../firebase/admin";
+import { admin, adminInitialized } from "../config/firebase";
 import { serializeCookie, readCookie } from "../utils/cookies";
 import { hashPassword, verifyPassword } from "../utils/password";
 import { randomJti, signJwt, verifyJwt } from "../utils/jwt";
-import { COLLECTIONS, USER_FIELDS } from "../constants/db";
+import { COLLECTIONS, USER_FIELDS } from "../core/db";
 import {
   badRequest,
   unauthorized,
   conflict,
   internalServerError,
-} from "../utils/errors";
+} from "../core/errors";
+import { env } from "../config/env";
 
 const MESSAGE_ADMIN_NOT_CONFIGURED =
   "Firebase Admin SDK is not properly configured. Please check server logs.";
@@ -22,15 +23,11 @@ const REFRESH_COOKIE = "refresh_token";
 const ACCESS_TTL_SECONDS = 60 * 15; // 15 minutes
 const REFRESH_TTL_SECONDS = 60 * 60 * 24 * 30; // 30 days
 
-function requireSecrets() {
-  const accessSecret = process.env.ACCESS_TOKEN_SECRET?.trim();
-  const refreshSecret = process.env.REFRESH_TOKEN_SECRET?.trim();
-  if (!accessSecret || !refreshSecret) {
-    throw new Error(
-      "ACCESS_TOKEN_SECRET and REFRESH_TOKEN_SECRET must be set (check server/.env for exact variable names)",
-    );
-  }
-  return { accessSecret, refreshSecret };
+function getSecrets() {
+  return {
+    accessSecret: env.accessTokenSecret,
+    refreshSecret: env.refreshTokenSecret,
+  };
 }
 
 function hashRefreshJti(jti: string) {
@@ -49,7 +46,7 @@ export async function signupComplete(req: Request, res: Response) {
   let accessSecret: string;
   let refreshSecret: string;
   try {
-    const secrets = requireSecrets();
+    const secrets = getSecrets();
     accessSecret = secrets.accessSecret;
     refreshSecret = secrets.refreshSecret;
   } catch (e) {
@@ -141,7 +138,7 @@ export async function signupComplete(req: Request, res: Response) {
       },
     });
 
-    const secure = process.env.NODE_ENV === "production";
+    const secure = env.nodeEnv === "production";
     res.setHeader("Set-Cookie", [
       serializeCookie({
         name: ACCESS_COOKIE,
@@ -169,7 +166,7 @@ export async function login(req: Request, res: Response) {
   let accessSecret: string;
   let refreshSecret: string;
   try {
-    const secrets = requireSecrets();
+    const secrets = getSecrets();
     accessSecret = secrets.accessSecret;
     refreshSecret = secrets.refreshSecret;
   } catch (e) {
@@ -238,7 +235,7 @@ export async function login(req: Request, res: Response) {
     },
   });
 
-  const secure = process.env.NODE_ENV === "production";
+  const secure = env.nodeEnv === "production";
   res.setHeader("Set-Cookie", [
     serializeCookie({
       name: ACCESS_COOKIE,
@@ -260,7 +257,7 @@ export async function refresh(req: Request, res: Response) {
   let accessSecret: string;
   let refreshSecret: string;
   try {
-    const secrets = requireSecrets();
+    const secrets = getSecrets();
     accessSecret = secrets.accessSecret;
     refreshSecret = secrets.refreshSecret;
   } catch (e) {
@@ -327,7 +324,7 @@ export async function refresh(req: Request, res: Response) {
     },
   });
 
-  const secure = process.env.NODE_ENV === "production";
+  const secure = env.nodeEnv === "production";
   res.setHeader("Set-Cookie", [
     serializeCookie({
       name: ACCESS_COOKIE,
@@ -349,8 +346,8 @@ export async function logout(req: Request, res: Response) {
   // Best-effort: revoke refresh token server-side if we can identify user
   try {
     const refreshToken = readCookie(req.headers.cookie, REFRESH_COOKIE);
-    const refreshSecret = process.env.REFRESH_TOKEN_SECRET;
-    if (refreshToken && refreshSecret) {
+    const refreshSecret = env.refreshTokenSecret;
+    if (refreshToken) {
       const verified = verifyJwt({
         token: refreshToken,
         secret: refreshSecret,
@@ -374,7 +371,7 @@ export async function logout(req: Request, res: Response) {
     // ignore
   }
 
-  const secure = process.env.NODE_ENV === "production";
+  const secure = env.nodeEnv === "production";
   res.setHeader("Set-Cookie", [
     serializeCookie({
       name: ACCESS_COOKIE,
@@ -397,16 +394,10 @@ export async function me(req: Request, res: Response) {
   if (!accessToken)
     return unauthorized(res, "Missing access token");
 
-  const accessSecret = process.env.ACCESS_TOKEN_SECRET;
-  if (!accessSecret) {
-    return internalServerError(
-      res,
-      "ACCESS_TOKEN_SECRET is not set",
-      "SERVER_CONFIG",
-    );
-  }
-
-  const verified = verifyJwt({ token: accessToken, secret: accessSecret });
+  const verified = verifyJwt({
+    token: accessToken,
+    secret: env.accessTokenSecret,
+  });
   if (!verified.valid)
     return unauthorized(res, verified.error);
 
@@ -498,7 +489,7 @@ export async function forgotPasswordComplete(req: Request, res: Response) {
     );
 
     // Clear cookies (forces re-login)
-    const secure = process.env.NODE_ENV === "production";
+    const secure = env.nodeEnv === "production";
     res.setHeader("Set-Cookie", [
       serializeCookie({
         name: ACCESS_COOKIE,

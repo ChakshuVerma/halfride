@@ -1,10 +1,10 @@
 import type { Request, Response } from "express";
 import type { Firestore } from "firebase-admin/firestore";
-import { admin } from "../firebase/admin";
+import { admin } from "../config/firebase";
 import { Timestamp, FieldValue } from "firebase-admin/firestore";
 import { checkUserExists } from "./userController";
 import { notifyUsersNearNewListing } from "./notificationController";
-import { COLLECTIONS, TRAVELLER_FIELDS } from "../constants/db";
+import { COLLECTIONS, TRAVELLER_FIELDS } from "../core/db";
 import {
   isDateTodayOrTomorrow,
   checkRoadDistance,
@@ -15,7 +15,7 @@ import {
   notFound,
   internalServerError,
   sendError,
-} from "../utils/errors";
+} from "../core/errors";
 
 interface CachedAirport {
   airportCode: string;
