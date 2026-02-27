@@ -1,18 +1,18 @@
 import type { Request, Response } from "express";
-import { admin } from "../firebase/admin";
+import { admin } from "../config/firebase";
 import {
   COLLECTIONS,
   GROUP_FIELDS,
   GROUP_MESSAGE_FIELDS,
   GROUP_SUBCOLLECTIONS,
-} from "../constants/db";
+} from "../core/db";
 import {
   badRequest,
   unauthorized,
   forbidden,
   notFound,
   internalServerError,
-} from "../utils/errors";
+} from "../core/errors";
 
 const MAX_MESSAGE_LENGTH = 4000;
 
@@ -170,6 +170,10 @@ export async function getGroupMessages(req: Request, res: Response) {
     typeof req.query.before === "string" && req.query.before.trim()
       ? req.query.before.trim()
       : undefined;
+
+  if (beforeId && beforeId.length > 500) {
+    return badRequest(res, "before cursor is too long");
+  }
 
   try {
     const db = admin.firestore();

@@ -1,17 +1,21 @@
 import type { Request, Response } from "express";
-import { admin } from "../firebase/admin";
+import { admin } from "../config/firebase";
 import {
   COLLECTIONS,
   FLIGHT_FIELDS,
   GROUP_FIELDS,
   TRAVELLER_FIELDS,
   USER_FIELDS,
-} from "../constants/db";
+} from "../core/db";
 import {
   ConnectionResponseAction,
   parseConnectionResponseAction,
 } from "../types/connection";
-import { roadDistanceBetweenTwoPoints } from "../utils/controllerUtils";
+import {
+  IATA_CODE_LENGTH,
+  isValidIataCode,
+  roadDistanceBetweenTwoPoints,
+} from "../utils/controllerUtils";
 import {
   notifyUserOfConnectionRequest,
   notifyConnectionRequestResponded,
@@ -29,7 +33,7 @@ import {
   notFound,
   forbidden,
   internalServerError,
-} from "../utils/errors";
+} from "../core/errors";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -170,21 +174,30 @@ async function buildTravellerListing(
 
 /** GET /traveller-by-airport/:airportCode — list travellers at airport (not in a group). */
 export async function getTravellersByAirport(req: Request, res: Response) {
-  const { airportCode } = req.params;
+  const airportCodeRaw = req.params.airportCode;
+  if (!airportCodeRaw) {
+    return badRequest(res, "Airport code is required");
+  }
+
+  const airportCode = String(airportCodeRaw).trim().toUpperCase();
   if (!airportCode) {
-    return res
-      .status(400)
-      .json({ ok: false, message: "Airport code is required" });
+    return badRequest(res, "Airport code is required");
+  }
+  if (!isValidIataCode(airportCode)) {
+    return badRequest(
+      res,
+      `Airport code must be a ${IATA_CODE_LENGTH}-character IATA code`,
+    );
   }
 
   const db = admin.firestore();
   const uid = req.auth?.uid;
   // Current user's destination at this airport (for distance calc).
   const destination = uid
-    ? await getCurrentUserDestination(uid, airportCode as string)
+    ? await getCurrentUserDestination(uid, airportCode)
     : null;
   const placeId = destination?.placeId;
-  const code = String(airportCode).toUpperCase();
+  const code = airportCode;
 
   try {
     let currentUserTravellerData: admin.firestore.DocumentData | null = null;
@@ -282,6 +295,16 @@ export async function getTravellerByAirportAndUser(req: Request, res: Response) 
     return badRequest(res, "Airport code and user ID are required");
   }
 
+  if (!isValidIataCode(airportCode)) {
+    return badRequest(
+      res,
+      `Airport code must be a ${IATA_CODE_LENGTH}-character IATA code`,
+    );
+  }
+  if (userId.length > UID_MAX_LENGTH) {
+    return badRequest(res, "User ID is too long");
+  }
+
   const db = admin.firestore();
   const uid = req.auth?.uid;
   const code = airportCode.toUpperCase();
@@ -345,17 +368,35 @@ export async function getTravellerByAirportAndUser(req: Request, res: Response) 
 
 /** GET (query: airportCode) — whether current user has a listing at airport; returns destinationAddress. */
 export async function checkTravellerHasListing(req: Request, res: Response) {
-  const { airportCode } = req.query;
+  const rawAirportCode = req.query.airportCode;
   const uid = req.auth?.uid;
   if (!uid) return unauthorized(res, "Unauthorized");
-  if (!airportCode) {
+  if (!rawAirportCode) {
     return badRequest(res, "Airport code is required");
+  }
+
+  const airportCode =
+    typeof rawAirportCode === "string"
+      ? rawAirportCode
+      : Array.isArray(rawAirportCode)
+        ? String(rawAirportCode[0] ?? "")
+        : String(rawAirportCode);
+
+  const normalizedCode = airportCode.trim().toUpperCase();
+  if (!normalizedCode) {
+    return badRequest(res, "Airport code is required");
+  }
+  if (!isValidIataCode(normalizedCode)) {
+    return badRequest(
+      res,
+      `Airport code must be a ${IATA_CODE_LENGTH}-character IATA code`,
+    );
   }
 
   try {
     const destination = await getCurrentUserDestination(
       uid,
-      airportCode as string,
+      normalizedCode,
     );
     return res.json({ ok: true, destinationAddress: destination?.address });
   } catch (error: unknown) {
@@ -955,9 +996,7 @@ export async function leaveGroup(req: Request, res: Response) {
       (ref: admin.firestore.DocumentReference) => ref.id === uid,
     );
     if (!isMember) {
-      return res
-        .status(403)
-        .json({ ok: false, error: "You are not a member of this group" });
+      return forbidden(res, "You are not a member of this group");
     }
 
     const remainingMembers = members.filter(
@@ -1016,9 +1055,7 @@ export async function revokeListing(req: Request, res: Response) {
   }
 
   if (!airportCode || typeof airportCode !== "string" || !airportCode.trim()) {
-    return res
-      .status(400)
-      .json({ ok: false, error: "airportCode is required" });
+    return badRequest(res, "airportCode is required");
   }
 
   const db = admin.firestore();
@@ -1306,9 +1343,7 @@ export async function respondToJoinRequest(req: Request, res: Response) {
     // Accept: add to members, set groupRef on requester's traveller_data, notify all.
     if (isAccept) {
       if (members.length >= MAX_GROUP_USERS) {
-        return res
-          .status(400)
-          .json({ ok: false, error: "Group is full; cannot add more members" });
+      return badRequest(res, "Group is full; cannot add more members");
       }
       if (!flightArrivalAirport) {
         return badRequest(res, "Group has no airport");

@@ -1,13 +1,15 @@
 import type { Request, Response } from "express";
 import type { Firestore } from "firebase-admin/firestore";
-import { admin } from "../firebase/admin";
+import { admin } from "../config/firebase";
 import { Timestamp, FieldValue } from "firebase-admin/firestore";
 import { checkUserExists } from "./userController";
 import { notifyUsersNearNewListing } from "./notificationController";
-import { COLLECTIONS, TRAVELLER_FIELDS } from "../constants/db";
+import { COLLECTIONS, TRAVELLER_FIELDS } from "../core/db";
 import {
-  isDateTodayOrTomorrow,
+  IATA_CODE_LENGTH,
   checkRoadDistance,
+  isDateTodayOrTomorrow,
+  isValidIataCode,
 } from "../utils/controllerUtils";
 import {
   ApiError,
@@ -15,7 +17,7 @@ import {
   notFound,
   internalServerError,
   sendError,
-} from "../utils/errors";
+} from "../core/errors";
 
 interface CachedAirport {
   airportCode: string;
@@ -233,22 +235,21 @@ export async function createFlightTracker(req: Request, res: Response) {
   } = req.body;
   const uid = req.auth!.uid;
 
+  if (!req.body || typeof req.body !== "object") {
+    return badRequest(res, "Request body must be a JSON object");
+  }
+
   if (
     !rawCarrier ||
     !rawFlightNumber ||
-    !year ||
-    !month ||
-    !day ||
-    !destination ||
+    year == null ||
+    month == null ||
+    day == null ||
+    destination == null ||
     !userTerminal ||
     !airportCode
   ) {
     return badRequest(res, "Missing required parameters");
-  }
-
-  const userCheck = await checkUserExists(uid);
-  if (!userCheck.ok || !userCheck.exists) {
-    return badRequest(res, "User record not found");
   }
 
   const carrier = String(rawCarrier ?? "")
@@ -259,15 +260,65 @@ export async function createFlightTracker(req: Request, res: Response) {
   const m = Number(month);
   const d = Number(day);
 
+  if (!carrier || !fNum) {
+    return badRequest(res, "carrier and flightNumber are required");
+  }
+  if (!isFinite(y) || !isFinite(m) || !isFinite(d)) {
+    return badRequest(res, "year, month and day must be numbers");
+  }
   if (
-    !carrier ||
-    !fNum ||
-    isNaN(y) ||
-    isNaN(m) ||
-    isNaN(d) ||
     !isDateTodayOrTomorrow(new Date(Date.UTC(y, m - 1, d)))
   ) {
-    return badRequest(res, "Invalid params");
+    return badRequest(res, "Flight date must be today or tomorrow");
+  }
+
+  // Validate destination shape (object with optional placeId/address) when provided.
+  if (typeof destination !== "object" || destination === null) {
+    return badRequest(
+      res,
+      "destination must be an object with optional placeId and address",
+    );
+  }
+  const destinationPlaceId =
+    "placeId" in destination && typeof destination.placeId === "string"
+      ? destination.placeId.trim()
+      : "";
+  if ("placeId" in destination && !destinationPlaceId) {
+    return badRequest(res, "destination.placeId, if provided, must be a non-empty string");
+  }
+  if (
+    "address" in destination &&
+    destination.address != null &&
+    typeof destination.address !== "string"
+  ) {
+    return badRequest(
+      res,
+      "destination.address, if provided, must be a string",
+    );
+  }
+
+  const airportCodeStr = String(airportCode ?? "").trim().toUpperCase();
+  if (!airportCodeStr) {
+    return badRequest(res, "airportCode is required");
+  }
+  if (!isValidIataCode(airportCodeStr)) {
+    return badRequest(
+      res,
+      `airportCode must be a ${IATA_CODE_LENGTH}-character IATA code`,
+    );
+  }
+
+  const userTerminalStr = String(userTerminal ?? "").trim();
+  if (!userTerminalStr) {
+    return badRequest(res, "userTerminal is required");
+  }
+  if (userTerminalStr.length > 20) {
+    return badRequest(res, "userTerminal must be at most 20 characters");
+  }
+
+  const userCheck = await checkUserExists(uid);
+  if (!userCheck.ok || !userCheck.exists) {
+    return badRequest(res, "User record not found");
   }
 
   const flightDateStr = `${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
@@ -304,11 +355,11 @@ export async function createFlightTracker(req: Request, res: Response) {
       );
     }
 
-    if (destination.placeId) {
+    if (destinationPlaceId) {
       try {
         const distance = await checkRoadDistance(
           arrivalCode,
-          destination.placeId,
+          destinationPlaceId,
         );
         if (distance > MAX_DISTANCE) {
           return badRequest(
@@ -385,7 +436,7 @@ export async function createFlightTracker(req: Request, res: Response) {
         flightData.arrival?.airportCode || "N/A",
       [TRAVELLER_FIELDS.FLIGHT_DEPARTURE]:
         flightData.departure?.airportCode || "N/A",
-      [TRAVELLER_FIELDS.TERMINAL]: userTerminal || "N/A",
+      [TRAVELLER_FIELDS.TERMINAL]: userTerminalStr || "N/A",
       [TRAVELLER_FIELDS.DESTINATION]: destination,
       [TRAVELLER_FIELDS.FLIGHT_REF]: flightRef,
       [TRAVELLER_FIELDS.USER_REF]: userRef,
@@ -433,6 +484,10 @@ export async function createFlightTracker(req: Request, res: Response) {
  * ENDPOINT 2: GET FLIGHT TRACKER
  */
 export async function getFlightTracker(req: Request, res: Response) {
+  if (!req.body || typeof req.body !== "object") {
+    return badRequest(res, "Request body must be a JSON object");
+  }
+
   const { carrier: rawCarrier, flightNumber, year, month, day } = req.body;
 
   const carrier = String(rawCarrier ?? "")
@@ -442,6 +497,18 @@ export async function getFlightTracker(req: Request, res: Response) {
   const y = Number(year);
   const m = Number(month);
   const d = Number(day);
+
+  if (!carrier || !fNum) {
+    return badRequest(res, "carrier and flightNumber are required");
+  }
+  if (!isFinite(y) || !isFinite(m) || !isFinite(d)) {
+    return badRequest(res, "year, month and day must be numbers");
+  }
+  if (
+    !isDateTodayOrTomorrow(new Date(Date.UTC(y, m - 1, d)))
+  ) {
+    return badRequest(res, "Flight date must be today or tomorrow");
+  }
 
   const flightDocId = `${carrier}_${fNum}_${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
   const db = admin.firestore();
@@ -507,13 +574,24 @@ export async function getAirports(_req: Request, res: Response) {
  * Served from in-memory cache to avoid per-request Firestore reads.
  */
 export async function getTerminals(req: Request, res: Response) {
-  const { airportCode } = req.body;
+  const { airportCode } = req.body || {};
 
   if (!airportCode) {
     return badRequest(res, "Airport Code is required");
   }
 
-  const code = String(airportCode).toUpperCase();
+  const airportCodeStr = String(airportCode).trim().toUpperCase();
+  if (!airportCodeStr) {
+    return badRequest(res, "Airport Code is required");
+  }
+  if (!isValidIataCode(airportCodeStr)) {
+    return badRequest(
+      res,
+      `Airport Code must be a ${IATA_CODE_LENGTH}-character IATA code`,
+    );
+  }
+
+  const code = airportCodeStr;
 
   try {
     const db = admin.firestore();

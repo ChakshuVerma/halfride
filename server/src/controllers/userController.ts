@@ -1,27 +1,36 @@
-import type { Request, Response } from 'express';
-import { FieldValue } from 'firebase-admin/firestore';
-import sharp from 'sharp';
-import { admin } from '../firebase/admin';
+import type { Request, Response } from "express";
+import { FieldValue } from "firebase-admin/firestore";
+import sharp from "sharp";
+import { admin } from "../config/firebase";
 import {
   COLLECTIONS,
   USER_FIELDS,
   TRAVELLER_FIELDS,
   GROUP_FIELDS,
   FLIGHT_FIELDS,
-} from '../constants/db';
+} from "../core/db";
 import {
   badRequest,
   unauthorized,
   notFound,
   conflict,
   internalServerError,
-} from '../utils/errors';
+} from "../core/errors";
+import {
+  NAME_MAX_LENGTH_DEFAULT,
+  isValidIsoDateString,
+  isValidName,
+} from "../utils/controllerUtils";
 
 export async function profile(req: Request, res: Response) {
   const uid = req.auth?.uid;
-  if (!uid) return unauthorized(res, 'Unauthorized');
+  if (!uid) return unauthorized(res, "Unauthorized");
 
-  const snap = await admin.firestore().collection(COLLECTIONS.USERS).doc(uid).get();
+  const snap = await admin
+    .firestore()
+    .collection(COLLECTIONS.USERS)
+    .doc(uid)
+    .get();
 
   return res.json({ ok: true, user: snap.exists ? snap.data() : null });
 }
@@ -33,22 +42,29 @@ export async function profile(req: Request, res: Response) {
  */
 export async function profileByUsername(req: Request, res: Response) {
   const viewerUid = req.auth?.uid;
-  if (!viewerUid) return unauthorized(res, 'Unauthorized');
+  if (!viewerUid) return unauthorized(res, "Unauthorized");
 
-  const username = typeof req.params.username === 'string' ? req.params.username.trim() : '';
-  if (!username) return badRequest(res, 'Username is required');
+  const username =
+    typeof req.params.username === "string" ? req.params.username.trim() : "";
+  if (!username) return badRequest(res, "Username is required");
+  if (username.length > NAME_MAX_LENGTH_DEFAULT) {
+    return badRequest(
+      res,
+      `Username must be at most ${NAME_MAX_LENGTH_DEFAULT} characters`,
+    );
+  }
 
   const db = admin.firestore();
 
   try {
     const userSnap = await db
       .collection(COLLECTIONS.USERS)
-      .where(USER_FIELDS.USERNAME, '==', username)
+      .where(USER_FIELDS.USERNAME, "==", username)
       .limit(1)
       .get();
 
     if (userSnap.empty) {
-      return notFound(res, 'User not found');
+      return notFound(res, "User not found");
     }
 
     const profileDoc = userSnap.docs[0];
@@ -76,8 +92,8 @@ export async function profileByUsername(req: Request, res: Response) {
     // Past trips (completed). No orderBy to avoid requiring a composite index; sort in memory.
     const pastTripsSnap = await db
       .collection(COLLECTIONS.TRAVELLER_DATA)
-      .where(TRAVELLER_FIELDS.USER_REF, '==', userRef)
-      .where(TRAVELLER_FIELDS.IS_COMPLETED, '==', true)
+      .where(TRAVELLER_FIELDS.USER_REF, "==", userRef)
+      .where(TRAVELLER_FIELDS.IS_COMPLETED, "==", true)
       .limit(30)
       .get();
 
@@ -88,8 +104,8 @@ export async function profileByUsername(req: Request, res: Response) {
     });
     // Sort by date descending (most recent first), then take 15
     pastTripsRaw.sort((a, b) => {
-      const dateA = a.trav[TRAVELLER_FIELDS.DATE] ?? '';
-      const dateB = b.trav[TRAVELLER_FIELDS.DATE] ?? '';
+      const dateA = a.trav[TRAVELLER_FIELDS.DATE] ?? "";
+      const dateB = b.trav[TRAVELLER_FIELDS.DATE] ?? "";
       return dateB.localeCompare(dateA);
     });
     const pastTripsRawLimit = pastTripsRaw.slice(0, 15);
@@ -116,33 +132,45 @@ export async function profileByUsername(req: Request, res: Response) {
       const flight = flightSnap?.data();
       const dest = trav[TRAVELLER_FIELDS.DESTINATION];
       const destinationAddress =
-        typeof dest === 'object' && dest?.address != null
+        typeof dest === "object" && dest?.address != null
           ? dest.address
-          : typeof dest === 'string'
+          : typeof dest === "string"
             ? dest
-            : 'N/A';
+            : "N/A";
       return {
         travellerDataId: id,
         date: trav[TRAVELLER_FIELDS.DATE],
         flightArrival: trav[TRAVELLER_FIELDS.FLIGHT_ARRIVAL],
         flightDeparture: trav[TRAVELLER_FIELDS.FLIGHT_DEPARTURE],
         destination: destinationAddress,
-        terminal: trav[TRAVELLER_FIELDS.TERMINAL] || 'N/A',
+        terminal: trav[TRAVELLER_FIELDS.TERMINAL] || "N/A",
         flightNumber:
-          `${flight?.[FLIGHT_FIELDS.CARRIER] ?? ''} ${flight?.[FLIGHT_FIELDS.FLIGHT_NUMBER] ?? ''}`.trim() || '—',
+          `${flight?.[FLIGHT_FIELDS.CARRIER] ?? ""} ${flight?.[FLIGHT_FIELDS.FLIGHT_NUMBER] ?? ""}`.trim() ||
+          "—",
       };
     });
 
     // Current active listing and group (if any)
     const activeSnap = await db
       .collection(COLLECTIONS.TRAVELLER_DATA)
-      .where(TRAVELLER_FIELDS.USER_REF, '==', userRef)
-      .where(TRAVELLER_FIELDS.IS_COMPLETED, '==', false)
+      .where(TRAVELLER_FIELDS.USER_REF, "==", userRef)
+      .where(TRAVELLER_FIELDS.IS_COMPLETED, "==", false)
       .limit(1)
       .get();
 
-    let currentGroup: { groupId: string; name?: string; flightArrivalAirport?: string; memberCount: number } | null = null;
-    let activeTrip: { flightArrival: string; flightDeparture: string; destination: string; terminal: string; flightNumber: string } | null = null;
+    let currentGroup: {
+      groupId: string;
+      name?: string;
+      flightArrivalAirport?: string;
+      memberCount: number;
+    } | null = null;
+    let activeTrip: {
+      flightArrival: string;
+      flightDeparture: string;
+      destination: string;
+      terminal: string;
+      flightNumber: string;
+    } | null = null;
 
     if (!activeSnap.empty) {
       const activeTrav = activeSnap.docs[0].data();
@@ -150,27 +178,34 @@ export async function profileByUsername(req: Request, res: Response) {
       const fRef = activeTrav[TRAVELLER_FIELDS.FLIGHT_REF];
       const dest = activeTrav[TRAVELLER_FIELDS.DESTINATION];
       const destinationAddress =
-        typeof dest === 'object' && dest?.address != null
+        typeof dest === "object" && dest?.address != null
           ? dest.address
-          : typeof dest === 'string'
+          : typeof dest === "string"
             ? dest
-            : 'N/A';
-      let flightNumber = '—';
+            : "N/A";
+      let flightNumber = "—";
       if (fRef?.id) {
-        const fs = await db.collection(COLLECTIONS.FLIGHT_DETAIL).doc(fRef.id).get();
+        const fs = await db
+          .collection(COLLECTIONS.FLIGHT_DETAIL)
+          .doc(fRef.id)
+          .get();
         const f = fs.data();
         flightNumber =
-          `${f?.[FLIGHT_FIELDS.CARRIER] ?? ''} ${f?.[FLIGHT_FIELDS.FLIGHT_NUMBER] ?? ''}`.trim() || '—';
+          `${f?.[FLIGHT_FIELDS.CARRIER] ?? ""} ${f?.[FLIGHT_FIELDS.FLIGHT_NUMBER] ?? ""}`.trim() ||
+          "—";
       }
       activeTrip = {
-        flightArrival: activeTrav[TRAVELLER_FIELDS.FLIGHT_ARRIVAL] || '—',
-        flightDeparture: activeTrav[TRAVELLER_FIELDS.FLIGHT_DEPARTURE] || '—',
+        flightArrival: activeTrav[TRAVELLER_FIELDS.FLIGHT_ARRIVAL] || "—",
+        flightDeparture: activeTrav[TRAVELLER_FIELDS.FLIGHT_DEPARTURE] || "—",
         destination: destinationAddress,
-        terminal: activeTrav[TRAVELLER_FIELDS.TERMINAL] || 'N/A',
+        terminal: activeTrav[TRAVELLER_FIELDS.TERMINAL] || "N/A",
         flightNumber,
       };
       if (groupRef?.id) {
-        const groupSnap = await db.collection(COLLECTIONS.GROUPS).doc(groupRef.id).get();
+        const groupSnap = await db
+          .collection(COLLECTIONS.GROUPS)
+          .doc(groupRef.id)
+          .get();
         if (groupSnap.exists) {
           const g = groupSnap.data();
           const members: any[] = g?.[GROUP_FIELDS.MEMBERS] || [];
@@ -193,11 +228,11 @@ export async function profileByUsername(req: Request, res: Response) {
       activeTrip,
     });
   } catch (e: unknown) {
-    console.error('profileByUsername error:', e);
+    console.error("profileByUsername error:", e);
     if (e instanceof Error && e.stack) console.error(e.stack);
     return internalServerError(
       res,
-      e instanceof Error ? e.message : 'Failed to load profile',
+      e instanceof Error ? e.message : "Failed to load profile",
     );
   }
 }
@@ -214,16 +249,37 @@ export async function createMe(req: Request, res: Response) {
   const uid = req.auth?.uid;
   const phoneFromToken = null;
 
-  if (!uid) return unauthorized(res, 'Missing user context');
+  if (!uid) return unauthorized(res, "Missing user context");
 
   const body = (req.body ?? {}) as Partial<CreateUserBody>;
 
-  if (!body.DOB || !body.FirstName || !body.LastName || typeof body.isFemale !== 'boolean') {
-    return badRequest(res, 'Invalid body. Required: DOB, FirstName, LastName, isFemale');
+  if (
+    !body.DOB ||
+    !body.FirstName ||
+    !body.LastName ||
+    typeof body.isFemale !== "boolean"
+  ) {
+    return badRequest(
+      res,
+      "Invalid body. Required: DOB, FirstName, LastName, isFemale",
+    );
+  }
+
+  if (!isValidIsoDateString(body.DOB)) {
+    return badRequest(res, "DOB must be a valid date in YYYY-MM-DD format");
+  }
+  if (
+    !isValidName(body.FirstName, NAME_MAX_LENGTH_DEFAULT) ||
+    !isValidName(body.LastName, NAME_MAX_LENGTH_DEFAULT)
+  ) {
+    return badRequest(
+      res,
+      `FirstName and LastName are required and must be at most ${NAME_MAX_LENGTH_DEFAULT} characters`,
+    );
   }
 
   if (body.Phone && phoneFromToken && body.Phone !== phoneFromToken) {
-    return badRequest(res, 'Phone must match authenticated phone_number');
+    return badRequest(res, "Phone must match authenticated phone_number");
   }
 
   const users = admin.firestore().collection(COLLECTIONS.USERS);
@@ -241,7 +297,6 @@ export async function createMe(req: Request, res: Response) {
     [USER_FIELDS.UPDATED_AT]: FieldValue.serverTimestamp(),
   };
 
-
   try {
     // create() guarantees uniqueness: fails if doc already exists
     await docRef.create(payload);
@@ -249,38 +304,43 @@ export async function createMe(req: Request, res: Response) {
   } catch (e: unknown) {
     const err = e as { code?: number };
     if (err?.code === 6) {
-      return conflict(res, 'User already exists');
+      return conflict(res, "User already exists");
     }
     return internalServerError(
       res,
-      e instanceof Error ? e.message : 'Failed to create user',
+      e instanceof Error ? e.message : "Failed to create user",
     );
   }
 }
 
 export async function checkUserExists(uid: string) {
   try {
-    const snap = await admin.firestore().collection(COLLECTIONS.USERS).doc(uid).get();
+    const snap = await admin
+      .firestore()
+      .collection(COLLECTIONS.USERS)
+      .doc(uid)
+      .get();
 
-    return { ok: true, exists: snap.exists, data: snap.exists ? snap.data() : null };
+    return {
+      ok: true,
+      exists: snap.exists,
+      data: snap.exists ? snap.data() : null,
+    };
   } catch (error: unknown) {
     return {
       ok: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: error instanceof Error ? error.message : "Unknown error",
     };
   }
 }
 
 export async function meExists(req: Request, res: Response) {
   const uid = req.auth?.uid;
-  if (!uid) return unauthorized(res, 'Missing user context');
+  if (!uid) return unauthorized(res, "Missing user context");
 
   const result = await checkUserExists(uid);
   if (!result.ok) {
-    return internalServerError(
-      res,
-      result.error ?? 'Failed to check user',
-    );
+    return internalServerError(res, result.error ?? "Failed to check user");
   }
 
   return res.json({
@@ -299,32 +359,41 @@ const AVATAR_JPEG_QUALITY = 85;
  */
 export async function uploadProfilePhotoHandler(req: Request, res: Response) {
   const uid = req.auth?.uid;
-  if (!uid) return unauthorized(res, 'Unauthorized');
+  if (!uid) return unauthorized(res, "Unauthorized");
 
   const file = (req as any).file;
   if (!file || !file.buffer) {
-    return badRequest(res, 'No photo file provided');
+    return badRequest(res, "No photo file provided");
+  }
+
+  const mime = typeof file.mimetype === "string" ? file.mimetype : "";
+  if (!mime.startsWith("image/")) {
+    return badRequest(res, "Photo must be an image file");
   }
 
   try {
     const buffer = await sharp(file.buffer)
-      .resize(AVATAR_SIZE, AVATAR_SIZE, { fit: 'cover' })
+      .resize(AVATAR_SIZE, AVATAR_SIZE, { fit: "cover" })
       .jpeg({ quality: AVATAR_JPEG_QUALITY })
       .toBuffer();
-    const base64 = buffer.toString('base64');
+    const base64 = buffer.toString("base64");
     const photoURL = `data:image/jpeg;base64,${base64}`;
 
-    await admin.firestore().collection(COLLECTIONS.USERS).doc(uid).update({
-      [USER_FIELDS.PHOTO_URL]: photoURL,
-      [USER_FIELDS.UPDATED_AT]: FieldValue.serverTimestamp(),
-    });
+    await admin
+      .firestore()
+      .collection(COLLECTIONS.USERS)
+      .doc(uid)
+      .update({
+        [USER_FIELDS.PHOTO_URL]: photoURL,
+        [USER_FIELDS.UPDATED_AT]: FieldValue.serverTimestamp(),
+      });
 
     return res.json({ ok: true, photoURL });
   } catch (e: unknown) {
-    console.error('uploadProfilePhoto error:', e);
+    console.error("uploadProfilePhoto error:", e);
     return internalServerError(
       res,
-      e instanceof Error ? e.message : 'Failed to process or save photo',
+      e instanceof Error ? e.message : "Failed to process or save photo",
     );
   }
 }

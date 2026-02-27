@@ -1,44 +1,104 @@
-import type { Request, Response } from "express";
-import { admin } from "../config/firebase";
+import { admin } from "../../config/firebase";
 import {
   COLLECTIONS,
-  NOTIFICATION_FIELDS,
   GROUP_FIELDS,
+  NOTIFICATION_FIELDS,
   TRAVELLER_FIELDS,
-} from "../core/db";
+} from "../../core/db";
 import {
   CreateNotificationPayload,
   NotificationType,
   NOTIFICATION_ACTION_TYPES,
-} from "../types/notifications";
-import {
-  createNotification,
-  getGroupInfo,
-  getGroupDisplayName,
-} from "../modules/notification/notification.service";
-import { roadDistanceBetweenTwoPoints } from "../utils/controllerUtils";
-import {
-  badRequest,
-  unauthorized,
-  notFound,
-  forbidden,
-  internalServerError,
-} from "../core/errors";
+} from "../../types/notifications";
+import { roadDistanceBetweenTwoPoints } from "../../utils/controllerUtils";
 
 const NEARBY_LISTING_MAX_DISTANCE_METERS = 5000;
 
-/**
- * Use Case 1: Notify users near a new listing (traveller).
- * This should be called after a new Traveller is created.
- *
- * Strategy:
- * - Use the new traveller's destination (placeId) and airport from the provided data
- *   (no extra Firestore read for the new listing itself).
- * - Find other active travellers at the same airport with a destination placeId.
- * - For each, compute road distance between the two destinations using Google Distance Matrix.
- * - If within NEARBY_LISTING_MAX_DISTANCE_METERS, send a NEW_LISTING notification
- *   to the existing traveller, with an OPEN_TRAVELLER action pointing to the new listing.
- */
+export async function createNotification(payload: CreateNotificationPayload) {
+  const db = admin.firestore();
+
+  const notificationTypeValues = Object.values(NotificationType);
+  if (!notificationTypeValues.includes(payload.type)) {
+    return { ok: false, error: "Invalid Notification Type" };
+  }
+
+  if (!payload.recipientUserId) {
+    return { ok: false, error: "Recipient User ID is required" };
+  }
+
+  if (!payload.title || !payload.body) {
+    return { ok: false, error: "Title and Body are required" };
+  }
+
+  try {
+    const userRef = db
+      .collection(COLLECTIONS.USERS)
+      .doc(payload.recipientUserId);
+    const notificationRef = db.collection(COLLECTIONS.NOTIFICATIONS).doc();
+
+    const data: Record<string, unknown> = { ...payload.data };
+
+    if (data.groupId) {
+      data.groupRef = db
+        .collection(COLLECTIONS.GROUPS)
+        .doc(data.groupId as string);
+      delete (data as any).groupId;
+    }
+    if (data.actorUserId) {
+      data.actorUserRef = db
+        .collection(COLLECTIONS.USERS)
+        .doc(data.actorUserId as string);
+      delete (data as any).actorUserId;
+    }
+
+    await notificationRef.set({
+      [NOTIFICATION_FIELDS.NOTIFICATION_ID]: notificationRef.id,
+      [NOTIFICATION_FIELDS.RECIPIENT_REF]: userRef,
+      [NOTIFICATION_FIELDS.TYPE]: payload.type,
+      [NOTIFICATION_FIELDS.TITLE]: payload.title,
+      [NOTIFICATION_FIELDS.BODY]: payload.body,
+      [NOTIFICATION_FIELDS.DATA]: data,
+      [NOTIFICATION_FIELDS.IS_READ]: false,
+      [NOTIFICATION_FIELDS.CREATED_AT]:
+        admin.firestore.FieldValue.serverTimestamp(),
+    });
+    return { ok: true, id: notificationRef.id };
+  } catch (error: any) {
+    console.error("Create Notification Error:", error.message);
+    return { ok: false, error: error.message };
+  }
+}
+
+export async function getGroupInfo(
+  db: admin.firestore.Firestore,
+  groupId: string,
+): Promise<{ name: string; airportCode?: string }> {
+  const groupDoc = await db.collection(COLLECTIONS.GROUPS).doc(groupId).get();
+  if (!groupDoc.exists) return { name: "the group" };
+  const data = groupDoc.data();
+  const storedName = data?.[GROUP_FIELDS.NAME];
+  const name =
+    typeof storedName === "string" && storedName.trim().length > 0
+      ? storedName.trim()
+      : (() => {
+          const members: admin.firestore.DocumentReference[] =
+            data?.[GROUP_FIELDS.MEMBERS] || [];
+          return `Group of ${members.length}`;
+        })();
+  const airportCode = data?.[GROUP_FIELDS.FLIGHT_ARRIVAL_AIRPORT] as
+    | string
+    | undefined;
+  return { name, airportCode };
+}
+
+export async function getGroupDisplayName(
+  db: admin.firestore.Firestore,
+  groupId: string,
+): Promise<string> {
+  const { name } = await getGroupInfo(db, groupId);
+  return name;
+}
+
 export async function notifyUsersNearNewListing(
   travellerRef: admin.firestore.DocumentReference,
   travellerData: admin.firestore.DocumentData,
@@ -69,11 +129,6 @@ export async function notifyUsersNearNewListing(
         ? (destination as { placeId?: string }).placeId
         : undefined;
 
-    const address =
-      typeof destination === "string"
-        ? destination
-        : ((destination?.address as string | undefined) ?? undefined);
-
     if (!placeId || !flightArrival || !userRef?.id) {
       console.warn(
         `[Notification] Skipping nearby listing check for ${travellerRef.id} – missing placeId, airport or userRef.`,
@@ -84,15 +139,6 @@ export async function notifyUsersNearNewListing(
     const airportCode = String(flightArrival).toUpperCase();
     const newUserId = userRef.id;
     const newTravellerId = travellerRef.id;
-
-    const userSnap = await db
-      .collection(COLLECTIONS.USERS)
-      .doc(newUserId)
-      .get();
-    const ownerFirstName = userSnap.exists
-      ? userSnap.data()?.["FirstName"]
-      : undefined;
-    const ownerDisplayName = ownerFirstName || "Another traveller";
 
     const snapshot = await db
       .collection(COLLECTIONS.TRAVELLER_DATA)
@@ -181,9 +227,6 @@ export async function notifyUsersNearNewListing(
   }
 }
 
-/**
- * Use Case 2: Join Group Request — notify all current group members (no admin).
- */
 export async function notifyGroupAdminOfJoinRequest(
   groupId: string,
   requesterUserId: string,
@@ -233,9 +276,6 @@ export async function notifyGroupAdminOfJoinRequest(
   }
 }
 
-/**
- * Notify all other group members that a member left.
- */
 export async function notifyGroupMembersMemberLeft(
   memberUserIds: string[],
   leaverUserId: string,
@@ -268,9 +308,6 @@ export async function notifyGroupMembersMemberLeft(
   }
 }
 
-/**
- * Notify the last remaining member that the group was disbanded.
- */
 export async function notifyGroupDisbanded(
   lastMemberUserId: string,
   groupId: string,
@@ -290,9 +327,6 @@ export async function notifyGroupDisbanded(
   }
 }
 
-/**
- * Use Case 3: Join Accepted
- */
 export async function notifyUserJoinAccepted(
   groupId: string,
   newMemberId: string,
@@ -318,9 +352,6 @@ export async function notifyUserJoinAccepted(
   });
 }
 
-/**
- * Notify the requester that their join request was rejected.
- */
 export async function notifyUserJoinRejected(
   requesterUserId: string,
   groupId: string,
@@ -350,9 +381,6 @@ export async function notifyUserJoinRejected(
   });
 }
 
-/**
- * Notify other group members (excluding decider and requester) that a join request was accepted or rejected.
- */
 export async function notifyOtherMembersJoinDecided(
   memberUserIds: string[],
   groupId: string,
@@ -395,9 +423,6 @@ export async function notifyOtherMembersJoinDecided(
   );
 }
 
-/**
- * Notify the member who accepted/rejected the request (the decider).
- */
 export async function notifyDeciderJoinRequestDecided(
   deciderUserId: string,
   requesterName: string,
@@ -432,9 +457,6 @@ export async function notifyDeciderJoinRequestDecided(
   });
 }
 
-/**
- * Use Case 4: Connection Request
- */
 export async function notifyUserOfConnectionRequest(
   travellerDataId: string,
   requesterUserId: string,
@@ -456,7 +478,7 @@ export async function notifyUserOfConnectionRequest(
     if (!recipientId) {
       return new Error("Recipient not found");
     }
-    // Fetch requester name for better message
+
     const userSnap = await db
       .collection(COLLECTIONS.USERS)
       .doc(requesterUserId)
@@ -491,9 +513,6 @@ export async function notifyUserOfConnectionRequest(
   }
 }
 
-/**
- * Notify the requester that their connection request was accepted or rejected.
- */
 export async function notifyConnectionRequestResponded(
   requesterUserId: string,
   recipientUserId: string,
@@ -544,129 +563,3 @@ export async function notifyConnectionRequestResponded(
   }
 }
 
-/**
- * Mark a notification as read
- */
-export async function markNotificationRead(req: Request, res: Response) {
-  const uid = req.auth?.uid;
-  const rawNotificationId = req.params.notificationId;
-  const notificationId =
-    typeof rawNotificationId === "string"
-      ? rawNotificationId.trim()
-      : String(rawNotificationId ?? "").trim();
-
-  if (!uid) return unauthorized(res, "Unauthorized");
-  if (!notificationId) return badRequest(res, "Notification ID is required");
-
-  const db = admin.firestore();
-  try {
-    const ref = db.collection(COLLECTIONS.NOTIFICATIONS).doc(notificationId);
-    const doc = await ref.get();
-
-    if (!doc.exists) {
-      return notFound(res, "Notification not found");
-    }
-
-    const data = doc.data();
-    const recipientRef = data?.[NOTIFICATION_FIELDS.RECIPIENT_REF];
-    const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
-
-    if (!recipientRef || recipientRef.path !== userRef.path) {
-      return forbidden(res, "Not allowed to mark this notification as read");
-    }
-
-    await ref.update({
-      [NOTIFICATION_FIELDS.IS_READ]: true,
-    });
-
-    return res.json({ ok: true });
-  } catch (error: unknown) {
-    console.error("Mark Read Error:", error);
-    return internalServerError(
-      res,
-      error instanceof Error ? error.message : "Failed to mark as read",
-    );
-  }
-}
-
-export async function markAllNotificationsRead(req: Request, res: Response) {
-  const uid = req.auth?.uid;
-  if (!uid) return unauthorized(res, "Unauthorized");
-
-  const db = admin.firestore();
-  try {
-    const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
-    const batch = db.batch();
-    const snapshot = await db
-      .collection(COLLECTIONS.NOTIFICATIONS)
-      .where(NOTIFICATION_FIELDS.RECIPIENT_REF, "==", userRef)
-      .where(NOTIFICATION_FIELDS.IS_READ, "==", false)
-      .limit(500) // Batch limit
-      .get();
-
-    if (snapshot.empty) return res.json({ ok: true, count: 0 });
-
-    snapshot.docs.forEach((doc) => {
-      batch.update(doc.ref, { [NOTIFICATION_FIELDS.IS_READ]: true });
-    });
-
-    await batch.commit();
-    return res.json({ ok: true, count: snapshot.size });
-  } catch (error: unknown) {
-    return internalServerError(
-      res,
-      error instanceof Error ? error.message : "Failed to mark all as read",
-    );
-  }
-}
-
-/**
- * SEEDER (FOR DEVELOPMENT)
- */
-export async function seedDummyNotifications(req: Request, res: Response) {
-  const uid = req.auth?.uid;
-  if (!uid) return unauthorized(res, "Unauthorized");
-
-  try {
-    const dummyData: CreateNotificationPayload[] = [
-      {
-        recipientUserId: uid,
-        type: NotificationType.NEW_LISTING,
-        title: "New Traveller Detected",
-        body: "A traveller matching your criteria has arrived at JFK.",
-        data: { listingId: "dummy_listing_123" },
-      },
-      {
-        recipientUserId: uid,
-        type: NotificationType.GROUP_JOIN_REQUEST,
-        title: "Join Request",
-        body: "John Doe wants to join your group 'Weekend Trip'.",
-        data: { groupId: "dummy_group_456", actorUserId: "dummy_user_john" },
-      },
-      {
-        recipientUserId: uid,
-        type: NotificationType.GROUP_JOIN_ACCEPTED,
-        title: "Request Accepted",
-        body: "Your request to join 'Bali Squad' has been accepted.",
-        data: { groupId: "dummy_group_789" },
-      },
-    ];
-
-    const results = [];
-    for (const payload of dummyData) {
-      const result = await createNotification(payload);
-      results.push(result);
-    }
-
-    return res.json({
-      ok: true,
-      message: "Seeded 3 dummy notifications",
-      results,
-    });
-  } catch (error: unknown) {
-    return internalServerError(
-      res,
-      error instanceof Error ? error.message : "Failed to seed notifications",
-    );
-  }
-}

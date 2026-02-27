@@ -94,6 +94,8 @@ type GroupModalProps = {
   isCurrentUserInGroup?: boolean;
   /** True when the current user has an active listing at this group's airport. Join button is shown only when true. */
   hasListingAtThisAirport?: boolean;
+  /** Called when user chooses to open chat from this modal. Use to close the modal or track navigation. */
+  onOpenChat?: () => void;
   /** Called after user successfully leaves the group. Use to close modal and refetch list. */
   onLeaveGroup?: () => void;
   /** Called after user successfully sends a join request. Use to close modal and refetch list. */
@@ -109,6 +111,7 @@ export function GroupModal({
   group,
   isCurrentUserInGroup: isCurrentUserInGroupProp = false,
   hasListingAtThisAirport = false,
+  onOpenChat,
   onLeaveGroup,
   onJoinRequestSuccess,
   onGroupNameUpdated,
@@ -198,6 +201,7 @@ export function GroupModal({
   };
 
   const handleOpenChat = () => {
+    onOpenChat?.();
     navigate(getGroupChatPath(group.id));
   };
 

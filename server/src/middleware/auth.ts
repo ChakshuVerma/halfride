@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
-import { admin, adminInitialized, type DecodedIdToken } from '../firebase/admin';
-import { unauthorized, internalServerError } from '../utils/errors';
+import { admin, adminInitialized, type DecodedIdToken } from '../config/firebase';
+import { unauthorized, internalServerError } from '../core/errors';
 
 const MESSAGE_ADMIN_NOT_CONFIGURED = 'Firebase Admin SDK is not properly configured. Please check server logs.';
 const MESSAGE_NO_TOKEN = 'No authorization token provided';
