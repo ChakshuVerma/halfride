@@ -549,7 +549,11 @@ export async function notifyConnectionRequestResponded(
  */
 export async function markNotificationRead(req: Request, res: Response) {
   const uid = req.auth?.uid;
-  const notificationId = String(req.params.notificationId);
+  const rawNotificationId = req.params.notificationId;
+  const notificationId =
+    typeof rawNotificationId === "string"
+      ? rawNotificationId.trim()
+      : String(rawNotificationId ?? "").trim();
 
   if (!uid) return unauthorized(res, "Unauthorized");
   if (!notificationId) return badRequest(res, "Notification ID is required");

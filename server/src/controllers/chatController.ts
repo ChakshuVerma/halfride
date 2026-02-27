@@ -171,6 +171,10 @@ export async function getGroupMessages(req: Request, res: Response) {
       ? req.query.before.trim()
       : undefined;
 
+  if (beforeId && beforeId.length > 500) {
+    return badRequest(res, "before cursor is too long");
+  }
+
   try {
     const db = admin.firestore();
     const groupRef = db.collection(COLLECTIONS.GROUPS).doc(groupId);

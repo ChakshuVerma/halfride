@@ -13,6 +13,16 @@ import {
   internalServerError,
 } from "../core/errors";
 import { env } from "../config/env";
+import {
+  isValidIsoDateString,
+  isValidName,
+  isValidPassword,
+  isValidUsername,
+  NAME_MAX_LENGTH_DEFAULT,
+  PASSWORD_MIN_LENGTH_DEFAULT,
+  USERNAME_MAX_LENGTH,
+  USERNAME_MIN_LENGTH,
+} from "../utils/controllerUtils";
 
 const MESSAGE_ADMIN_NOT_CONFIGURED =
   "Firebase Admin SDK is not properly configured. Please check server logs.";
@@ -71,6 +81,31 @@ export async function signupComplete(req: Request, res: Response) {
   }
   if (!DOB || !FirstName || !LastName || typeof isFemale !== "boolean") {
     return badRequest(res, "DOB, FirstName, LastName, isFemale are required");
+  }
+
+  if (!isValidUsername(username)) {
+    return badRequest(
+      res,
+      `username must be ${USERNAME_MIN_LENGTH}-${USERNAME_MAX_LENGTH} characters and contain only letters, numbers, or underscores`,
+    );
+  }
+  if (!isValidPassword(password)) {
+    return badRequest(
+      res,
+      `password must be at least ${PASSWORD_MIN_LENGTH_DEFAULT} characters long`,
+    );
+  }
+  if (!isValidIsoDateString(DOB)) {
+    return badRequest(res, "DOB must be a valid date in YYYY-MM-DD format");
+  }
+  if (
+    !isValidName(FirstName, NAME_MAX_LENGTH_DEFAULT) ||
+    !isValidName(LastName, NAME_MAX_LENGTH_DEFAULT)
+  ) {
+    return badRequest(
+      res,
+      `FirstName and LastName are required and must be at most ${NAME_MAX_LENGTH_DEFAULT} characters`,
+    );
   }
 
   try {
@@ -181,6 +216,18 @@ export async function login(req: Request, res: Response) {
   const password = req.body?.password as string | undefined;
   if (!username || !password) {
     return badRequest(res, "username and password are required");
+  }
+  if (!isValidUsername(username)) {
+    return badRequest(
+      res,
+      `username must be ${USERNAME_MIN_LENGTH}-${USERNAME_MAX_LENGTH} characters and contain only letters, numbers, or underscores`,
+    );
+  }
+  if (!isValidPassword(password)) {
+    return badRequest(
+      res,
+      `password must be at least ${PASSWORD_MIN_LENGTH_DEFAULT} characters long`,
+    );
   }
 
   const qs = await admin
@@ -448,6 +495,19 @@ export async function forgotPasswordComplete(req: Request, res: Response) {
 
   if (!firebaseIdToken || !username || !newPassword) {
     return badRequest(res, "firebaseIdToken, username, newPassword are required");
+  }
+
+  if (!isValidUsername(username)) {
+    return badRequest(
+      res,
+      `username must be ${USERNAME_MIN_LENGTH}-${USERNAME_MAX_LENGTH} characters and contain only letters, numbers, or underscores`,
+    );
+  }
+  if (!isValidPassword(newPassword)) {
+    return badRequest(
+      res,
+      `newPassword must be at least ${PASSWORD_MIN_LENGTH_DEFAULT} characters long`,
+    );
   }
 
   try {
