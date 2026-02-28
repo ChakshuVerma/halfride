@@ -98,6 +98,9 @@ export function AirportTravellersDashboard({
     handleWaitlistSuccess,
     handleRevokeListing,
     revokeListingLoading,
+    handleVerifyAtTerminal,
+    verifyAtTerminalLoading,
+    userReadyToOnboard,
     refreshAirportData,
     fetchTravellerDetail,
   } = useAirportTravellersDashboard(selectedAirport);
@@ -307,9 +310,13 @@ export function AirportTravellersDashboard({
                 <UserListingBanner
                   userDestination={userDestination}
                   isUserInGroup={isUserInGroup}
+                  userGroupId={userGroupId}
+                  userReadyToOnboard={userReadyToOnboard}
                   initialDataFetchCompleted={initialDataFetchCompleted}
                   joinWaitlistLabel={CONSTANTS.LABELS.JOIN_WAITLIST}
                   onOpenWaitlist={() => setIsWaitlistModalOpen(true)}
+                  onVerifyAtTerminal={handleVerifyAtTerminal}
+                  verifyAtTerminalLoading={verifyAtTerminalLoading}
                 />
               </div>
 
@@ -362,6 +369,7 @@ export function AirportTravellersDashboard({
                         userGroupId === selectedEntity.data.id
                       }
                       hasListingAtThisAirport={!!userDestination}
+                      userReadyToOnboard={userReadyToOnboard}
                       onOpenChat={() => {
                         setSelectedEntity(null);
                         clearModalParamsFromUrl();
@@ -369,6 +377,8 @@ export function AirportTravellersDashboard({
                       onLeaveGroup={handleLeaveGroup}
                       onJoinRequestSuccess={handleJoinRequestSuccess}
                       onGroupNameUpdated={refreshAirportData}
+                      onVerifyAtTerminal={handleVerifyAtTerminal}
+                      verifyAtTerminalLoading={verifyAtTerminalLoading}
                     />
                   )
                 )}

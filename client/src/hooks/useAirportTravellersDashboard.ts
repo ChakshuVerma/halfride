@@ -33,6 +33,9 @@ export type UseAirportTravellersDashboardResult = {
   handleWaitlistSuccess: () => Promise<void>;
   handleRevokeListing: (closeModalAfter?: boolean) => Promise<boolean>;
   revokeListingLoading: boolean;
+  handleVerifyAtTerminal: () => Promise<void>;
+  verifyAtTerminalLoading: boolean;
+  userReadyToOnboard: boolean;
   refreshAirportData: () => Promise<{
     travellers: Traveller[];
     groups: Group[];
@@ -50,6 +53,7 @@ export function useAirportTravellersDashboard(
     useState(false);
   const [isUserInGroup, setIsUserInGroup] = useState(false);
   const [userGroupId, setUserGroupId] = useState<string | null>(null);
+  const [userReadyToOnboard, setUserReadyToOnboard] = useState(false);
   const [userDestination, setUserDestination] = useState<string | null>(null);
   const [selectedEntity, setSelectedEntity] = useState<SelectedEntity>(null);
   const lastRefetchedEntityRef = useRef<{
@@ -73,9 +77,11 @@ export function useAirportTravellersDashboard(
     fetchTravellerByAirportAndUser,
     fetchUserDestination,
     revokeListing,
+    verifyAtTerminal,
     fetchTravellersLoading,
     fetchGroupsLoading,
     revokeListingLoading,
+    verifyAtTerminalLoading,
   } = useGetTravellerApi();
   const { fetchTerminals } = useGetAirportsApi();
 
@@ -102,6 +108,7 @@ export function useAirportTravellersDashboard(
         setTravellers(travellersResult.travellers);
         setIsUserInGroup(travellersResult.isUserInGroup);
         setUserGroupId(travellersResult.userGroupId);
+        setUserReadyToOnboard(travellersResult.userReadyToOnboard ?? false);
         setGroups(fetchedGroups);
         setUserDestination(destination);
         setInitialDataFetchCompleted(true);
@@ -157,6 +164,7 @@ export function useAirportTravellersDashboard(
     setTravellers(travellersResult.travellers);
     setIsUserInGroup(travellersResult.isUserInGroup);
     setUserGroupId(travellersResult.userGroupId);
+    setUserReadyToOnboard(travellersResult.userReadyToOnboard ?? false);
     setGroups(fetchedGroups);
 
     return {
@@ -190,6 +198,7 @@ export function useAirportTravellersDashboard(
     setTravellers(travellersResult.travellers);
     setIsUserInGroup(travellersResult.isUserInGroup);
     setUserGroupId(travellersResult.userGroupId);
+    setUserReadyToOnboard(travellersResult.userReadyToOnboard ?? false);
   }, [selectedAirport, fetchUserDestination, fetchTravellers]);
 
   const handleRevokeListing = useCallback(
@@ -233,6 +242,31 @@ export function useAirportTravellersDashboard(
     [fetchTravellerByAirportAndUser, selectedAirport],
   );
 
+  const handleVerifyAtTerminal = useCallback(async () => {
+    if (!userGroupId || verifyAtTerminalLoading) return;
+    if (!navigator.geolocation) {
+      toast.error("Location access is not available");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        const result = await verifyAtTerminal(userGroupId!, latitude, longitude);
+        if (result.ok) {
+          toast.success("You're marked as ready to onboard");
+          setUserReadyToOnboard(true);
+          await refreshAirportData();
+        } else {
+          toast.error(result.error ?? "Failed to verify");
+        }
+      },
+      () => {
+        toast.error("Location access denied or unavailable");
+      },
+      { enableHighAccuracy: true },
+    );
+  }, [userGroupId, verifyAtTerminal, verifyAtTerminalLoading, refreshAirportData]);
+
   return {
     travellers,
     groups,
@@ -251,6 +285,9 @@ export function useAirportTravellersDashboard(
     handleWaitlistSuccess,
     handleRevokeListing,
     revokeListingLoading,
+    handleVerifyAtTerminal,
+    verifyAtTerminalLoading,
+    userReadyToOnboard,
     refreshAirportData,
     fetchTravellerDetail,
   };

@@ -34,6 +34,7 @@ export const API_ROUTES = {
   REQUEST_CONNECTION: `${API_BASE_URL}/request-connection`,
   RESPOND_TO_CONNECTION: `${API_BASE_URL}/respond-to-connection`,
   LEAVE_GROUP: `${API_BASE_URL}/leave-group`,
+  VERIFY_AT_TERMINAL: `${API_BASE_URL}/verify-at-terminal`,
   REVOKE_LISTING: `${API_BASE_URL}/revoke-listing`,
   REQUEST_JOIN_GROUP: `${API_BASE_URL}/request-join-group`,
   GROUP_JOIN_REQUESTS: `${API_BASE_URL}/group-join-requests`,

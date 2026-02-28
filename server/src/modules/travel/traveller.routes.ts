@@ -10,6 +10,7 @@ import {
   requestConnection,
   respondToConnectionRequest,
   leaveGroup,
+  verifyAtTerminal,
   revokeListing,
   requestJoinGroup,
   getGroupJoinRequests,
@@ -56,6 +57,7 @@ travellerRouter.post(
   respondToConnectionRequest,
 );
 travellerRouter.post("/leave-group", requireSession, leaveGroup);
+travellerRouter.post("/verify-at-terminal", requireSession, verifyAtTerminal);
 travellerRouter.post("/revoke-listing", requireSession, revokeListing);
 travellerRouter.post("/request-join-group", requireSession, requestJoinGroup);
 travellerRouter.get(

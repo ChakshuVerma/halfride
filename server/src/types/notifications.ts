@@ -9,6 +9,7 @@ export enum NotificationType {
   CONNECTION_REQUEST = "CONNECTION_REQUEST",
   CONNECTION_ACCEPTED = "CONNECTION_ACCEPTED",
   CONNECTION_REJECTED = "CONNECTION_REJECTED",
+  MEMBER_READY_TO_ONBOARD = "MEMBER_READY_TO_ONBOARD",
 }
 
 /** Action types the client can perform when the user taps a notification. */

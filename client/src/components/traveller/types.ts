@@ -20,6 +20,8 @@ export type Traveller = {
   connectionStatus?: "SEND_REQUEST" | "REQUEST_SENT" | "REQUEST_RECEIVED";
   /** True when this traveller is the current user's own listing. */
   isOwnListing?: boolean;
+  /** True when user verified at terminal and is ready to onboard. */
+  readyToOnboard?: boolean;
 };
 
 export type Group = {

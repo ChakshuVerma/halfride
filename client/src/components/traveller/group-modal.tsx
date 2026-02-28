@@ -11,6 +11,7 @@ import {
   UserPlus,
   Pencil,
   CheckCircle2,
+  MapPin,
 } from "lucide-react";
 
 import { DialogDescription, DialogHeader, DialogTitle } from "../ui/dialog";
@@ -94,6 +95,8 @@ type GroupModalProps = {
   isCurrentUserInGroup?: boolean;
   /** True when the current user has an active listing at this group's airport. Join button is shown only when true. */
   hasListingAtThisAirport?: boolean;
+  /** True when the current user has verified at terminal. */
+  userReadyToOnboard?: boolean;
   /** Called when user chooses to open chat from this modal. Use to close the modal or track navigation. */
   onOpenChat?: () => void;
   /** Called after user successfully leaves the group. Use to close modal and refetch list. */
@@ -102,6 +105,10 @@ type GroupModalProps = {
   onJoinRequestSuccess?: () => void;
   /** Called after user successfully updates the group name. Use to refetch groups list. */
   onGroupNameUpdated?: () => void;
+  /** Called when user verifies at terminal. */
+  onVerifyAtTerminal?: () => Promise<void>;
+  /** True while verify at terminal is in progress. */
+  verifyAtTerminalLoading?: boolean;
 };
 
 const GROUP_NAME_MAX_LENGTH = 50;
@@ -111,10 +118,13 @@ export function GroupModal({
   group,
   isCurrentUserInGroup: isCurrentUserInGroupProp = false,
   hasListingAtThisAirport = false,
+  userReadyToOnboard = false,
   onOpenChat,
   onLeaveGroup,
   onJoinRequestSuccess,
   onGroupNameUpdated,
+  onVerifyAtTerminal,
+  verifyAtTerminalLoading = false,
 }: GroupModalProps) {
   const navigate = useNavigate();
   const {
@@ -493,9 +503,17 @@ export function GroupModal({
                       )}
                     </div>
                     <div className="flex-1 min-w-0 overflow-hidden">
-                      <p className="text-xs sm:text-sm font-semibold text-foreground truncate">
-                        {member.name}
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-xs sm:text-sm font-semibold text-foreground truncate">
+                          {member.name}
+                        </p>
+                        {member.readyToOnboard && (
+                          <span className="inline-flex items-center gap-0.5 shrink-0 rounded-full bg-green-500/15 text-green-700 dark:text-green-400 px-1.5 py-0.5 text-[9px] font-medium">
+                            <CheckCircle2 className="w-2.5 h-2.5" />
+                            Ready
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-medium overflow-x-auto overflow-y-hidden min-w-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
                         <span className="bg-muted/30 px-1.5 py-0.5 rounded-md border border-border/20 text-foreground/80 shrink-0">
                           {member.flightNumber}
@@ -670,6 +688,28 @@ export function GroupModal({
           <div className="flex flex-col-reverse sm:flex-row gap-2">
             {isCurrentUserInGroup && (
               <>
+                {hasListingAtThisAirport && onVerifyAtTerminal && (
+                  userReadyToOnboard ? (
+                    <div className="flex-1 min-w-0 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-green-500/15 text-green-700 dark:text-green-400 border border-green-500/30">
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span className="text-sm font-bold">Ready to onboard</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      className="flex-1 min-w-0 rounded-xl px-4 py-2.5 sm:py-2.5 text-sm font-bold border border-primary text-primary hover:bg-primary/10 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                      onClick={onVerifyAtTerminal}
+                      disabled={verifyAtTerminalLoading}
+                    >
+                      {verifyAtTerminalLoading ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <MapPin className="w-4 h-4" />
+                      )}
+                      Verify I&apos;m at terminal
+                    </button>
+                  )
+                )}
                 <button
                   type="button"
                   className="flex-1 min-w-0 rounded-xl px-4 py-2.5 sm:py-2.5 text-sm font-bold text-primary-foreground bg-primary hover:bg-primary/90 active:bg-primary/95 transition-colors"

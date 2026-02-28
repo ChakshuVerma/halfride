@@ -97,7 +97,11 @@ const isValidIsoDateString = (value: unknown): value is string => {
   const month = Number(monthStr);
   const day = Number(dayStr);
 
-  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+  if (
+    !Number.isInteger(year) ||
+    !Number.isInteger(month) ||
+    !Number.isInteger(day)
+  ) {
     return false;
   }
 
@@ -150,10 +154,156 @@ const isValidIataCode = (value: unknown): value is string => {
   return /^[A-Z0-9]+$/.test(trimmed);
 };
 
+const OPENFLIGHTS_AIRPORTS_URL =
+  "https://raw.githubusercontent.com/jpatokal/openflights/master/data/airports.dat";
+
+/** Parse one line of OpenFlights CSV (handles quoted fields). Columns: 0=ID, 1=Name, 2=City, 3=Country, 4=IATA, 5=ICAO, 6=Lat, 7=Long, ... */
+function parseOpenFlightsCsvLine(line: string): string[] {
+  const fields: string[] = [];
+  let i = 0;
+  while (i < line.length) {
+    if (line[i] === '"') {
+      i += 1;
+      let end = i;
+      while (end < line.length) {
+        if (line[end] === '"') {
+          if (line[end + 1] === '"') {
+            end += 2;
+            continue;
+          }
+          break;
+        }
+        end += 1;
+      }
+      fields.push(line.slice(i, end).replace(/""/g, '"'));
+      i = end + 1;
+      if (line[i] === ",") i += 1;
+      continue;
+    }
+    const comma = line.indexOf(",", i);
+    if (comma === -1) {
+      fields.push(line.slice(i).trim());
+      break;
+    }
+    fields.push(line.slice(i, comma).trim());
+    i = comma + 1;
+  }
+  return fields;
+}
+
+let openFlightsCache: Map<string, { lat: number; lng: number }> | null = null;
+let openFlightsLoadPromise: Promise<
+  Map<string, { lat: number; lng: number }>
+> | null = null;
+
+/** Load OpenFlights airports dataset and build IATA -> { lat, lng } map. Cached in memory. */
+async function loadOpenFlightsAirports(): Promise<
+  Map<string, { lat: number; lng: number }>
+> {
+  if (openFlightsCache) return openFlightsCache;
+  if (openFlightsLoadPromise) return openFlightsLoadPromise;
+
+  openFlightsLoadPromise = (async () => {
+    const response = await fetch(OPENFLIGHTS_AIRPORTS_URL);
+    if (!response.ok) {
+      throw new Error(
+        `OpenFlights airports.dat fetch failed: ${response.status}`,
+      );
+    }
+    const text = await response.text();
+    const map = new Map<string, { lat: number; lng: number }>();
+    const lines = text.split(/\r?\n/);
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const fields = parseOpenFlightsCsvLine(line);
+      const iata = fields[4]?.trim();
+      if (!iata || iata === "\\N" || iata.length !== 3) continue;
+      const lat = Number(fields[6]);
+      const lng = Number(fields[7]);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      const key = iata.toUpperCase();
+      if (!map.has(key)) map.set(key, { lat, lng });
+    }
+    openFlightsCache = map;
+    return map;
+  })();
+
+  return openFlightsLoadPromise;
+}
+
+/** Geocode airport by IATA code; returns { lat, lng } or throws. Uses OpenFlights data (all airports), then Google Geocoding API if enabled. */
+const geocodeAirport = async (
+  iataCode: string,
+): Promise<{ lat: number; lng: number }> => {
+  const code = iataCode.trim().toUpperCase();
+  if (code.length !== 3) {
+    throw new Error(`Invalid IATA code: ${iataCode}`);
+  }
+
+  const openFlights = await loadOpenFlightsAirports();
+  const fromOpenFlights = openFlights.get(code);
+  if (fromOpenFlights) {
+    return fromOpenFlights;
+  }
+
+  const apiKey = env.googleMapsApiKey;
+  if (apiKey) {
+    const queries = [
+      `airport ${code}`,
+      `${code} airport`,
+      `${code} international airport`,
+    ];
+    for (const addressStr of queries) {
+      const address = encodeURIComponent(addressStr);
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${address}&key=${apiKey}`;
+      const response = await fetch(url);
+      if (!response.ok) continue;
+      const data = (await response.json()) as {
+        status: string;
+        results?: Array<{
+          geometry?: { location?: { lat: number; lng: number } };
+        }>;
+      };
+      if (data.status === "OK" && data.results?.[0]?.geometry?.location) {
+        const loc = data.results[0].geometry!.location!;
+        const lat = typeof loc.lat === "number" ? loc.lat : Number(loc.lat);
+        const lng = typeof loc.lng === "number" ? loc.lng : Number(loc.lng);
+        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+          return { lat, lng };
+        }
+      }
+    }
+  }
+
+  throw new Error(
+    `Unable to resolve coordinates for airport ${code}. It was not found in the OpenFlights database. Ensure the IATA code is correct.`,
+  );
+};
+
+/** Haversine distance in meters between two lat/lng points. */
+const haversineDistance = (
+  lat1: number,
+  lng1: number,
+  lat2: number,
+  lng2: number,
+): number => {
+  const R = 6371000; // Earth radius in meters
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
 export {
   isDateTodayOrTomorrow,
   checkRoadDistance,
   roadDistanceBetweenTwoPoints,
+  geocodeAirport,
+  haversineDistance,
   isValidIsoDateString,
   isValidUsername,
   isValidPassword,

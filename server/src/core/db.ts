@@ -61,6 +61,10 @@ export interface TravellerDataSchema {
   connectionRequests: any[]; // Array of DocumentReference to users
   groupRef: any; // DocumentReference to groups
   isCompleted: boolean;
+  /** True when user verified at terminal via GPS. */
+  readyToOnboard?: boolean;
+  /** Timestamp when user verified at terminal. */
+  readyToOnboardAt?: any;
 }
 
 export interface NotificationSchema {
@@ -168,6 +172,8 @@ export const TRAVELLER_FIELDS = {
   CONNECTION_REQUESTS: "connectionRequests",
   GROUP_REF: "groupRef",
   IS_COMPLETED: "isCompleted",
+  READY_TO_ONBOARD: "readyToOnboard",
+  READY_TO_ONBOARD_AT: "readyToOnboardAt",
 } as const;
 
 // [NEW]

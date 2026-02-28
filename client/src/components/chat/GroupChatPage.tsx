@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { ArrowLeft, Users, X, Calendar, MapPin, Plane, ChevronRight, Info, User } from "lucide-react";
+import { toast } from "sonner";
+import { ArrowLeft, Users, X, Calendar, MapPin, Plane, ChevronRight, Info, User, CheckCircle2 } from "lucide-react";
 import { useGroupChat } from "@/hooks/useGroupChat";
 import { useAuth } from "@/contexts/AuthContext";
 import { MessageList } from "./MessageList";
@@ -25,6 +26,10 @@ type GroupSidebarProps = {
   onLeaveGroup: () => void;
   /** When provided, clicking a member opens their profile (traveller modal with flight ETA). */
   onMemberClick?: (member: Traveller) => void;
+  /** Called when user verifies at terminal. */
+  onVerifyAtTerminal?: () => Promise<void>;
+  verifyAtTerminalLoading?: boolean;
+  currentUserReadyToOnboard?: boolean;
 };
 
 function GroupSidebar({
@@ -35,6 +40,9 @@ function GroupSidebar({
   leaveGroupLoading,
   onLeaveGroup,
   onMemberClick,
+  onVerifyAtTerminal,
+  verifyAtTerminalLoading = false,
+  currentUserReadyToOnboard = false,
 }: GroupSidebarProps) {
   return (
     <>
@@ -192,9 +200,17 @@ function GroupSidebar({
                 <div className="min-w-0 flex-1 space-y-0.5">
                   <div className="flex items-center gap-1 justify-between">
                     <span className="font-semibold truncate text-foreground">{member.name}</span>
-                    {isClickable && (
-                      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                    )}
+                    <div className="flex items-center gap-1 shrink-0">
+                      {member.readyToOnboard && (
+                        <span className="inline-flex items-center gap-0.5 rounded-full bg-green-500/15 text-green-700 dark:text-green-400 px-1.5 py-0.5 text-[9px] font-medium">
+                          <CheckCircle2 className="h-2.5 w-2.5" />
+                          Ready
+                        </span>
+                      )}
+                      {isClickable && (
+                        <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                      )}
+                    </div>
                   </div>
                   {member.username && (
                     <span className="text-[10px] text-muted-foreground truncate block">
@@ -224,7 +240,25 @@ function GroupSidebar({
         )}
       </div>
 
-      <div className="px-4 py-3 border-t border-border/60 mt-auto bg-background/95">
+      <div className="px-4 py-3 border-t border-border/60 mt-auto bg-background/95 space-y-2">
+        {group && group.isCurrentUserMember && onVerifyAtTerminal && (
+          currentUserReadyToOnboard ? (
+            <div className="inline-flex w-full items-center justify-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-[11px] font-medium text-green-700 dark:text-green-400">
+              <CheckCircle2 className="h-4 w-4" />
+              Ready to onboard
+            </div>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full justify-center text-[11px] gap-2"
+              onClick={onVerifyAtTerminal}
+              disabled={verifyAtTerminalLoading}
+            >
+              {verifyAtTerminalLoading ? "Verifying…" : "Verify I'm at terminal"}
+            </Button>
+          )
+        )}
         {group && group.isCurrentUserMember && (
           <Button
             variant="outline"
@@ -255,7 +289,9 @@ export function GroupChatPage() {
     fetchGroupById,
     fetchGroupMembers,
     leaveGroup,
+    verifyAtTerminal,
     leaveGroupLoading,
+    verifyAtTerminalLoading,
   } = useGetTravellerApi();
 
   const [group, setGroup] = useState<Group | null>(null);
@@ -352,6 +388,34 @@ export function GroupChatPage() {
     setShowLeaveConfirm(true);
   };
 
+  const currentUserReadyToOnboard =
+    members.find((m) => m.id === user?.uid)?.readyToOnboard ?? false;
+
+  const handleVerifyAtTerminal = useCallback(async () => {
+    if (!groupId || verifyAtTerminalLoading) return;
+    if (!navigator.geolocation) {
+      toast.error("Location access is not available");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        const result = await verifyAtTerminal(groupId, latitude, longitude);
+        if (result.ok) {
+          toast.success("You're marked as ready to onboard");
+          const memberData = await fetchGroupMembers(groupId);
+          setMembers(memberData);
+        } else {
+          toast.error(result.error ?? "Failed to verify");
+        }
+      },
+      () => {
+        toast.error("Location access denied or unavailable");
+      },
+      { enableHighAccuracy: true },
+    );
+  }, [groupId, verifyAtTerminal, verifyAtTerminalLoading, fetchGroupMembers]);
+
   const handleConfirmLeaveGroup = async () => {
     if (!groupId || !group) return;
 
@@ -410,6 +474,9 @@ export function GroupChatPage() {
             leaveGroupLoading={leaveGroupLoading}
             onLeaveGroup={handleOpenLeaveConfirm}
             onMemberClick={group?.airportCode ? handleMemberClick : undefined}
+            onVerifyAtTerminal={handleVerifyAtTerminal}
+            verifyAtTerminalLoading={verifyAtTerminalLoading}
+            currentUserReadyToOnboard={currentUserReadyToOnboard}
           />
         </aside>
 
@@ -523,6 +590,9 @@ export function GroupChatPage() {
               leaveGroupLoading={leaveGroupLoading}
               onLeaveGroup={handleOpenLeaveConfirm}
               onMemberClick={group?.airportCode ? handleMemberClick : undefined}
+              onVerifyAtTerminal={handleVerifyAtTerminal}
+              verifyAtTerminalLoading={verifyAtTerminalLoading}
+              currentUserReadyToOnboard={currentUserReadyToOnboard}
             />
           </div>
         </div>
