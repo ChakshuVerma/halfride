@@ -27,7 +27,7 @@ export type ConfirmDialogProps = {
   confirmLabel: string;
   /** Label for the cancel button. Default: "Cancel" */
   cancelLabel?: string;
-  /** Style of the confirm button: default (primary), destructive (red), secondary (zinc) */
+  /** Style of the confirm button: default (primary), destructive (danger), secondary (neutral) */
   variant?: ConfirmDialogVariant;
   /** Called when user confirms. May be async; button shows loading until it resolves. */
   onConfirm: () => void | Promise<void>;
@@ -38,7 +38,7 @@ export type ConfirmDialogProps = {
 const variantClasses: Record<ConfirmDialogVariant, string> = {
   default: "",
   destructive: "bg-destructive text-destructive-foreground hover:bg-destructive/90",
-  secondary: "bg-zinc-600 hover:bg-zinc-700 text-white",
+  secondary: "bg-secondary text-secondary-foreground hover:bg-secondary/80",
 };
 
 export function ConfirmDialog({

@@ -24,7 +24,7 @@ export function AirportPickerView({
     <div className="flex items-start sm:items-center justify-center min-h-[85vh] p-2 sm:p-6 w-full max-w-7xl mx-auto">
       <Card
         className={cn(
-          "w-full border-zinc-200/50 shadow-2xl shadow-zinc-200/50 transition-all duration-700 ease-out",
+          "w-full border-border shadow-2xl transition-all duration-700 ease-out",
           "bg-white/70 backdrop-blur-xl",
           "rounded-[3rem] max-w-3xl border-white/40",
         )}

@@ -279,14 +279,12 @@ export function GroupModal({
       : group.genderBreakdown.female;
 
     const containerClass = isMale
-      ? "rounded-l-lg border-l bg-blue-100/50 border-blue-200/50"
-      : "rounded-r-lg border-r bg-pink-100/50 border-pink-200/50";
+      ? "rounded-l-lg border-l bg-muted/50 border-border"
+      : "rounded-r-lg border-r bg-muted/50 border-border";
 
-    const overlayClass = isMale
-      ? "bg-blue-500/5 group-hover:bg-blue-500/10"
-      : "bg-pink-500/5 group-hover:bg-pink-500/10";
+    const overlayClass = "bg-primary/5 group-hover:bg-primary/10";
 
-    const textClass = isMale ? "text-blue-700" : "text-pink-700";
+    const textClass = "text-foreground";
 
     return (
       <div
@@ -322,9 +320,9 @@ export function GroupModal({
       <DialogHeader className="space-y-0 pb-4 border-b border-border/10 min-w-0">
         <div className="flex flex-col sm:flex-row items-start gap-3 sm:gap-4 min-w-0">
           <div className="relative shrink-0">
-            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 border border-black/5 dark:border-white/10 shadow-lg">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center bg-gradient-to-br from-muted to-muted/80 border border-border shadow-lg">
               <UsersRound
-                className="w-5 h-5 sm:w-6 sm:h-6 text-violet-600 dark:text-violet-400"
+                className="w-5 h-5 sm:w-6 sm:h-6 text-primary"
                 strokeWidth={1.5}
               />
             </div>
@@ -355,7 +353,7 @@ export function GroupModal({
                   <p
                     className={`text-[10px] font-medium shrink-0 ${
                       editNameValue.length >= GROUP_NAME_MAX_LENGTH
-                        ? "text-amber-600 dark:text-amber-500"
+                        ? "text-destructive"
                         : "text-muted-foreground"
                     }`}
                   >
@@ -442,7 +440,7 @@ export function GroupModal({
             <div
               className={`h-full rounded-full transition-all duration-700 ease-out shadow-sm ${
                 isFull
-                  ? "bg-red-500"
+                  ? "bg-destructive"
                   : "bg-gradient-to-r from-primary via-primary/90 to-primary/80"
               }`}
               style={{ width: `${Math.min(100, capacityPercentage)}%` }}
@@ -481,9 +479,7 @@ export function GroupModal({
                     <div
                       className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0 border shadow-sm overflow-hidden ${
                         !member.photoURL &&
-                        (member.gender === CONSTANTS.GENDER.MALE
-                          ? "bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/10 text-blue-600"
-                          : "bg-gradient-to-br from-pink-500/10 to-pink-500/5 border-pink-500/10 text-pink-600")
+                        "bg-muted border-border text-foreground"
                       }`}
                     >
                       {member.photoURL ? (
@@ -547,9 +543,7 @@ export function GroupModal({
                       <div
                         className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center shrink-0 border shadow-sm overflow-hidden ${
                           !req.photoURL &&
-                          (req.gender === CONSTANTS.GENDER.MALE
-                            ? "bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/10 text-blue-600"
-                            : "bg-gradient-to-br from-pink-500/10 to-pink-500/5 border-pink-500/10 text-pink-600")
+                          "bg-muted border-border text-foreground"
                         }`}
                       >
                         {req.photoURL ? (
@@ -583,7 +577,7 @@ export function GroupModal({
                             respondToJoinRequestLoading ||
                             respondingId === req.id
                           }
-                          className="p-2 rounded-lg bg-green-500/15 text-green-700 hover:bg-green-500/25 border border-green-500/20 transition-colors disabled:opacity-50"
+                          className="p-2 rounded-lg bg-primary/15 text-primary hover:bg-primary/25 border border-primary/20 transition-colors disabled:opacity-50"
                           title={CONSTANTS.LABELS.ACCEPT}
                           onClick={async () => {
                             setRespondingId(req.id);
@@ -621,7 +615,7 @@ export function GroupModal({
                             respondToJoinRequestLoading ||
                             respondingId === req.id
                           }
-                          className="p-2 rounded-lg bg-red-500/15 text-red-700 hover:bg-red-500/25 border border-red-500/20 transition-colors disabled:opacity-50"
+                          className="p-2 rounded-lg bg-destructive/15 text-destructive hover:bg-destructive/25 border border-destructive/20 transition-colors disabled:opacity-50"
                           title={CONSTANTS.LABELS.REJECT}
                           onClick={async () => {
                             setRespondingId(req.id);
@@ -685,7 +679,7 @@ export function GroupModal({
                 </button>
                 <button
                   type="button"
-                  className="flex-1 min-w-0 rounded-xl px-4 py-2.5 sm:py-2.5 text-sm font-bold text-white bg-zinc-600 hover:bg-zinc-700 active:bg-zinc-800 transition-colors disabled:opacity-50 disabled:pointer-events-none"
+                  className="flex-1 min-w-0 rounded-xl px-4 py-2.5 sm:py-2.5 text-sm font-bold text-primary-foreground bg-primary hover:bg-primary/90 active:bg-primary/80 transition-colors disabled:opacity-50 disabled:pointer-events-none"
                   disabled={leaveGroupLoading}
                   onClick={() => setShowLeaveConfirm(true)}
                 >
@@ -721,7 +715,7 @@ export function GroupModal({
               <>
                 {hasPendingJoinRequest ? (
                   <div
-                    className="flex-1 min-w-0 w-full h-12 rounded-xl bg-emerald-500 text-white text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl shadow-emerald-500/20 cursor-not-allowed opacity-80"
+                    className="flex-1 min-w-0 w-full h-12 rounded-xl bg-primary text-primary-foreground text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl cursor-not-allowed opacity-80"
                     aria-live="polite"
                   >
                     {CONSTANTS.LABELS.REQUEST_PENDING}{" "}
@@ -755,7 +749,7 @@ export function GroupModal({
                     }}
                   >
                     {!isFull && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-primary-foreground/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
                     )}
                     <span className="relative flex items-center justify-center gap-2 font-bold text-sm tracking-wide">
                       {requestJoinGroupLoading ? (

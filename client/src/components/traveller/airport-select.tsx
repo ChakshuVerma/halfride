@@ -65,9 +65,9 @@ export function AirportSelect({
           <Button
             variant="outline"
             className={cn(
-              "justify-between w-full rounded-2xl border-zinc-200 bg-white hover:bg-zinc-50 hover:border-zinc-300 transition-all duration-300 text-zinc-900",
+              "justify-between w-full rounded-2xl border-border bg-card hover:bg-muted hover:border-border transition-all duration-300 text-foreground",
               large
-                ? "h-16 text-lg px-6 shadow-xl shadow-zinc-200/50"
+                ? "h-16 text-lg px-6 shadow-xl "
                 : "h-10 text-sm",
               open && "opacity-50",
             )}
@@ -75,7 +75,7 @@ export function AirportSelect({
             <div className="flex items-center gap-3 overflow-hidden">
               <Search
                 className={cn(
-                  "shrink-0 text-zinc-400",
+                  "shrink-0 text-muted-foreground",
                   large ? "w-5 h-5" : "w-4 h-4",
                 )}
               />
@@ -85,7 +85,7 @@ export function AirportSelect({
             </div>
             <ChevronsUpDown
               className={cn(
-                "ml-2 shrink-0 text-zinc-400",
+                "ml-2 shrink-0 text-muted-foreground",
                 large ? "h-5 w-5" : "h-4 w-4",
               )}
             />
@@ -93,35 +93,35 @@ export function AirportSelect({
         )}
       </DialogTrigger>
       <DialogContent
-        className="p-0 overflow-hidden bg-white/95 backdrop-blur-2xl border-zinc-200 shadow-2xl rounded-3xl w-[95vw] max-w-2xl gap-0"
+        className="p-0 overflow-hidden bg-card/95 backdrop-blur-2xl border-border shadow-2xl rounded-3xl w-[95vw] max-w-2xl gap-0"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
         <div className="flex flex-col h-[70vh] sm:h-[600px]">
-          <div className="px-4 pr-12 sm:pr-14 py-4 border-b border-zinc-100">
-            <DialogTitle className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-2 mb-2">
+          <div className="px-4 pr-12 sm:pr-14 py-4 border-b border-border">
+            <DialogTitle className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-2 mb-2">
               {LABELS.SELECT_AIRPORT_TITLE}
             </DialogTitle>
             <DialogDescription className="sr-only">
               {LABELS.SELECT_AIRPORT_DESC}
             </DialogDescription>
             <Command className="flex-1 bg-transparent" filter={filterAirports}>
-              <div className="flex items-center gap-2 bg-zinc-100 px-3 rounded-xl border border-transparent focus-within:border-zinc-300 focus-within:bg-white transition-all">
-                <Search className="w-5 h-5 text-zinc-400" />
+              <div className="flex items-center gap-2 bg-muted px-3 rounded-xl border border-transparent focus-within:border-border focus-within:bg-card transition-all">
+                <Search className="w-5 h-5 text-muted-foreground" />
                 <CommandInput
                   ref={searchInputRef}
                   placeholder={LABELS.SEARCH_AIRPORT_PLACEHOLDER}
                   showIcon={false}
-                  className="border-none focus:ring-0 text-lg h-12 bg-transparent w-full placeholder:text-zinc-400 text-zinc-900"
+                  className="border-none focus:ring-0 text-lg h-12 bg-transparent w-full placeholder:text-muted-foreground text-foreground"
                 />
               </div>
 
-              <CommandList className="max-h-full p-2 mt-4 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-zinc-200">
+              <CommandList className="max-h-full p-2 mt-4 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-rounded scrollbar-thumb-border">
                 <CommandEmpty className="py-12 text-center flex flex-col items-center gap-3">
-                  <div className="p-4 rounded-full bg-zinc-100">
-                    <Plane className="w-8 h-8 text-zinc-300" />
+                  <div className="p-4 rounded-full bg-muted">
+                    <Plane className="w-8 h-8 text-muted-foreground" />
                   </div>
-                  <span className="text-zinc-500 font-medium">
+                  <span className="text-muted-foreground font-medium">
                     {MESSAGES.NO_AIRPORT_FOUND}
                   </span>
                 </CommandEmpty>
@@ -138,15 +138,15 @@ export function AirportSelect({
                         }
                         onOpenChange(false);
                       }}
-                      className="group flex items-center justify-between py-3 px-4 rounded-xl cursor-pointer hover:bg-zinc-100 data-[selected=true]:bg-zinc-900 data-[selected=true]:text-white transition-all mb-1"
+                      className="group flex items-center justify-between py-3 px-4 rounded-xl cursor-pointer hover:bg-muted data-[selected=true]:bg-primary data-[selected=true]:text-primary-foreground transition-all mb-1"
                     >
                       <div className="flex items-center gap-4">
                         <div
                           className={cn(
                             "w-10 h-10 rounded-full flex items-center justify-center border transition-colors",
                             selectedAirport?.airportCode === airport.airportCode
-                              ? "bg-white text-black border-transparent"
-                              : "bg-white border-zinc-200 group-hover:border-zinc-300 group-data-[selected=true]:bg-zinc-800 group-data-[selected=true]:border-zinc-700",
+                              ? "bg-card text-black border-transparent"
+                              : "bg-card border-border group-hover:border-border group-data-[selected=true]:bg-primary group-data-[selected=true]:border-primary",
                           )}
                         >
                           <Plane className="w-4 h-4" />
@@ -155,12 +155,12 @@ export function AirportSelect({
                           <span className="text-base font-semibold group-data-[selected=true]:text-white">
                             {airport.airportName}
                           </span>
-                          <span className="text-xs text-zinc-500 group-data-[selected=true]:text-zinc-400">
+                          <span className="text-xs text-muted-foreground group-data-[selected=true]:text-muted-foreground">
                             {airport.city ? `${airport.city}` : "International Airport"}
                           </span>
                         </div>
                       </div>
-                      <span className="text-xs font-bold font-mono px-2 py-1 rounded-md bg-zinc-100 border border-zinc-200 group-data-[selected=true]:bg-zinc-800 group-data-[selected=true]:text-zinc-300 group-data-[selected=true]:border-zinc-700">
+                      <span className="text-xs font-bold font-mono px-2 py-1 rounded-md bg-muted border border-border group-data-[selected=true]:bg-primary group-data-[selected=true]:text-primary-foreground group-data-[selected=true]:border-primary">
                         {airport.airportCode}
                       </span>
                     </CommandItem>

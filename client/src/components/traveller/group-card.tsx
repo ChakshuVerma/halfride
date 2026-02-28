@@ -38,31 +38,30 @@ type GroupCardProps = {
 export function GroupCard({ group, onClick, isYourGroup = false, isOpening = false }: GroupCardProps) {
   const percentFull = Math.round((group.groupSize / group.maxUsers) * 100);
 
-  // Monochromatic/Neutral gradient for group cards (Light Gray)
   const avatarGradient =
-    "bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-900 border border-black/5 dark:border-white/10";
-  const accentColor = "text-violet-600 dark:text-violet-400";
+    "bg-gradient-to-br from-muted to-muted/80 dark:from-muted dark:to-muted/80 border border-border";
+  const accentColor = "text-primary";
 
   return (
     <div
       className={`group relative flex flex-col overflow-hidden rounded-[2rem] border shadow-sm transition-all duration-500 hover:shadow-[0_8px_30px_rgb(0,0,0,0.06)] hover:-translate-y-1 dark:border-white/5 ${
         isYourGroup
-          ? "border-violet-400 dark:border-violet-500 ring-2 ring-violet-200 dark:ring-violet-900/50 bg-violet-50/30 dark:bg-violet-950/20"
-          : "border-white/60 hover:border-white/80 dark:border-white/5"
+          ? "border-primary ring-2 ring-ring bg-primary/10"
+          : "border-border hover:border-border/80 dark:border-white/5"
       } ${isOpening ? "pointer-events-none opacity-70" : ""}`}
     >
       {isOpening && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[2rem] bg-white/80 dark:bg-zinc-900/80">
-          <Spinner size="lg" className="text-violet-600" />
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-[2rem] bg-card/80">
+          <Spinner size="lg" className="text-primary" />
         </div>
       )}
-      {/* Top Section - Gray Background */}
-      <div className="relative p-4 sm:p-5 bg-zinc-200/70 dark:bg-zinc-800 border-b border-black/5 dark:border-white/5 transition-colors duration-300">
+      {/* Top Section */}
+      <div className="relative p-4 sm:p-5 bg-muted/70 dark:bg-muted border-b border-border transition-colors duration-300">
         {/* Header */}
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-4">
             <div
-              className={`relative w-16 h-16 rounded-2xl ${avatarGradient} flex items-center justify-center shadow-lg ring-4 ring-white dark:ring-zinc-900 group-hover:scale-105 transition-transform duration-500`}
+              className={`relative w-16 h-16 rounded-2xl ${avatarGradient} flex items-center justify-center shadow-lg ring-4 ring-background dark:ring-background group-hover:scale-105 transition-transform duration-500`}
             >
               <Users className={`w-8 h-8 ${accentColor}`} strokeWidth={2.5} />
             </div>
@@ -73,14 +72,14 @@ export function GroupCard({ group, onClick, isYourGroup = false, isOpening = fal
                   {group.name}
                 </h3>
                 {isYourGroup && (
-                  <span className="px-2 py-0.5 rounded-full bg-violet-600 text-white text-[10px] font-bold shadow-sm">
+                  <span className="px-2 py-0.5 rounded-full bg-primary text-primary-foreground text-[10px] font-bold shadow-sm">
                     Your group
                   </span>
                 )}
               </div>
               <div className="flex items-center gap-2 mt-1">
                 {/* Capacity Pill */}
-                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white text-violet-600 border border-zinc-200 text-[10px] font-bold dark:bg-zinc-800 dark:border-zinc-700 dark:text-violet-400 shadow-sm">
+                <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-card text-primary border border-border text-[10px] font-bold shadow-sm">
                   <span>
                     {group.groupSize}/{group.maxUsers} {CONSTANTS.SUFFIX.USERS}
                   </span>
@@ -101,7 +100,7 @@ export function GroupCard({ group, onClick, isYourGroup = false, isOpening = fal
               {CONSTANTS.UNITS.PERCENT} {CONSTANTS.SUFFIX.FULL}
             </span>
           </div>
-          <div className="h-2 w-full rounded-full bg-white border border-zinc-100 dark:bg-white/10 dark:border-white/5 overflow-hidden shadow-sm">
+          <div className="h-2 w-full rounded-full bg-card border border-border overflow-hidden shadow-sm">
             <div
               className="h-full rounded-full bg-foreground transition-all duration-700 ease-out shadow-sm"
               style={{ width: `${percentFull}%` }}
@@ -112,7 +111,7 @@ export function GroupCard({ group, onClick, isYourGroup = false, isOpening = fal
             {Array.from({ length: group.genderBreakdown.male }).map((_, i) => (
               <div
                 key={`m-${i}`}
-                className="w-1.5 h-1.5 rounded-full bg-blue-500"
+                className="w-1.5 h-1.5 rounded-full bg-primary"
                 title={CONSTANTS.GENDER.MALE}
               />
             ))}
@@ -120,7 +119,7 @@ export function GroupCard({ group, onClick, isYourGroup = false, isOpening = fal
               (_, i) => (
                 <div
                   key={`f-${i}`}
-                  className="w-1.5 h-1.5 rounded-full bg-pink-500"
+                  className="w-1.5 h-1.5 rounded-full bg-muted-foreground"
                   title={CONSTANTS.GENDER.FEMALE}
                 />
               ),
@@ -129,8 +128,8 @@ export function GroupCard({ group, onClick, isYourGroup = false, isOpening = fal
         </div>
       </div>
 
-      {/* Bottom Section - White Background */}
-      <div className="flex-1 p-0 bg-white dark:bg-black/20">
+      {/* Bottom Section */}
+      <div className="flex-1 p-0 bg-card dark:bg-card/80">
         {/* Info Grid */}
         <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
           {/* Destinations */}
@@ -149,7 +148,7 @@ export function GroupCard({ group, onClick, isYourGroup = false, isOpening = fal
           </div>
 
           {/* Created */}
-          <div className="flex flex-col gap-1 sm:border-l border-zinc-100 sm:pl-3 pt-2 sm:pt-0 border-t sm:border-t-0 dark:border-white/5">
+          <div className="flex flex-col gap-1 sm:border-l border-border sm:pl-3 pt-2 sm:pt-0 border-t sm:border-t-0">
             <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
               {CONSTANTS.LABELS.CREATED}
             </span>
@@ -160,7 +159,7 @@ export function GroupCard({ group, onClick, isYourGroup = false, isOpening = fal
         </div>
 
         {/* Action Footer */}
-        <div className="px-4 py-3 bg-zinc-50/30 border-t border-zinc-100 dark:bg-zinc-900/30 dark:border-white/5 flex flex-col sm:flex-row items-center justify-end gap-3 sm:gap-0 transition-colors duration-300">
+        <div className="px-4 py-3 bg-muted/30 border-t border-border flex flex-col sm:flex-row items-center justify-end gap-3 sm:gap-0 transition-colors duration-300">
           <button
             onClick={(e) => {
               e.stopPropagation();

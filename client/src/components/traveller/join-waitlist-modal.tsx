@@ -198,8 +198,8 @@ export function JoinWaitlistModal({
 
         {success ? (
           <div className="p-10 flex flex-col items-center justify-center text-center space-y-6 animate-in fade-in zoom-in-95 duration-300">
-            <div className="w-20 h-20 rounded-full bg-emerald-500/10 flex items-center justify-center ring-8 ring-emerald-500/5">
-              <CheckCircle2 className="w-10 h-10 text-emerald-500" />
+            <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center ring-8 ring-primary/5">
+              <CheckCircle2 className="w-10 h-10 text-primary" />
             </div>
             <div className="space-y-1">
               <h3 className="text-xl font-bold text-foreground">

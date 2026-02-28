@@ -259,11 +259,11 @@ export function ForgotPassword() {
 
   return (
     <AuthPageShell>
-      <Card className="w-full max-w-[420px] border-white/20 shadow-2xl shadow-zinc-900/10 rounded-[2rem] bg-white/80 backdrop-blur-xl overflow-hidden ring-1 ring-white/50 transition-all duration-500">
+      <Card className="w-full max-w-[420px] border-border/20 shadow-2xl  rounded-[2rem] bg-card/90 backdrop-blur-xl overflow-hidden ring-1 ring-white/50 transition-all duration-500">
         {/* Progress Line */}
-        <div className="h-1 w-full bg-zinc-100">
+        <div className="h-1 w-full bg-muted">
           <div
-            className="h-full bg-zinc-900 transition-all duration-500 ease-out"
+            className="h-full bg-primary transition-all duration-500 ease-out"
             style={{
               width: confirmation
                 ? "100%"
@@ -278,29 +278,29 @@ export function ForgotPassword() {
           {/* Back Button */}
           <button
             onClick={handleBack}
-            className="absolute left-6 top-8 p-2 rounded-full hover:bg-zinc-100 text-zinc-400 hover:text-zinc-900 transition-colors"
+            className="absolute left-6 top-8 p-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             type="button"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
 
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-zinc-50 border border-zinc-100 flex items-center justify-center mb-2 shadow-inner">
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-muted border border-border flex items-center justify-center mb-2 shadow-inner">
             {confirmation ? (
-              <Smartphone className="w-8 h-8 text-zinc-900" strokeWidth={1.5} />
+              <Smartphone className="w-8 h-8 text-foreground" strokeWidth={1.5} />
             ) : (
-              <KeyRound className="w-8 h-8 text-zinc-900" strokeWidth={1.5} />
+              <KeyRound className="w-8 h-8 text-foreground" strokeWidth={1.5} />
             )}
           </div>
 
           <div className="space-y-2">
-            <CardTitle className="text-2xl font-black tracking-tight text-zinc-900">
+            <CardTitle className="text-2xl font-black tracking-tight text-foreground">
               {confirmation
                 ? "Verify Code"
                 : credentialsValidated
                   ? "Verify Phone"
                   : "Reset Password"}
             </CardTitle>
-            <CardDescription className="text-base font-medium text-zinc-500 px-4">
+            <CardDescription className="text-base font-medium text-muted-foreground px-4">
               {confirmation
                 ? "Enter the code sent to your phone."
                 : credentialsValidated
@@ -327,7 +327,7 @@ export function ForgotPassword() {
                 <div className="space-y-1.5">
                   <Label
                     htmlFor="username"
-                    className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1"
+                    className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1"
                   >
                     {CONSTANTS.LABELS.USERNAME}
                   </Label>
@@ -336,7 +336,7 @@ export function ForgotPassword() {
                     ref={usernameRef}
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="h-12 bg-zinc-50/50 hover:bg-zinc-50 focus:bg-white rounded-xl border-zinc-200 focus:border-zinc-400 focus:ring-0 transition-all font-medium"
+                    className="h-12 bg-muted/50 hover:bg-muted focus:bg-card rounded-xl border-border focus:border-ring focus:ring-0 transition-all font-medium"
                     placeholder={CONSTANTS.PLACEHOLDERS.USERNAME}
                     required
                   />
@@ -345,7 +345,7 @@ export function ForgotPassword() {
                 <div className="space-y-1.5">
                   <Label
                     htmlFor="newPassword"
-                    className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1"
+                    className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1"
                   >
                     {CONSTANTS.LABELS.NEW_PASSWORD}
                   </Label>
@@ -359,14 +359,14 @@ export function ForgotPassword() {
                         setNewPassword(value);
                         setPasswordStrength(calculatePasswordStrength(value));
                       }}
-                      className="h-12 bg-zinc-50/50 hover:bg-zinc-50 focus:bg-white rounded-xl border-zinc-200 focus:border-zinc-400 focus:ring-0 pr-10 transition-all font-medium"
+                      className="h-12 bg-muted/50 hover:bg-muted focus:bg-card rounded-xl border-border focus:border-ring focus:ring-0 pr-10 transition-all font-medium"
                       placeholder={CONSTANTS.PLACEHOLDERS.PASSWORD}
                       required
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 transition-colors p-1"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4" />
@@ -383,7 +383,7 @@ export function ForgotPassword() {
                         <div
                           className={cn(
                             "flex-1 rounded-full transition-colors duration-300",
-                            passwordStrength ? "bg-red-400" : "bg-zinc-100",
+                            passwordStrength ? "bg-primary" : "bg-muted",
                           )}
                         />
                         <div
@@ -391,20 +391,20 @@ export function ForgotPassword() {
                             "flex-1 rounded-full transition-colors duration-300",
                             passwordStrength === "medium" ||
                               passwordStrength === "strong"
-                              ? "bg-amber-400"
-                              : "bg-zinc-100",
+                              ? "bg-primary/80"
+                              : "bg-muted",
                           )}
                         />
                         <div
                           className={cn(
                             "flex-1 rounded-full transition-colors duration-300",
                             passwordStrength === "strong"
-                              ? "bg-emerald-400"
-                              : "bg-zinc-100",
+                              ? "bg-primary"
+                              : "bg-muted",
                           )}
                         />
                       </div>
-                      <span className="text-[10px] font-bold uppercase text-zinc-400 w-12 text-right">
+                      <span className="text-[10px] font-bold uppercase text-muted-foreground w-12 text-right">
                         {passwordStrength || "Weak"}
                       </span>
                     </div>
@@ -419,18 +419,18 @@ export function ForgotPassword() {
                 <div className="space-y-1.5">
                   <Label
                     htmlFor="phone"
-                    className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1"
+                    className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1"
                   >
                     {CONSTANTS.LABELS.PHONE}
                   </Label>
-                  <div className="flex items-center h-12 rounded-xl border border-zinc-200 bg-zinc-50/50 px-2 transition-all focus-within:border-zinc-400 focus-within:bg-white focus-within:ring-0">
+                  <div className="flex items-center h-12 rounded-xl border border-border bg-muted/50 px-2 transition-all focus-within:border-ring focus-within:bg-card focus-within:ring-0">
                     <div className="shrink-0">
                       <CountrySelect
                         country={country}
                         setCountry={setCountry}
                       />
                     </div>
-                    <div className="w-px h-6 bg-zinc-200 mx-2" />
+                    <div className="w-px h-6 bg-border mx-2" />
                     <Input
                       id="phone"
                       placeholder={CONSTANTS.PLACEHOLDERS.PHONE}
@@ -456,7 +456,7 @@ export function ForgotPassword() {
             {/* STEP 3: OTP Verification */}
             {confirmation && (
               <div className="space-y-6 flex flex-col items-center animate-in zoom-in-95 fade-in duration-500">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-bold uppercase tracking-wide">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold uppercase tracking-wide">
                   <Sparkles className="w-3 h-3" /> {CONSTANTS.TOASTS.OTP_SENT}
                 </div>
                 <InputOTP
@@ -470,7 +470,7 @@ export function ForgotPassword() {
                       <InputOTPSlot
                         key={i}
                         index={i}
-                        className="w-11 h-14 text-xl font-bold border-2 border-zinc-100 rounded-xl bg-white shadow-sm transition-all data-[active=true]:border-zinc-900 data-[active=true]:scale-110"
+                        className="w-11 h-14 text-xl font-bold border-2 border-border rounded-xl bg-card shadow-sm transition-all data-[active=true]:border-primary data-[active=true]:scale-110"
                       />
                     ))}
                   </InputOTPGroup>
@@ -481,7 +481,7 @@ export function ForgotPassword() {
             {/* Action Button */}
             <Button
               type="submit"
-              className="w-full h-12 rounded-xl bg-zinc-900 hover:bg-black text-white font-bold text-sm uppercase tracking-widest shadow-lg shadow-zinc-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+              className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm uppercase tracking-widest shadow-lg  transition-all hover:scale-[1.02] active:scale-[0.98]"
               disabled={isSendingOtp || completeForgotPasswordLoading}
             >
               {completeForgotPasswordLoading ? (
@@ -514,10 +514,10 @@ export function ForgotPassword() {
           </form>
         </CardContent>
 
-        <CardFooter className="justify-center py-6 bg-zinc-50/50 border-t border-zinc-100">
+        <CardFooter className="justify-center py-6 bg-muted/50 border-t border-border">
           <button
             type="button"
-            className="text-sm font-medium text-zinc-500 hover:text-zinc-900 transition-colors"
+            className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             onClick={() => navigate(ROUTES.LOGIN)}
           >
             {CONSTANTS.LABELS.BACK_TO_LOGIN}

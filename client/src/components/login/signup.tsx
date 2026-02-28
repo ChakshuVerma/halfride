@@ -231,11 +231,11 @@ export function Signup() {
 
   return (
     <AuthPageShell>
-      <Card className="w-full max-w-[460px] border-white/20 shadow-2xl shadow-zinc-900/10 rounded-[2rem] bg-white/80 backdrop-blur-xl overflow-hidden transition-all duration-500">
+      <Card className="w-full max-w-[460px] border-border/20 shadow-2xl  rounded-[2rem] bg-card/90 backdrop-blur-xl overflow-hidden transition-all duration-500">
         {/* Progress Bar */}
-        <div className="h-1.5 w-full bg-zinc-100">
+        <div className="h-1.5 w-full bg-muted">
           <div
-            className="h-full bg-zinc-900 transition-all duration-500 ease-out"
+            className="h-full bg-primary transition-all duration-500 ease-out"
             style={{ width: step === 1 ? "50%" : "100%" }}
           />
         </div>
@@ -244,25 +244,25 @@ export function Signup() {
           {step === 2 && (
             <button
               onClick={() => setStep(1)}
-              className="absolute left-6 top-8 p-2 rounded-full hover:bg-zinc-100 text-zinc-400 hover:text-zinc-900 transition-colors"
+              className="absolute left-6 top-8 p-2 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </button>
           )}
 
-          <div className="mx-auto w-16 h-16 rounded-2xl bg-zinc-50 border border-zinc-100 flex items-center justify-center mb-2 shadow-inner">
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-muted border border-border flex items-center justify-center mb-2 shadow-inner">
             {step === 1 ? (
-              <UserPlus className="w-8 h-8 text-zinc-900" strokeWidth={1.5} />
+              <UserPlus className="w-8 h-8 text-foreground" strokeWidth={1.5} />
             ) : (
-              <Smartphone className="w-8 h-8 text-zinc-900" strokeWidth={1.5} />
+              <Smartphone className="w-8 h-8 text-foreground" strokeWidth={1.5} />
             )}
           </div>
 
           <div className="space-y-2">
-            <CardTitle className="text-2xl font-black tracking-tight text-zinc-900">
+            <CardTitle className="text-2xl font-black tracking-tight text-foreground">
               {step === 1 ? "Create Account" : "Verify Phone"}
             </CardTitle>
-            <CardDescription className="text-base font-medium text-zinc-500">
+            <CardDescription className="text-base font-medium text-muted-foreground">
               {step === 1
                 ? "Enter your details to join the community."
                 : "We'll text you a code to verify your number."}
@@ -282,7 +282,7 @@ export function Signup() {
                   <div className="space-y-1.5">
                     <Label
                       htmlFor="firstName"
-                      className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1"
+                      className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1"
                     >
                       First Name
                     </Label>
@@ -290,7 +290,7 @@ export function Signup() {
                       id="firstName"
                       value={firstName}
                       onChange={(e) => setFirstName(e.target.value)}
-                      className="h-11 rounded-xl border-zinc-200 focus:border-zinc-400 focus:ring-0 bg-zinc-50/50"
+                      className="h-11 rounded-xl border-border focus:border-ring focus:ring-0 bg-muted/50"
                       placeholder="John"
                       required
                     />
@@ -298,7 +298,7 @@ export function Signup() {
                   <div className="space-y-1.5">
                     <Label
                       htmlFor="lastName"
-                      className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1"
+                      className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1"
                     >
                       Last Name
                     </Label>
@@ -306,7 +306,7 @@ export function Signup() {
                       id="lastName"
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
-                      className="h-11 rounded-xl border-zinc-200 focus:border-zinc-400 focus:ring-0 bg-zinc-50/50"
+                      className="h-11 rounded-xl border-border focus:border-ring focus:ring-0 bg-muted/50"
                       placeholder="Doe"
                       required
                     />
@@ -317,7 +317,7 @@ export function Signup() {
                 <div className="space-y-1.5">
                   <Label
                     htmlFor="username"
-                    className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1"
+                    className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1"
                   >
                     Username
                   </Label>
@@ -326,7 +326,7 @@ export function Signup() {
                     ref={usernameRef}
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    className="h-11 rounded-xl border-zinc-200 focus:border-zinc-400 focus:ring-0 bg-zinc-50/50"
+                    className="h-11 rounded-xl border-border focus:border-ring focus:ring-0 bg-muted/50"
                     placeholder="johndoe123"
                     required
                   />
@@ -336,7 +336,7 @@ export function Signup() {
                 <div className="space-y-1.5">
                   <Label
                     htmlFor="password"
-                    className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1"
+                    className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1"
                   >
                     Password
                   </Label>
@@ -351,14 +351,14 @@ export function Signup() {
                           calculatePasswordStrength(e.target.value),
                         );
                       }}
-                      className="h-11 rounded-xl border-zinc-200 focus:border-zinc-400 focus:ring-0 bg-zinc-50/50 pr-10"
+                      className="h-11 rounded-xl border-border focus:border-ring focus:ring-0 bg-muted/50 pr-10"
                       placeholder="••••••••"
                       required
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showPassword ? (
                         <EyeOff className="h-4 w-4" />
@@ -375,7 +375,7 @@ export function Signup() {
                         <div
                           className={cn(
                             "flex-1 rounded-full transition-colors duration-300",
-                            passwordStrength ? "bg-red-400" : "bg-zinc-100",
+                            passwordStrength ? "bg-primary" : "bg-muted",
                           )}
                         />
                         <div
@@ -383,20 +383,20 @@ export function Signup() {
                             "flex-1 rounded-full transition-colors duration-300",
                             passwordStrength === "medium" ||
                               passwordStrength === "strong"
-                              ? "bg-amber-400"
-                              : "bg-zinc-100",
+                              ? "bg-primary/80"
+                              : "bg-muted",
                           )}
                         />
                         <div
                           className={cn(
                             "flex-1 rounded-full transition-colors duration-300",
                             passwordStrength === "strong"
-                              ? "bg-emerald-400"
-                              : "bg-zinc-100",
+                              ? "bg-primary"
+                              : "bg-muted",
                           )}
                         />
                       </div>
-                      <span className="text-[10px] font-bold uppercase text-zinc-400 w-12 text-right">
+                      <span className="text-[10px] font-bold uppercase text-muted-foreground w-12 text-right">
                         {passwordStrength || "Weak"}
                       </span>
                     </div>
@@ -406,7 +406,7 @@ export function Signup() {
                 {/* DOB & Gender */}
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">
+                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
                       Birth Date
                     </Label>
                     <div className="flex gap-2">
@@ -417,7 +417,7 @@ export function Signup() {
                           setDobDay(e.target.value)
                         }
                         placeholder="DD"
-                        className="h-11 px-0 text-center rounded-xl border-zinc-200 focus:border-zinc-400 focus:ring-0 bg-zinc-50/50"
+                        className="h-11 px-0 text-center rounded-xl border-border focus:border-ring focus:ring-0 bg-muted/50"
                       />
                       <Input
                         value={dobMonth}
@@ -426,7 +426,7 @@ export function Signup() {
                           setDobMonth(e.target.value)
                         }
                         placeholder="MM"
-                        className="h-11 px-0 text-center rounded-xl border-zinc-200 focus:border-zinc-400 focus:ring-0 bg-zinc-50/50"
+                        className="h-11 px-0 text-center rounded-xl border-border focus:border-ring focus:ring-0 bg-muted/50"
                       />
                       <Input
                         value={dobYear}
@@ -435,12 +435,12 @@ export function Signup() {
                           setDobYear(e.target.value)
                         }
                         placeholder="YYYY"
-                        className="h-11 px-0 text-center w-[140%] rounded-xl border-zinc-200 focus:border-zinc-400 focus:ring-0 bg-zinc-50/50"
+                        className="h-11 px-0 text-center w-[140%] rounded-xl border-border focus:border-ring focus:ring-0 bg-muted/50"
                       />
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1">
+                    <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">
                       Gender
                     </Label>
                     <div className="flex gap-2 h-11">
@@ -450,8 +450,8 @@ export function Signup() {
                         className={cn(
                           "flex-1 rounded-xl text-xs font-bold transition-all border",
                           isFemale === false
-                            ? "bg-zinc-900 text-white border-zinc-900 shadow-md"
-                            : "bg-white text-zinc-500 border-zinc-200 hover:bg-zinc-50",
+                            ? "bg-primary text-primary-foreground border-primary shadow-md"
+                            : "bg-card text-muted-foreground border-border hover:bg-muted",
                         )}
                       >
                         Male
@@ -462,8 +462,8 @@ export function Signup() {
                         className={cn(
                           "flex-1 rounded-xl text-xs font-bold transition-all border",
                           isFemale === true
-                            ? "bg-zinc-900 text-white border-zinc-900 shadow-md"
-                            : "bg-white text-zinc-500 border-zinc-200 hover:bg-zinc-50",
+                            ? "bg-primary text-primary-foreground border-primary shadow-md"
+                            : "bg-card text-muted-foreground border-border hover:bg-muted",
                         )}
                       >
                         Female
@@ -474,7 +474,7 @@ export function Signup() {
 
                 <Button
                   type="submit"
-                  className="w-full h-12 rounded-xl bg-zinc-900 hover:bg-black text-white font-bold text-sm uppercase tracking-widest shadow-lg shadow-zinc-900/20 mt-2"
+                  className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm uppercase tracking-widest shadow-lg  mt-2"
                 >
                   Continue <ArrowRight className="w-4 h-4 ml-2" />
                 </Button>
@@ -488,13 +488,13 @@ export function Signup() {
                 <div className="space-y-2">
                   <Label
                     htmlFor="phone"
-                    className="text-xs font-bold text-zinc-500 uppercase tracking-wider ml-1"
+                    className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1"
                   >
                     Phone Number
                   </Label>
                   <div
                     className={cn(
-                      "flex items-center h-14 rounded-2xl border-2 border-zinc-100 bg-zinc-50/50 px-2 transition-all focus-within:border-zinc-900 focus-within:bg-white focus-within:shadow-lg focus-within:shadow-zinc-900/5",
+                      "flex items-center h-14 rounded-2xl border-2 border-border bg-muted/50 px-2 transition-all focus-within:border-primary focus-within:bg-card focus-within:shadow-lg focus-within:shadow-lg",
                       (confirmation || isSendingOtp) &&
                         "opacity-50 pointer-events-none",
                     )}
@@ -508,13 +508,13 @@ export function Signup() {
                         }
                       />
                     </div>
-                    <div className="w-px h-6 bg-zinc-200 mx-2" />
+                    <div className="w-px h-6 bg-border mx-2" />
                     <Input
                       id="phone"
                       type="tel"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
-                      className="flex-1 h-full border-none bg-transparent shadow-none focus-visible:ring-0 px-0 text-lg font-medium placeholder:text-zinc-300"
+                      className="flex-1 h-full border-none bg-transparent shadow-none focus-visible:ring-0 px-0 text-lg font-medium placeholder:text-muted-foreground"
                       placeholder="98765 43210"
                       required
                       disabled={
@@ -527,7 +527,7 @@ export function Signup() {
                 {confirmation ? (
                   <div className="space-y-4 pt-2">
                     <div className="flex flex-col items-center space-y-3">
-                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-bold uppercase tracking-wide">
+                      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold uppercase tracking-wide">
                         <Sparkles className="w-3 h-3" /> OTP Sent
                       </div>
                       <InputOTP
@@ -541,7 +541,7 @@ export function Signup() {
                             <InputOTPSlot
                               key={i}
                               index={i}
-                              className="w-11 h-14 text-xl font-bold border-2 border-zinc-100 rounded-xl bg-white shadow-sm transition-all data-[active=true]:border-zinc-900 data-[active=true]:scale-110"
+                              className="w-11 h-14 text-xl font-bold border-2 border-border rounded-xl bg-card shadow-sm transition-all data-[active=true]:border-primary data-[active=true]:scale-110"
                             />
                           ))}
                         </InputOTPGroup>
@@ -554,7 +554,7 @@ export function Signup() {
                         completeSignupLoading ||
                         otp.length !== CONSTANTS.OTP_LENGTH
                       }
-                      className="w-full h-12 rounded-xl bg-zinc-900 hover:bg-black text-white font-bold text-sm uppercase tracking-widest shadow-lg shadow-zinc-900/20"
+                      className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm uppercase tracking-widest shadow-lg "
                     >
                       {completeSignupLoading ? (
                         <span className="flex items-center gap-2">
@@ -572,7 +572,7 @@ export function Signup() {
                     type="button"
                     onClick={sendOtp}
                     disabled={isSendingOtp}
-                    className="w-full h-12 rounded-xl bg-zinc-900 hover:bg-black text-white font-bold text-sm uppercase tracking-widest shadow-lg shadow-zinc-900/20"
+                    className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm uppercase tracking-widest shadow-lg "
                   >
                     {isSendingOtp ? (
                       <span className="flex items-center gap-2">
@@ -595,12 +595,12 @@ export function Signup() {
           </div>
         </CardContent>
 
-        <CardFooter className="justify-center border-t border-zinc-100 bg-zinc-50/50 py-6">
-          <p className="text-sm text-zinc-500 font-medium">
+        <CardFooter className="justify-center border-t border-border bg-muted/50 py-6">
+          <p className="text-sm text-muted-foreground font-medium">
             Already have an account?{" "}
             <button
               onClick={() => navigate(ROUTES.LOGIN)}
-              className="text-zinc-900 font-bold hover:underline"
+              className="text-foreground font-bold hover:underline"
             >
               Log in
             </button>

@@ -149,7 +149,7 @@ export function LandingPage() {
         <section className="relative pt-32 pb-20 md:pt-48 md:pb-32 overflow-hidden">
           {/* Background Blobs */}
           <div className="absolute top-0 right-0 -z-10 w-[800px] h-[800px] bg-primary/5 rounded-full blur-3xl opacity-50 translate-x-1/3 -translate-y-1/4"></div>
-          <div className="absolute bottom-0 left-0 -z-10 w-[600px] h-[600px] bg-blue-500/5 rounded-full blur-3xl opacity-50 -translate-x-1/3 translate-y-1/4"></div>
+          <div className="absolute bottom-0 left-0 -z-10 w-[600px] h-[600px] bg-primary/5 rounded-full blur-3xl opacity-50 -translate-x-1/3 translate-y-1/4"></div>
 
           <div className="container px-4 md:px-6 mx-auto">
             <div className="grid lg:grid-cols-2 gap-12 lg:gap-8 items-center">
@@ -157,15 +157,15 @@ export function LandingPage() {
               <div className="flex flex-col items-start text-left space-y-8 max-w-2xl">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-secondary text-secondary-foreground text-xs font-medium border border-secondary-foreground/10">
                   <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-primary"></span>
                   </span>
                   {LANDING_CONTENT.hero.badge}
                 </div>
 
                 <h1 className="text-5xl md:text-7xl font-bold tracking-tight leading-[1.1]">
                   {LANDING_CONTENT.hero.titleLine1} <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-600">
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary/80">
                     {LANDING_CONTENT.hero.titleLine2}
                   </span>
                 </h1>
@@ -197,7 +197,7 @@ export function LandingPage() {
                     {[1, 2, 3, 4].map((i) => (
                       <div
                         key={i}
-                        className="w-10 h-10 rounded-full border-2 border-background bg-gray-200 flex items-center justify-center overflow-hidden"
+                        className="w-10 h-10 rounded-full border-2 border-background bg-muted flex items-center justify-center overflow-hidden"
                       >
                         <img
                           src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${
@@ -212,7 +212,7 @@ export function LandingPage() {
                     </div>
                   </div>
                   <div className="flex flex-col">
-                    <div className="flex text-yellow-500">
+                    <div className="flex text-foreground">
                       <Star className="w-4 h-4 fill-current" />
                       <Star className="w-4 h-4 fill-current" />
                       <Star className="w-4 h-4 fill-current" />
@@ -236,7 +236,7 @@ export function LandingPage() {
                   {/* Phone Screen Content */}
                   <div className="bg-secondary/30 rounded-[2.5rem] overflow-hidden h-[600px] w-full flex flex-col relative">
                     {/* Map Background */}
-                    <div className="absolute inset-0 opacity-20 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:16px_16px]"></div>
+                    <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,var(--border)_1px,transparent_1px)] [background-size:16px_16px]"></div>
 
                     {/* Header */}
                     <div className="p-6 pt-12 flex justify-between items-center z-10">
@@ -256,7 +256,7 @@ export function LandingPage() {
                       {/* Match Found Card */}
                       <div className="bg-background/90 backdrop-blur-md p-4 rounded-2xl shadow-lg border border-border/50 animate-in slide-in-from-bottom-10 duration-700">
                         <div className="flex items-center gap-3 mb-3">
-                          <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center text-green-600">
+                          <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-primary">
                             <CheckCircle2 className="w-6 h-6" />
                           </div>
                           <div>
@@ -274,7 +274,7 @@ export function LandingPage() {
                             <span>{LANDING_CONTENT.mockup.flightCode}</span>
                           </div>
                           <div className="h-4 w-px bg-border"></div>
-                          <div className="font-mono font-bold text-green-600">
+                          <div className="font-mono font-bold text-primary">
                             {LANDING_CONTENT.mockup.savings}
                           </div>
                         </div>
@@ -291,7 +291,7 @@ export function LandingPage() {
                 {/* Floating Elements */}
                 <div className="absolute top-20 -right-8 md:-right-12 bg-background p-4 rounded-2xl shadow-xl border border-border/50 animate-bounce duration-[3000ms]">
                   <div className="flex items-center gap-3">
-                    <div className="bg-green-100 p-2 rounded-full text-green-600">
+                    <div className="bg-muted p-2 rounded-full text-primary">
                       <Car className="w-5 h-5" />
                     </div>
                     <div>
@@ -371,7 +371,7 @@ export function LandingPage() {
                   <Leaf className="w-32 h-32" />
                 </div>
                 <div className="relative z-10">
-                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-primary mb-6 shadow-sm">
+                  <div className="w-12 h-12 bg-primary-foreground rounded-2xl flex items-center justify-center text-primary mb-6 shadow-sm">
                     <Leaf className="w-6 h-6" />
                   </div>
                   <h3 className="text-2xl font-bold mb-3">
@@ -400,7 +400,7 @@ export function LandingPage() {
               </div>
 
               {/* Feature 4 */}
-              <div className="md:col-span-2 bg-gradient-to-r from-primary to-blue-600 rounded-[2rem] p-8 md:p-12 text-primary-foreground relative overflow-hidden">
+              <div className="md:col-span-2 bg-gradient-to-r from-primary to-primary/80 rounded-[2rem] p-8 md:p-12 text-primary-foreground relative overflow-hidden">
                 <div className="relative z-10 flex flex-col md:flex-row items-center justify-between gap-8">
                   <div className="max-w-md">
                     <h3 className="text-2xl font-bold mb-3">
@@ -410,14 +410,14 @@ export function LandingPage() {
                       {LANDING_CONTENT.features.payment.description}
                     </p>
                   </div>
-                  <div className="bg-white/20 backdrop-blur-md rounded-xl p-4 min-w-[200px] text-center">
+                  <div className="bg-primary-foreground/20 backdrop-blur-md rounded-xl p-4 min-w-[200px] text-center">
                     <p className="text-sm font-medium mb-1 opacity-80">
                       {LANDING_CONTENT.features.payment.receipt.totalLabel}
                     </p>
                     <p className="text-3xl font-bold">
                       {LANDING_CONTENT.features.payment.receipt.totalAmount}
                     </p>
-                    <div className="my-3 h-px bg-white/20"></div>
+                    <div className="my-3 h-px bg-primary-foreground/20"></div>
                     <div className="flex justify-between text-sm">
                       <span>
                         {LANDING_CONTENT.features.payment.receipt.youPayLabel}
@@ -436,25 +436,25 @@ export function LandingPage() {
         {/* CTA - Full width with texture */}
         <section className="py-24 px-4 md:px-6">
           <div className="container mx-auto">
-            <div className="bg-black text-white rounded-[2.5rem] p-8 md:p-20 text-center relative overflow-hidden isolate">
-              {/* Abstract background lines */}
-              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-gray-700 via-black to-black"></div>
+            <div className="bg-primary text-primary-foreground rounded-[2.5rem] p-8 md:p-20 text-center relative overflow-hidden isolate">
+              {/* Abstract background texture */}
+              <div className="absolute inset-0 opacity-20 bg-[radial-gradient(circle_at_center,var(--primary)_0.6,var(--primary))]"></div>
 
               <div className="relative z-10 space-y-8 max-w-2xl mx-auto">
                 <h2 className="text-4xl md:text-6xl font-bold tracking-tighter">
                   {LANDING_CONTENT.cta.title}
                 </h2>
-                <p className="text-xl text-gray-400">
+                <p className="text-xl text-primary-foreground/80">
                   {LANDING_CONTENT.cta.description}
                 </p>
                 <Button
                   size="lg"
                   onClick={() => navigate(ROUTES.AIRPORT)}
-                  className="bg-white text-black hover:bg-gray-200 text-lg h-14 px-10 rounded-full"
+                  className="bg-primary-foreground text-primary hover:bg-primary-foreground/90 text-lg h-14 px-10 rounded-full"
                 >
                   {LANDING_CONTENT.cta.button}
                 </Button>
-                <p className="text-sm text-gray-500 pt-4">
+                <p className="text-sm text-primary-foreground/70 pt-4">
                   {LANDING_CONTENT.cta.note}
                 </p>
               </div>

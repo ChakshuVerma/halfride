@@ -58,7 +58,7 @@ export function ListSection({
     >
       {/* Decorative background gradients */}
       <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 
       {/* Header Section - Sticky & Glassy */}
       <div className="sticky top-0 z-20 px-4 sm:px-8 py-5 sm:py-6 flex flex-col xs:flex-row items-start xs:items-center justify-between gap-4 border-b border-border/10 bg-white/60 dark:bg-black/40 backdrop-blur-xl transition-all duration-300 supports-[backdrop-filter]:bg-white/30">
