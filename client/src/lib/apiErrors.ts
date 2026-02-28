@@ -41,7 +41,7 @@ export class ApiError extends Error {
  * Prefers server message, then error (code label), then fallback.
  */
 export function parseApiErrorResponse(
-  status: number,
+  _status: number,
   body: unknown,
   fallbackMessage: string
 ): { message: string; code?: string; body?: ApiErrorBody } {

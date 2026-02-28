@@ -83,48 +83,40 @@ export function useAirportTravellersDashboard(
 
   useEffect(() => {
     const code = selectedAirport.airportCode;
-    const loadData = async () => {
-      const fetchedTerminals = await fetchTerminals(code);
-      setTerminals(fetchedTerminals);
-    };
-    void loadData();
-  }, [selectedAirport, fetchTerminals]);
+    const name = selectedAirport.airportName;
+    let cancelled = false;
 
-  useEffect(() => {
-    const code = selectedAirport.airportCode;
     const loadData = async () => {
       try {
-        const {
-          travellers: fetchedTravellers,
-          isUserInGroup: userInGroup,
-          userGroupId: gid,
-        } = await fetchTravellers(code);
+        const [fetchedTerminals, travellersResult, fetchedGroups, destination] =
+          await Promise.all([
+            fetchTerminals(code),
+            fetchTravellers(code),
+            fetchGroups(code, name),
+            fetchUserDestination(code),
+          ]);
 
-        setTravellers(fetchedTravellers);
-        setIsUserInGroup(userInGroup);
-        setUserGroupId(gid);
+        if (cancelled) return;
 
-        const fetchedGroups = await fetchGroups(
-          selectedAirport.airportCode,
-          selectedAirport.airportName,
-        );
+        setTerminals(fetchedTerminals);
+        setTravellers(travellersResult.travellers);
+        setIsUserInGroup(travellersResult.isUserInGroup);
+        setUserGroupId(travellersResult.userGroupId);
         setGroups(fetchedGroups);
-
+        setUserDestination(destination);
         setInitialDataFetchCompleted(true);
       } catch {
-        // Loading and error states are handled by hooks / consumers.
+        if (!cancelled) {
+          // Loading and error states are handled by hooks / consumers.
+        }
       }
     };
-    void loadData();
-  }, [selectedAirport, fetchTravellers, fetchGroups]);
 
-  useEffect(() => {
-    const checkUserListing = async () => {
-      const result = await fetchUserDestination(selectedAirport.airportCode);
-      setUserDestination(result);
+    void loadData();
+    return () => {
+      cancelled = true;
     };
-    void checkUserListing();
-  }, [selectedAirport, fetchUserDestination]);
+  }, [selectedAirport, fetchTerminals, fetchTravellers, fetchGroups, fetchUserDestination]);
 
   useEffect(() => {
     if (!selectedEntity) {

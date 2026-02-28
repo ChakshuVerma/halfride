@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, useCallback } from "react"
+import { createContext, useContext, useEffect, useRef, useState, useCallback } from "react"
 import type { ReactNode } from "react"
 import { useAuthApi } from "../hooks/useAuthApi"
 import { useAuthMeApi } from "../hooks/useAuthMeApi"
@@ -57,7 +57,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [getFirebaseCustomToken],
   )
 
+  const loadStartedRef = useRef(false)
+
   useEffect(() => {
+    if (loadStartedRef.current) return
+    loadStartedRef.current = true
+
     const load = async () => {
       try {
         const me = await fetchMe()
@@ -87,8 +92,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     load()
-    // fetchMe and fetchProfile are stable (wrapped in useCallback with stable deps)
-    // so this effect will only run once on mount, matching original behavior
   }, [fetchMe, fetchProfile, ensureFirebaseSession])
 
   const logout = async () => {

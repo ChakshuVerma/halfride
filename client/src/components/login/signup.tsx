@@ -35,7 +35,6 @@ import {
 import { cn } from "@/lib/utils";
 import {
   calculatePasswordStrength,
-  calculateAge,
   validatePassword,
   validateName,
   validateAge,
