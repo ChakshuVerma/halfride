@@ -12,6 +12,7 @@ import { NotificationBell } from "./NotificationBell";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { ROUTES, getProfilePath } from "@/constants/routes";
+import { AppBrand } from "@/components/common/AppBrand";
 
 const HEADER_CONSTANTS = {
   BRAND: "HalfRide",
@@ -57,22 +58,11 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between mx-auto md:px-6 px-4">
         {/* --- Left: Brand / Logo --- */}
-        <div
-          className="flex items-center gap-2.5 cursor-pointer group select-none"
+        <AppBrand
+          label={HEADER_CONSTANTS.BRAND}
           onClick={() => navigate(ROUTES.DASHBOARD)}
-        >
-          {/* Logo Icon */}
-          <div className="relative flex h-8 w-8 items-center justify-center rounded-lg bg-primary shadow-sm transition-all duration-300 group-hover:scale-105 group-hover:shadow-primary/25 group-hover:shadow-md">
-            <span className="text-primary-foreground font-bold text-lg leading-none">
-              {HEADER_CONSTANTS.BRAND.charAt(0)}
-            </span>
-            <div className="absolute inset-0 rounded-lg ring-1 ring-inset ring-black/10 dark:ring-white/10" />
-          </div>
-          {/* Logo Text */}
-          <span className="font-bold text-lg tracking-tight text-foreground transition-opacity group-hover:opacity-90">
-            {HEADER_CONSTANTS.BRAND}
-          </span>
-        </div>
+          className="group select-none"
+        />
 
         {/* --- Right: Actions --- */}
         <div className="flex items-center gap-2 sm:gap-4">

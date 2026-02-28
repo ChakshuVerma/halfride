@@ -40,7 +40,8 @@ export default function ProfilePage() {
   const navigate = useNavigate();
   const { openEntityModal } = useEntityModal();
   const { user, userProfile, setUserProfile } = useAuth();
-  const { data, loading, error, fetchProfile } = useProfileByUsername(username);
+  const { data, loading, error, fetchProfile, mergeMeProfileIntoData } =
+    useProfileByUsername(username);
   const { uploadProfilePhoto, fetchProfile: fetchMeProfile } =
     useUserProfileApi();
   const photoInputRef = useRef<HTMLInputElement>(null);
@@ -58,8 +59,29 @@ export default function ProfilePage() {
             ? { ...userProfile, photoURL: res.photoURL ?? undefined }
             : { photoURL: res.photoURL },
         );
-        await fetchMeProfile();
-        await fetchProfile();
+        const isOwnProfile = username === user?.username;
+        if (isOwnProfile) {
+          const meData = await fetchMeProfile();
+          if (meData?.user) {
+            setUserProfile({
+              ...userProfile,
+              firstName: meData.user.FirstName ?? userProfile?.firstName,
+              lastName: meData.user.LastName ?? userProfile?.lastName,
+              dob: meData.user.DOB ?? userProfile?.dob,
+              gender:
+                typeof meData.user.isFemale === "boolean"
+                  ? meData.user.isFemale
+                    ? "female"
+                    : "male"
+                  : userProfile?.gender,
+              phone: meData.user.Phone ?? userProfile?.phone,
+              photoURL: meData.user.photoURL ?? undefined,
+            });
+            mergeMeProfileIntoData(meData);
+          }
+        } else {
+          await fetchProfile();
+        }
         toast.success("Photo updated");
       } else {
         toast.error(res.error ?? "Failed to upload photo");

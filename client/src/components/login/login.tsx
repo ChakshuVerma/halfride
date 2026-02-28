@@ -25,6 +25,7 @@ import { InfoMessages } from "./helper";
 import { useAuthApi } from "../../hooks/useAuthApi";
 import { cn } from "@/lib/utils";
 import { ROUTES } from "@/constants/routes";
+import { AuthPageShell } from "@/components/common/AuthPageShell";
 
 // Constants
 const CONSTANTS = {
@@ -90,7 +91,7 @@ export function Login() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[80vh] p-4 w-full">
+    <AuthPageShell>
       <Card className="w-full max-w-[400px] border-white/20 shadow-2xl shadow-zinc-900/10 rounded-[2rem] bg-white/80 backdrop-blur-xl overflow-hidden ring-1 ring-white/50 animate-in fade-in zoom-in-95 duration-500">
         <CardHeader className="space-y-4 text-center pt-10 pb-6">
           <div className="mx-auto w-16 h-16 rounded-2xl bg-zinc-900 flex items-center justify-center mb-2 shadow-lg shadow-zinc-900/20 ring-4 ring-white">
@@ -218,6 +219,6 @@ export function Login() {
           </p>
         </CardFooter>
       </Card>
-    </div>
+    </AuthPageShell>
   );
 }

@@ -77,5 +77,29 @@ export function useProfileByUsername(username: string | undefined) {
     }
   }, [username, sessionRequest]);
 
-  return { data, loading, error, fetchProfile };
+  /** Update profile page user from "me" profile response (e.g. after photo upload) to avoid a second fetch. */
+  const mergeMeProfileIntoData = useCallback(
+    (meProfile: { user?: { photoURL?: string | null; FirstName?: string; LastName?: string; DOB?: string; isFemale?: boolean; Phone?: string } | null }) => {
+      if (!meProfile?.user) return;
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              user: {
+                ...prev.user,
+                photoURL: meProfile.user?.photoURL ?? prev.user.photoURL,
+                FirstName: meProfile.user?.FirstName ?? prev.user.FirstName,
+                LastName: meProfile.user?.LastName ?? prev.user.LastName,
+                DOB: meProfile.user?.DOB ?? prev.user.DOB,
+                isFemale: meProfile.user?.isFemale ?? prev.user.isFemale,
+                Phone: meProfile.user?.Phone ?? prev.user.Phone,
+              },
+            }
+          : prev,
+      );
+    },
+    [],
+  );
+
+  return { data, loading, error, fetchProfile, mergeMeProfileIntoData };
 }

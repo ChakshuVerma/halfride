@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Spinner, type SpinnerProps } from "@/components/ui/spinner";
 
-type LoadingStateProps = {
+export type LoadingStateProps = {
   message?: string;
   fullPage?: boolean;
   size?: SpinnerProps["size"];
@@ -31,4 +31,19 @@ export const LoadingState = ({
     </div>
   );
 };
+
+type SectionLoaderProps = Omit<LoadingStateProps, "fullPage">;
+
+export const SectionLoader = ({
+  message = "Loading...",
+  size = "md",
+  className,
+}: SectionLoaderProps) => (
+  <LoadingState
+    message={message}
+    size={size}
+    fullPage={false}
+    className={className}
+  />
+);
 

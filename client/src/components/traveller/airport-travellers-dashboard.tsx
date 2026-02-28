@@ -1,26 +1,14 @@
-import { useEffect, useCallback, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { toast } from "sonner";
+import { useCallback, useMemo, useState } from "react";
 import { Card, CardContent } from "../ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select";
-import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
   DialogTitle,
   DialogDescription,
 } from "../ui/dialog";
-import {
-  UsersRound,
-  ArrowUpDown,
-  User,
-  Plane,
-  Mars,
-  Venus,
-} from "lucide-react";
+import { User, UsersRound } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useGetTravellerApi } from "@/hooks/useGetTravellerApi";
-import { useGetAirportsApi, type Airport } from "@/hooks/useGetAirportApi";
+import { type Airport } from "@/hooks/useGetAirportApi";
 import { TravellerCard } from "./traveller-card";
 import { GroupCard } from "./group-card";
 import { TravellerModal } from "./traveller-modal";
@@ -31,11 +19,13 @@ import {
   type Traveller,
   type Group,
   type ViewMode,
-  type SelectedEntity,
   ENTITY_TYPE,
   VIEW_MODE,
 } from "./types";
 import { ListSection } from "@/components/common/ListSection";
+import { TravellerFilters } from "./TravellerFilters";
+import { UserListingBanner } from "./UserListingBanner";
+import { useAirportTravellersDashboard } from "@/hooks/useAirportTravellersDashboard";
 
 const CONSTANTS = {
   LABELS: {
@@ -81,9 +71,6 @@ export function AirportTravellersDashboard({
   searchInputRef,
 }: AirportTravellersDashboardProps) {
   const [viewMode, setViewMode] = useState<ViewMode>(VIEW_MODE.INDIVIDUAL);
-  const [selectedEntity, setSelectedEntity] = useState<SelectedEntity>(null);
-  const [travellers, setTravellers] = useState<Traveller[]>([]);
-  const [groups, setGroups] = useState<Group[]>([]);
   const [sortBy, setSortBy] = useState<"distance" | "wait_time">(
     CONSTANTS.VALUES.DISTANCE,
   );
@@ -93,114 +80,30 @@ export function AirportTravellersDashboard({
   ]);
   const [filterTerminal, setFilterTerminal] = useState<string[]>([]);
   const [isWaitlistModalOpen, setIsWaitlistModalOpen] = useState(false);
-  const [initialDataFetchCompleted, setInitialDataFetchCompleted] =
-    useState(false);
-  const [terminals, setTerminals] = useState<{ id: string; name: string }[]>([]);
-  const [isUserInGroup, setIsUserInGroup] = useState(false);
-  const [userGroupId, setUserGroupId] = useState<string | null>(null);
-  const [userDestination, setUserDestination] = useState<string | null>(null);
-  const lastRefetchedEntityRef = useRef<{ type: "traveller" | "group"; id: string } | null>(null);
-
-  const [searchParams, setSearchParams] = useSearchParams();
-
-  const clearModalParamsFromUrl = useCallback(() => {
-    const next = new URLSearchParams(searchParams);
-    next.delete("group");
-    next.delete("traveller");
-    setSearchParams(next, { replace: true });
-  }, [searchParams, setSearchParams]);
-
   const {
-    fetchTravellers,
-    fetchGroups,
-    fetchGroupById,
-    fetchTravellerByAirportAndUser,
-    fetchUserDestination,
-    revokeListing,
-    fetchTravellersLoading,
-    fetchGroupsLoading,
+    travellers,
+    groups,
+    terminals,
+    isFetchingList,
+    initialDataFetchCompleted,
+    isUserInGroup,
+    userGroupId,
+    userDestination,
+    selectedEntity,
+    setSelectedEntity,
+    clearModalParamsFromUrl,
+    handleConnectionResponded,
+    handleLeaveGroup,
+    handleJoinRequestSuccess,
+    handleWaitlistSuccess,
+    handleRevokeListing,
     revokeListingLoading,
-  } = useGetTravellerApi();
-  const { fetchTerminals } = useGetAirportsApi();
-
-  const isFetchingList = fetchTravellersLoading || fetchGroupsLoading;
+    refreshAirportData,
+    fetchTravellerDetail,
+  } = useAirportTravellersDashboard(selectedAirport);
 
   const effectiveTerminals = useMemo(() => terminals, [terminals]);
   const effectiveFilterTerminal = useMemo(() => filterTerminal, [filterTerminal]);
-
-  useEffect(() => {
-    const code = selectedAirport.airportCode;
-    const loadData = async () => {
-      const fetchedTerminals = await fetchTerminals(code);
-      setTerminals(fetchedTerminals);
-      setFilterTerminal(fetchedTerminals.map((t) => t.id));
-    };
-    void loadData();
-  }, [selectedAirport, fetchTerminals]);
-
-  useEffect(() => {
-    const code = selectedAirport.airportCode;
-    const loadData = async () => {
-      try {
-        if (viewMode === VIEW_MODE.INDIVIDUAL) {
-          const {
-            travellers: fetchedTravellers,
-            isUserInGroup,
-            userGroupId: gid,
-          } = await fetchTravellers(code);
-          setTravellers(fetchedTravellers);
-          setIsUserInGroup(isUserInGroup);
-          setUserGroupId(gid);
-        } else {
-          const [travellersResult, fetchedGroups] = await Promise.all([
-            fetchTravellers(code),
-            fetchGroups(selectedAirport.airportCode, selectedAirport.airportName),
-          ]);
-          setTravellers(travellersResult.travellers);
-          setIsUserInGroup(travellersResult.isUserInGroup);
-          setUserGroupId(travellersResult.userGroupId);
-          setGroups(fetchedGroups);
-        }
-        setInitialDataFetchCompleted(true);
-      } catch {
-        // loading state is handled by hooks
-      }
-    };
-    void loadData();
-  }, [viewMode, selectedAirport, fetchTravellers, fetchGroups]);
-
-  useEffect(() => {
-    const checkUserListing = async () => {
-      const result = await fetchUserDestination(selectedAirport.airportCode);
-      setUserDestination(result);
-    };
-    checkUserListing();
-  }, [selectedAirport, fetchUserDestination]);
-
-  // Whenever a group modal is open, refetch group so data is always fresh (e.g. after leave). Traveller modal fetches connection status itself.
-  useEffect(() => {
-    if (!selectedEntity) {
-      lastRefetchedEntityRef.current = null;
-      return;
-    }
-    const airportName = selectedAirport.airportName;
-
-    if (selectedEntity.type === ENTITY_TYPE.GROUP) {
-      const id = selectedEntity.data.id;
-      if (lastRefetchedEntityRef.current?.type === "group" && lastRefetchedEntityRef.current?.id === id) {
-        return;
-      }
-      lastRefetchedEntityRef.current = { type: "group", id };
-      fetchGroupById(id, airportName).then((fresh) => {
-        if (!fresh) return;
-        setSelectedEntity((prev) =>
-          prev?.type === ENTITY_TYPE.GROUP && prev.data.id === id
-            ? { type: ENTITY_TYPE.GROUP, data: fresh }
-            : prev,
-        );
-      });
-    }
-  }, [selectedEntity, selectedAirport.airportName, fetchGroupById]);
 
   const handleFilterToggle = useCallback(
     (
@@ -216,86 +119,18 @@ export function AirportTravellersDashboard({
     [],
   );
 
-  const refreshAirportData = useCallback(async () => {
-    const code = selectedAirport.airportCode;
-    const [travellersResult, fetchedGroups] = await Promise.all([
-      fetchTravellers(code),
-      fetchGroups(code, selectedAirport.airportName),
-    ]);
-    setTravellers(travellersResult.travellers);
-    setIsUserInGroup(travellersResult.isUserInGroup);
-    setUserGroupId(travellersResult.userGroupId);
-    setGroups(fetchedGroups);
-    return {
-      travellers: travellersResult.travellers,
-      groups: fetchedGroups,
-    };
-  }, [selectedAirport, fetchTravellers, fetchGroups]);
-
-  const handleConnectionResponded = useCallback(async () => {
-    await refreshAirportData();
-    setSelectedEntity(null);
-  }, [refreshAirportData]);
-
-  const handleLeaveGroup = useCallback(async () => {
-    await refreshAirportData();
-    setSelectedEntity(null);
-  }, [refreshAirportData]);
-
-  const handleJoinRequestSuccess = useCallback(async () => {
-    await refreshAirportData();
-    setSelectedEntity(null);
-  }, [refreshAirportData]);
-
-  const handleWaitlistSuccess = useCallback(async () => {
-    const code = selectedAirport.airportCode;
-    const [destination, travellersResult] = await Promise.all([
-      fetchUserDestination(code),
-      fetchTravellers(code),
-    ]);
-    setUserDestination(destination);
-    setTravellers(travellersResult.travellers);
-    setIsUserInGroup(travellersResult.isUserInGroup);
-    setUserGroupId(travellersResult.userGroupId);
-  }, [selectedAirport, fetchUserDestination, fetchTravellers]);
-
-  const handleOpenTraveller = useCallback((t: Traveller) => {
-    setSelectedEntity({ type: ENTITY_TYPE.TRAVELLER, data: t });
-  }, []);
-
-  const handleOpenGroup = useCallback((g: Group) => {
-    setSelectedEntity({ type: ENTITY_TYPE.GROUP, data: g });
-  }, []);
-
-  const handleRevokeListing = useCallback(
-    async (closeModalAfter?: boolean): Promise<boolean> => {
-      if (!selectedAirport?.airportCode || revokeListingLoading) return false;
-      const result = await revokeListing(selectedAirport.airportCode);
-      if (result.ok) {
-        setUserDestination(null);
-        setIsUserInGroup(false);
-        setUserGroupId(null);
-        const code = selectedAirport.airportCode;
-        const [travellersResult, fetchedGroups] = await Promise.all([
-          fetchTravellers(code),
-          fetchGroups(selectedAirport.airportCode, selectedAirport.airportName),
-        ]);
-        setTravellers(travellersResult.travellers);
-        setGroups(fetchedGroups);
-        if (closeModalAfter) setSelectedEntity(null);
-        toast.success("Listing removed");
-        return true;
-      }
-      toast.error(result.error ?? "Failed to remove listing");
-      return false;
+  const handleOpenTraveller = useCallback(
+    (t: Traveller) => {
+      setSelectedEntity({ type: ENTITY_TYPE.TRAVELLER, data: t });
     },
-    [
-      selectedAirport,
-      revokeListing,
-      revokeListingLoading,
-      fetchTravellers,
-      fetchGroups,
-    ],
+    [setSelectedEntity],
+  );
+
+  const handleOpenGroup = useCallback(
+    (g: Group) => {
+      setSelectedEntity({ type: ENTITY_TYPE.GROUP, data: g });
+    },
+    [setSelectedEntity],
   );
 
   const listSectionContent = useMemo(() => {
@@ -440,170 +275,34 @@ export function AirportTravellersDashboard({
           <CardContent className="px-3 sm:px-10 py-8 space-y-8 transition-all duration-500">
             <div className="flex flex-col gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
               {/* CONTROLS BAR */}
-              <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-6 p-1">
-                {/* LEFT: FILTERS */}
-                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full xl:w-auto">
-                  <div className="flex items-center p-1 bg-zinc-100 border border-zinc-200 rounded-xl">
-                    {[CONSTANTS.VALUES.MALE, CONSTANTS.VALUES.FEMALE].map(
-                      (gender) => (
-                        <button
-                          key={gender}
-                          onClick={() =>
-                            handleFilterToggle(setFilterGender, gender)
-                          }
-                          className={cn(
-                            "px-3 py-2 text-xs font-bold rounded-lg transition-all flex items-center gap-2 border border-transparent",
-                            filterGender.includes(gender)
-                              ? "bg-white shadow-sm border-zinc-200 text-zinc-900"
-                              : "text-zinc-400 hover:text-zinc-900 hover:bg-zinc-200/50",
-                          )}
-                        >
-                          {gender === CONSTANTS.VALUES.MALE ? (
-                            <Mars className="w-3.5 h-3.5" />
-                          ) : (
-                            <Venus className="w-3.5 h-3.5" />
-                          )}
-                          <span className="hidden sm:inline">{gender}</span>
-                        </button>
-                      ),
-                    )}
-                  </div>
-
-                  {viewMode === VIEW_MODE.INDIVIDUAL && (
-                    <>
-                      <div className="hidden sm:block w-px h-8 bg-zinc-200" />
-                      <div className="w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
-                        <div className="flex items-center gap-2">
-                          {effectiveTerminals.map((t) => (
-                            <button
-                              key={t.id}
-                              onClick={() =>
-                                handleFilterToggle(setFilterTerminal, t.id)
-                              }
-                              className={cn(
-                                "px-3 py-1.5 text-xs font-bold rounded-lg border transition-all whitespace-nowrap",
-                                effectiveFilterTerminal.includes(t.id)
-                                  ? "bg-zinc-900 text-white border-zinc-900 shadow-md shadow-zinc-200"
-                                  : "bg-white text-zinc-500 border-zinc-200 hover:border-zinc-300 hover:text-zinc-900",
-                              )}
-                            >
-                              <span className="sm:hidden">
-                                {t.name.replace(
-                                  CONSTANTS.REGEX.TERMINAL_PREFIX,
-                                  "T",
-                                )}
-                              </span>
-                              <span className="hidden sm:inline">{t.name}</span>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* RIGHT: SORT & VIEW */}
-                <div className="flex items-center justify-between gap-4 w-full xl:w-auto">
-                  <Select
-                    value={sortBy}
-                    onValueChange={(val) =>
-                      setSortBy(val as "distance" | "wait_time")
-                    }
-                  >
-                    <SelectTrigger className="h-10 w-[140px] bg-white border-zinc-200 rounded-xl text-xs font-bold text-zinc-700 hover:border-zinc-300 focus:ring-0">
-                      <div className="flex items-center gap-2">
-                        <ArrowUpDown className="w-3.5 h-3.5 text-zinc-400" />
-                        <span>
-                          {sortBy === CONSTANTS.VALUES.DISTANCE
-                            ? CONSTANTS.LABELS.MIN_DISTANCE
-                            : CONSTANTS.LABELS.WAIT_TIME}
-                        </span>
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl p-1 border-zinc-200 shadow-xl">
-                      <SelectItem
-                        value={CONSTANTS.VALUES.DISTANCE}
-                        className="rounded-lg text-xs font-medium focus:bg-zinc-100 focus:text-zinc-900"
-                      >
-                        Sort by Distance
-                      </SelectItem>
-                      <SelectItem
-                        value={CONSTANTS.VALUES.WAIT_TIME_VAL}
-                        className="rounded-lg text-xs font-medium focus:bg-zinc-100 focus:text-zinc-900"
-                      >
-                        Sort by Wait Time
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-
-                  <div className="flex p-1 bg-zinc-100 border border-zinc-200 rounded-xl">
-                    <button
-                      onClick={() => setViewMode(VIEW_MODE.INDIVIDUAL)}
-                      className={cn(
-                        "p-2 rounded-lg transition-all",
-                        viewMode === VIEW_MODE.INDIVIDUAL
-                          ? "bg-white shadow-sm text-zinc-900 border border-zinc-200"
-                          : "text-zinc-400 hover:text-zinc-900",
-                      )}
-                    >
-                      <User className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => setViewMode(VIEW_MODE.GROUP)}
-                      className={cn(
-                        "p-2 rounded-lg transition-all",
-                        viewMode === VIEW_MODE.GROUP
-                          ? "bg-white shadow-sm text-zinc-900 border border-zinc-200"
-                          : "text-zinc-400 hover:text-zinc-900",
-                      )}
-                    >
-                      <UsersRound className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
+              <TravellerFilters
+                viewMode={viewMode}
+                onViewModeChange={setViewMode}
+                sortBy={sortBy}
+                onSortByChange={(val) => setSortBy(val)}
+                genderFilter={filterGender}
+                onToggleGender={(gender) =>
+                  handleFilterToggle(setFilterGender, gender)
+                }
+                terminals={effectiveTerminals}
+                terminalFilter={effectiveFilterTerminal}
+                onToggleTerminal={(id) =>
+                  handleFilterToggle(setFilterTerminal, id)
+                }
+                showTerminalFilters={viewMode === VIEW_MODE.INDIVIDUAL}
+              />
 
               <div className="h-px bg-zinc-100" />
 
               {/* USER STATUS / ACTION */}
               <div className="flex justify-center">
-                {userDestination && !isUserInGroup
-                  ? initialDataFetchCompleted && (
-                      <div className="inline-flex items-center gap-3 pl-4 pr-2 py-2 bg-zinc-50 text-zinc-900 rounded-full border border-zinc-200 animate-in zoom-in duration-300">
-                        <div className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-zinc-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-zinc-900"></span>
-                        </div>
-                        <span className="text-sm font-medium">
-                          You are listed for{" "}
-                          <span className="font-bold">{userDestination}</span>
-                        </span>
-                      </div>
-                    )
-                  : userDestination && isUserInGroup
-                    ? initialDataFetchCompleted && (
-                        <div className="inline-flex items-center gap-3 pl-4 pr-6 py-2 bg-zinc-50 text-zinc-900 rounded-full border border-zinc-200 animate-in zoom-in duration-300">
-                          <div className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-zinc-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-zinc-900"></span>
-                          </div>
-                          <span className="text-sm font-medium">
-                            You are listed for{" "}
-                            <span className="font-bold">
-                              {userDestination}
-                            </span>
-                          </span>
-                        </div>
-                      )
-                    : initialDataFetchCompleted && (
-                        <Button
-                          onClick={() => setIsWaitlistModalOpen(true)}
-                          className="h-12 px-8 rounded-full font-bold shadow-xl shadow-zinc-300/40 hover:shadow-zinc-300/60 hover:-translate-y-0.5 transition-all bg-zinc-900 hover:bg-black text-white"
-                        >
-                          <Plane className="w-4 h-4 mr-2" />
-                          {CONSTANTS.LABELS.JOIN_WAITLIST}
-                        </Button>
-                      )}
+                <UserListingBanner
+                  userDestination={userDestination}
+                  isUserInGroup={isUserInGroup}
+                  initialDataFetchCompleted={initialDataFetchCompleted}
+                  joinWaitlistLabel={CONSTANTS.LABELS.JOIN_WAITLIST}
+                  onOpenWaitlist={() => setIsWaitlistModalOpen(true)}
+                />
               </div>
 
               {/* MAIN LIST */}
@@ -644,13 +343,7 @@ export function AirportTravellersDashboard({
                         : undefined
                     }
                     isRevokingListing={revokeListingLoading}
-                    onFetchTravellerDetail={(userId) =>
-                      fetchTravellerByAirportAndUser(
-                        selectedAirport.airportCode,
-                        userId,
-                        selectedAirport.airportName,
-                      )
-                    }
+                    onFetchTravellerDetail={fetchTravellerDetail}
                   />
                 ) : (
                   selectedEntity && (
