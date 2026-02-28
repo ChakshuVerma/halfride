@@ -150,6 +150,15 @@ export function MessageList({
           )}
           <div className="space-y-2 mt-2">
             {group.messages.map((m, idx) => {
+              if (m.type === "system") {
+                return (
+                  <div key={m.id} className="flex justify-center px-1 sm:px-2">
+                    <div className="rounded-full bg-muted/70 border border-border/50 px-3 py-1.5 text-[11px] text-muted-foreground shadow-sm max-w-[85%] text-center">
+                      {m.text}
+                    </div>
+                  </div>
+                );
+              }
               const isOwn = m.senderId === currentUserId;
               const prev = idx > 0 ? group.messages[idx - 1] : null;
               const isSameSenderAsPrev = prev && prev.senderId === m.senderId;

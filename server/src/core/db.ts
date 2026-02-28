@@ -203,6 +203,7 @@ export const GROUP_SUBCOLLECTIONS = {
 export const GROUP_MESSAGE_FIELDS = {
   MESSAGE_ID: "messageId",
   GROUP_ID: "groupId",
+  TYPE: "type", // "user" | "system" (e.g. "X joined/left the group")
   SENDER_ID: "senderId",
   SENDER_DISPLAY_NAME: "senderDisplayName",
   SENDER_PHOTO_URL: "senderPhotoURL",

@@ -1,6 +1,7 @@
 import {
   useState,
   useMemo,
+  forwardRef,
   type ReactNode,
   type MouseEvent,
 } from "react";
@@ -104,14 +105,23 @@ function renderNotificationBody(
 
 type NotificationBellButtonProps = {
   unreadCount: number;
-};
+} & React.ComponentPropsWithoutRef<typeof Button>;
 
-function NotificationBellButton({ unreadCount }: NotificationBellButtonProps) {
+const NotificationBellButton = forwardRef<
+  HTMLButtonElement,
+  NotificationBellButtonProps
+>(function NotificationBellButton({ unreadCount, className, ...props }, ref) {
   return (
     <Button
+      ref={ref}
+      type="button"
       variant="ghost"
       size="icon"
-      className="relative h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors focus-visible:ring-0"
+      className={cn(
+        "relative h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition-colors focus-visible:ring-0",
+        className,
+      )}
+      {...props}
     >
       <Bell className="h-5 w-5" />
       {unreadCount > 0 && (
@@ -121,7 +131,7 @@ function NotificationBellButton({ unreadCount }: NotificationBellButtonProps) {
       )}
     </Button>
   );
-}
+});
 
 type NotificationsHeaderProps = {
   unreadCount: number;

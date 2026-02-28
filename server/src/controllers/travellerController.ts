@@ -4,6 +4,8 @@ import {
   COLLECTIONS,
   FLIGHT_FIELDS,
   GROUP_FIELDS,
+  GROUP_MESSAGE_FIELDS,
+  GROUP_SUBCOLLECTIONS,
   TRAVELLER_FIELDS,
   USER_FIELDS,
 } from "../core/db";
@@ -967,6 +969,25 @@ async function clearUserGroupRef(
   }
 }
 
+/** Add a system message to the group chat (e.g. "X joined/left the group"). */
+async function addGroupSystemMessage(
+  groupRef: admin.firestore.DocumentReference,
+  text: string,
+): Promise<void> {
+  const messageRef = groupRef.collection(GROUP_SUBCOLLECTIONS.MESSAGES).doc();
+  await messageRef.set({
+    [GROUP_MESSAGE_FIELDS.MESSAGE_ID]: messageRef.id,
+    [GROUP_MESSAGE_FIELDS.GROUP_ID]: groupRef.id,
+    [GROUP_MESSAGE_FIELDS.TYPE]: "system",
+    [GROUP_MESSAGE_FIELDS.SENDER_ID]: null,
+    [GROUP_MESSAGE_FIELDS.SENDER_DISPLAY_NAME]: null,
+    [GROUP_MESSAGE_FIELDS.SENDER_PHOTO_URL]: null,
+    [GROUP_MESSAGE_FIELDS.TEXT]: text,
+    [GROUP_MESSAGE_FIELDS.CREATED_AT]:
+      admin.firestore.FieldValue.serverTimestamp(),
+  });
+}
+
 /** POST /leave-group — Body: { groupId }. Notifies members; disbands if 1 left. */
 export async function leaveGroup(req: Request, res: Response) {
   const { groupId } = req.body as { groupId?: string };
@@ -1004,7 +1025,11 @@ export async function leaveGroup(req: Request, res: Response) {
     );
     await clearUserGroupRef(db, userRef, groupRef);
 
-    // Disband if 0 or 1 left; else update members and notify.
+    const leaverSnap = await userRef.get();
+    const leaverName =
+      leaverSnap.data()?.[USER_FIELDS.FIRST_NAME]?.trim() || "Someone";
+
+    // Disband if 0 or 1 left; else update members, add system message, and notify.
     if (remainingMembers.length <= 1) {
       if (remainingMembers.length === 1) {
         const lastMemberRef = remainingMembers[0];
@@ -1021,6 +1046,10 @@ export async function leaveGroup(req: Request, res: Response) {
       });
     }
 
+    await addGroupSystemMessage(
+      groupRef,
+      `${leaverName} left the group`,
+    );
     await groupRef.update({
       [GROUP_FIELDS.MEMBERS]: remainingMembers,
       [GROUP_FIELDS.MEMBER_UIDS]: remainingMembers.map(
@@ -1373,6 +1402,11 @@ export async function respondToJoinRequest(req: Request, res: Response) {
         [GROUP_FIELDS.PENDING_REQUESTS]: pendingRequests,
         [GROUP_FIELDS.UPDATED_AT]: admin.firestore.FieldValue.serverTimestamp(),
       });
+
+      await addGroupSystemMessage(
+        groupRef,
+        `${requesterName} joined the group`,
+      );
 
       await requesterTravellerSnap.docs[0].ref.update({
         [TRAVELLER_FIELDS.GROUP_REF]: groupRef,

@@ -18,6 +18,8 @@ import { useAuth } from "@/contexts/AuthContext";
 export type GroupMessage = {
   id: string;
   groupId: string | null;
+  /** "system" for join/leave info; "user" for normal messages (default). */
+  type?: "user" | "system";
   senderId: string | null;
   senderDisplayName: string | null;
   senderPhotoURL: string | null;
@@ -64,9 +66,11 @@ export function useGroupChat(groupId: string | undefined, options?: UseGroupChat
           .map((doc) => {
             const d = doc.data() as Record<string, unknown>;
             const createdAt = d["createdAt"] as { toDate?: () => Date } | undefined;
+            const type = d["type"] as "user" | "system" | undefined;
             return {
               id: doc.id,
               groupId: (d["groupId"] as string) ?? null,
+              type: type === "system" ? "system" : "user",
               senderId: (d["senderId"] as string) ?? null,
               senderDisplayName: (d["senderDisplayName"] as string) ?? null,
               senderPhotoURL: (d["senderPhotoURL"] as string | null) ?? null,
@@ -115,9 +119,11 @@ export function useGroupChat(groupId: string | undefined, options?: UseGroupChat
         .map((doc) => {
           const d = doc.data() as Record<string, unknown>;
           const createdAt = d["createdAt"] as { toDate?: () => Date } | undefined;
+          const type = d["type"] as "user" | "system" | undefined;
           return {
             id: doc.id,
             groupId: (d["groupId"] as string) ?? null,
+            type: type === "system" ? "system" : "user",
             senderId: (d["senderId"] as string) ?? null,
             senderDisplayName: (d["senderDisplayName"] as string) ?? null,
             senderPhotoURL: (d["senderPhotoURL"] as string | null) ?? null,
