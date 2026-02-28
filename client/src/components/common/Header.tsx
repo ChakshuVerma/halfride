@@ -162,7 +162,7 @@ export function Header() {
               <div className="px-1 pb-1">
                 <Button
                   variant="ghost"
-                  className="w-full justify-start h-9 px-2 text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                  className="w-full justify-start h-9 px-2 text-destructive hover:text-destructive hover:bg-destructive/10 transition-colors"
                   onClick={() => setShowLogoutConfirm(true)}
                 >
                   <LogOut className="mr-2 h-4 w-4" />

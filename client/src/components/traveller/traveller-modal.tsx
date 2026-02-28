@@ -54,34 +54,34 @@ const CONSTANTS = {
   },
   COLORS: {
     CANCELLED: {
-      text: "text-red-600",
-      bg: "bg-red-50",
-      border: "border-red-100",
+      text: "text-destructive",
+      bg: "bg-destructive/10",
+      border: "border-destructive/20",
     },
     LANDED: {
-      text: "text-emerald-600",
-      bg: "bg-emerald-50",
-      border: "border-emerald-100",
+      text: "text-primary",
+      bg: "bg-primary/10",
+      border: "border-primary/20",
     },
     NOT_STARTED: {
-      text: "text-zinc-500",
-      bg: "bg-zinc-100",
-      border: "border-zinc-200",
+      text: "text-muted-foreground",
+      bg: "bg-muted",
+      border: "border-border",
     },
     EARLY: {
-      text: "text-emerald-600",
-      bg: "bg-emerald-50",
-      border: "border-emerald-100",
+      text: "text-primary",
+      bg: "bg-primary/10",
+      border: "border-primary/20",
     },
     LATE: {
-      text: "text-amber-600",
-      bg: "bg-amber-50",
-      border: "border-amber-100",
+      text: "text-foreground",
+      bg: "bg-muted",
+      border: "border-border",
     },
     DEFAULT: {
-      text: "text-zinc-900",
-      bg: "bg-zinc-50",
-      border: "border-zinc-200",
+      text: "text-foreground",
+      bg: "bg-muted",
+      border: "border-border",
     },
   },
 };
@@ -266,13 +266,13 @@ export function TravellerModal({
   };
 
   return (
-    <div className="flex flex-col h-full bg-white text-zinc-900 selection:bg-zinc-100">
+    <div className="flex flex-col h-full bg-background text-foreground selection:bg-muted">
       {/* 1. Header Section */}
       <DialogHeader className="px-6 pt-6 pb-2 space-y-0">
         <div className="flex items-start gap-5">
           {/* Avatar */}
           <div className="relative shrink-0">
-            <div className="w-16 h-16 rounded-2xl bg-zinc-100 flex items-center justify-center border border-zinc-200 text-zinc-400 overflow-hidden">
+            <div className="w-16 h-16 rounded-2xl bg-muted flex items-center justify-center border border-border text-muted-foreground overflow-hidden">
               {effectiveTraveller.photoURL ? (
                 <img
                   src={effectiveTraveller.photoURL}
@@ -285,34 +285,34 @@ export function TravellerModal({
             </div>
             {/* Online Indicator */}
             <span className="absolute -bottom-1 -right-1 flex h-4 w-4">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-zinc-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-4 w-4 bg-zinc-900 border-2 border-white"></span>
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-muted-foreground opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-4 w-4 bg-primary border-2 border-background"></span>
             </span>
           </div>
 
           <div className="flex-1 min-w-0 pt-1">
-            <DialogTitle className="text-2xl font-bold tracking-tight text-zinc-900 truncate">
+            <DialogTitle className="text-2xl font-bold tracking-tight text-foreground truncate">
               {traveller.name}
             </DialogTitle>
-            <p className="text-sm text-zinc-500 font-medium">
+            <p className="text-sm text-muted-foreground font-medium">
               @{traveller.username || "traveller"}
             </p>
 
             {/* Quick Badges */}
             <div className="flex items-center gap-2 mt-3">
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-900 text-white text-[11px] font-bold uppercase tracking-wider">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-primary text-primary-foreground text-[11px] font-bold uppercase tracking-wider">
                 <Plane className="w-3 h-3" />
                 {traveller.flightNumber}
               </div>
-              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-100 text-zinc-600 text-[11px] font-bold uppercase tracking-wider border border-zinc-200">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted text-foreground text-[11px] font-bold uppercase tracking-wider border border-border">
                 Term {traveller.terminal}
               </div>
             </div>
           </div>
         </div>
         {traveller.destination && (
-          <div className="mt-2 flex items-start gap-1.5 text-sm font-medium text-zinc-500">
-            <MapPin className="w-3.5 h-3.5 shrink-0 text-zinc-400 mt-0.5" />
+          <div className="mt-2 flex items-start gap-1.5 text-sm font-medium text-muted-foreground">
+            <MapPin className="w-3.5 h-3.5 shrink-0 text-muted-foreground mt-0.5" />
             <span className="min-w-0 break-words">To {traveller.destination}</span>
           </div>
         )}
@@ -323,35 +323,35 @@ export function TravellerModal({
         {/* FLIGHT BOARD SECTION */}
         <div className="space-y-3">
           <div className="flex items-center justify-between pl-1">
-            <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
+            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
               Live Flight Status
             </h4>
             {flightInfo?.airlineName && (
-              <span className="text-[10px] font-semibold text-zinc-400">
+              <span className="text-[10px] font-semibold text-muted-foreground">
                 {flightInfo.airlineName}
               </span>
             )}
           </div>
 
-          <div className="relative w-full rounded-[1.5rem] border border-zinc-200 overflow-hidden shadow-sm bg-zinc-50/50">
+          <div className="relative w-full rounded-[1.5rem] border border-border overflow-hidden shadow-sm bg-muted/50">
             {isLoading ? (
               <div className="min-h-[200px] flex flex-col items-center justify-center gap-3">
-                <Loader2 className="w-8 h-8 animate-spin text-zinc-300" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 animate-pulse">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse">
                   {CONSTANTS.MESSAGES.SYNCING}
                 </span>
               </div>
             ) : flightError ? (
               <div className="min-h-[200px] flex flex-col items-center justify-center gap-3 text-center p-6">
-                <div className="w-10 h-10 rounded-full bg-zinc-100 flex items-center justify-center">
-                  <Info className="w-5 h-5 text-zinc-400" />
+                <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                  <Info className="w-5 h-5 text-muted-foreground" />
                 </div>
-                <p className="text-sm font-medium text-zinc-500">
+                <p className="text-sm font-medium text-muted-foreground">
                   {flightError}
                 </p>
                 <button
                   onClick={fetchArrivalInfo}
-                  className="text-xs font-bold text-zinc-900 underline hover:no-underline"
+                  className="text-xs font-bold text-foreground underline hover:no-underline"
                 >
                   {CONSTANTS.MESSAGES.RETRY}
                 </button>
@@ -360,7 +360,7 @@ export function TravellerModal({
               flightInfo && (
                 <div className="flex flex-col animate-in fade-in duration-500">
                   {/* Status Bar */}
-                  <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-100 bg-white">
+                  <div className="flex items-center justify-between px-5 py-3 border-b border-border bg-background">
                     <div
                       className={cn(
                         "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide",
@@ -373,8 +373,8 @@ export function TravellerModal({
                       {flightInfo.statusShort}
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide">
+                      <div className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
                         {CONSTANTS.MESSAGES.SYNCED}{" "}
                         {Math.floor((now - flightInfo.lastUpdatedAt) / 60000)}m{" "}
                         {CONSTANTS.MESSAGES.AGO}
@@ -383,43 +383,43 @@ export function TravellerModal({
                   </div>
 
                   {/* Route Visual */}
-                  <div className="px-6 py-6 bg-white">
+                  <div className="px-6 py-6 bg-background">
                     <div className="flex items-center justify-between gap-4">
                       {/* Origin */}
                       <div className="flex flex-col">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
                           Departure
                         </span>
-                        <span className="text-2xl font-black text-zinc-900 leading-none">
+                        <span className="text-2xl font-black text-foreground leading-none">
                           {flightInfo.originCode || "---"}
                         </span>
                       </div>
 
                       {/* Path */}
                       <div className="flex-1 flex flex-col items-center px-4">
-                        <div className="w-full relative h-[2px] bg-zinc-100 rounded-full">
+                        <div className="w-full relative h-[2px] bg-muted rounded-full">
                           <div
                             className={cn(
-                              "absolute top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-white border border-zinc-200 transition-all duration-1000",
+                              "absolute top-1/2 -translate-y-1/2 p-1.5 rounded-full bg-background border border-border transition-all duration-1000",
                               flightInfo.isLanded
                                 ? "left-[100%] -translate-x-full"
                                 : "left-1/2 -translate-x-1/2",
                             )}
                           >
-                            <Plane className="w-3.5 h-3.5 text-zinc-400 rotate-90" />
+                            <Plane className="w-3.5 h-3.5 text-muted-foreground rotate-90" />
                           </div>
                         </div>
-                        <span className="text-[9px] font-bold text-zinc-300 uppercase tracking-widest mt-2">
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mt-2">
                           {flightInfo.airlineName || "Direct Flight"}
                         </span>
                       </div>
 
                       {/* Destination */}
                       <div className="flex flex-col text-right">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
                           Arrival
                         </span>
-                        <span className="text-2xl font-black text-zinc-900 leading-none">
+                        <span className="text-2xl font-black text-foreground leading-none">
                           {flightInfo.destCode || "---"}
                         </span>
                         {/* Use etaLocal or arrivalTimeLocal */}
@@ -436,7 +436,7 @@ export function TravellerModal({
                       <div className="mt-4 text-center">
                         <span
                           className={cn(
-                            "text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-md bg-zinc-50 border border-zinc-100",
+                            "text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-md bg-muted border border-border",
                             s.text,
                           )}
                         >
@@ -449,15 +449,15 @@ export function TravellerModal({
                   {/* Details Grid */}
                   <div
                     className={cn(
-                      "grid divide-x divide-zinc-100 bg-zinc-50/50 border-t border-zinc-100",
+                      "grid divide-x divide-border bg-muted/50 border-t border-border",
                       flightInfo.gate ? "grid-cols-2" : "grid-cols-1",
                     )}
                   >
                     <div className="flex flex-col items-center justify-center p-3 text-center">
-                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                      <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
                         Terminal
                       </span>
-                      <span className="text-sm font-black text-zinc-900">
+                      <span className="text-sm font-black text-foreground">
                         {flightInfo.terminal
                           ? `${CONSTANTS.MESSAGES.TERM_PREFIX}${flightInfo.terminal}`
                           : "--"}
@@ -466,10 +466,10 @@ export function TravellerModal({
 
                     {flightInfo.gate && (
                       <div className="flex flex-col items-center justify-center p-3 text-center">
-                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider mb-1">
+                        <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider mb-1">
                           Gate
                         </span>
-                        <span className="text-sm font-black text-zinc-900">
+                        <span className="text-sm font-black text-foreground">
                           {`${CONSTANTS.MESSAGES.GATE_PREFIX}${flightInfo.gate}`}
                         </span>
                       </div>
@@ -483,23 +483,23 @@ export function TravellerModal({
 
         {/* STATS SECTION */}
         <div className="grid grid-cols-2 gap-4">
-          <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-100 flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-zinc-400 mb-1">
+          <div className="p-4 rounded-2xl bg-muted border border-border flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
               <MapPin className="w-4 h-4" />
               <span className="text-[10px] font-bold uppercase tracking-wider">
                 Distance
               </span>
             </div>
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black text-zinc-900">
+              <span className="text-2xl font-black text-foreground">
                 {traveller.distanceFromUserKm?.toFixed(1)}
               </span>
-              <span className="text-xs font-bold text-zinc-400">km away</span>
+              <span className="text-xs font-bold text-muted-foreground">km away</span>
             </div>
           </div>
 
-          <div className="p-4 rounded-2xl bg-zinc-50 border border-zinc-100 flex flex-col gap-1">
-            <div className="flex items-center gap-2 text-zinc-400 mb-1">
+          <div className="p-4 rounded-2xl bg-muted border border-border flex flex-col gap-1">
+            <div className="flex items-center gap-2 text-muted-foreground mb-1">
               <Clock className="w-4 h-4" />
               <span className="text-[10px] font-bold uppercase tracking-wider">
                 Wait Time
@@ -510,8 +510,8 @@ export function TravellerModal({
                 className={cn(
                   "text-2xl font-black",
                   calculateWaitText(traveller.flightDateTime) === "Landed"
-                    ? "text-emerald-600"
-                    : "text-zinc-900",
+                    ? "text-primary"
+                    : "text-foreground",
                 )}
               >
                 {calculateWaitText(traveller.flightDateTime)}
@@ -523,7 +523,7 @@ export function TravellerModal({
         {/* INTERESTS SECTION */}
         {traveller.tags && traveller.tags.length > 0 && (
           <div className="space-y-3">
-            <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-widest pl-1 flex items-center gap-2">
+            <h4 className="text-xs font-bold text-muted-foreground uppercase tracking-widest pl-1 flex items-center gap-2">
               <Sparkles className="w-3 h-3" />
               {CONSTANTS.MESSAGES.INTERESTS}
             </h4>
@@ -531,7 +531,7 @@ export function TravellerModal({
               {traveller.tags.map((tag, i) => (
                 <span
                   key={i}
-                  className="inline-flex items-center px-3 py-1.5 rounded-lg bg-white border border-zinc-200 text-xs font-semibold text-zinc-600 shadow-sm"
+                  className="inline-flex items-center px-3 py-1.5 rounded-lg bg-background border border-border text-xs font-semibold text-foreground shadow-sm"
                 >
                   #{tag}
                 </span>
@@ -542,7 +542,7 @@ export function TravellerModal({
 
         {/* Error Message */}
         {connectionError && (
-          <div className="p-4 rounded-xl bg-red-50 text-red-600 text-sm font-medium">
+          <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm font-medium">
             {connectionError}
           </div>
         )}
@@ -550,13 +550,13 @@ export function TravellerModal({
 
       {/* 3. Footer Action */}
       {!viewOnly && traveller.isOwnListing ? (
-        <div className="p-6 pt-2 border-t border-zinc-100 bg-white space-y-3">
+        <div className="p-6 pt-2 border-t border-border bg-background space-y-3">
           {onRevokeListing && (
             <>
               <button
                 onClick={() => setShowRevokeConfirm(true)}
                 disabled={isRevokingListing}
-                className="w-full h-12 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-2 border-zinc-200 text-zinc-600 hover:bg-red-50 hover:border-red-200 hover:text-red-600 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                className="w-full h-12 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-2 border-border text-foreground hover:bg-destructive/10 hover:border-destructive/30 hover:text-destructive transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 {isRevokingListing ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -577,17 +577,17 @@ export function TravellerModal({
           )}
         </div>
       ) : !viewOnly && isUserInGroup ? (
-        <div className="p-6 pt-2 border-t border-zinc-100 bg-white">
+        <div className="p-6 pt-2 border-t border-border bg-background">
           <div className="w-full py-3 rounded-xl bg-muted/50 text-muted-foreground text-sm font-medium text-center border border-border/50">
             {CONSTANTS.MESSAGES.ALREADY_IN_GROUP}
           </div>
         </div>
       ) : !viewOnly ? (
-        <div className="p-6 pt-2 border-t border-zinc-100 bg-white">
+        <div className="p-6 pt-2 border-t border-border bg-background">
           {connectionStatusLoading ? (
-            <div className="h-12 rounded-xl bg-zinc-100 border border-zinc-200 flex items-center justify-center gap-2">
-              <Loader2 className="w-5 h-5 animate-spin text-zinc-400" />
-              <span className="text-xs font-bold uppercase tracking-widest text-zinc-500">
+            <div className="h-12 rounded-xl bg-muted border border-border flex items-center justify-center gap-2">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+              <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
                 Loading connection status…
               </span>
             </div>
@@ -598,7 +598,7 @@ export function TravellerModal({
                 onClick={() => handleRespondToConnection(ConnectionResponseAction.REJECT)}
                 disabled={respondToConnectionLoading}
                 className={cn(
-                  "flex-1 h-12 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-2 border-zinc-200 text-zinc-600 hover:bg-zinc-50 hover:border-zinc-300 transition-all active:scale-[0.98]",
+                  "flex-1 h-12 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 border-2 border-border text-foreground hover:bg-muted hover:border-border transition-all active:scale-[0.98]",
                   respondToConnectionLoading && "opacity-60 cursor-not-allowed",
                 )}
               >
@@ -612,7 +612,7 @@ export function TravellerModal({
                 onClick={() => handleRespondToConnection(ConnectionResponseAction.ACCEPT)}
                 disabled={respondToConnectionLoading}
                 className={cn(
-                  "flex-1 h-12 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 bg-emerald-500 text-white shadow-emerald-500/20 shadow-xl hover:bg-emerald-600 transition-all hover:scale-[1.01] active:scale-[0.98]",
+                  "flex-1 h-12 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 bg-primary text-primary-foreground shadow-xl hover:bg-primary/90 transition-all hover:scale-[1.01] active:scale-[0.98]",
                   respondToConnectionLoading && "opacity-60 cursor-not-allowed",
                 )}
               >
@@ -626,11 +626,11 @@ export function TravellerModal({
               </button>
             </div>
           ) : connectionResponded === "accepted" ? (
-            <div className="w-full h-12 rounded-xl bg-emerald-500 text-white text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+            <div className="w-full h-12 rounded-xl bg-primary text-primary-foreground text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2">
               Connected <CheckCircle2 className="w-4 h-4" />
             </div>
           ) : connectionResponded === "rejected" ? (
-            <div className="w-full h-12 rounded-xl bg-zinc-100 text-zinc-600 text-sm font-bold uppercase tracking-widest flex items-center justify-center">
+            <div className="w-full h-12 rounded-xl bg-muted text-foreground text-sm font-bold uppercase tracking-widest flex items-center justify-center">
               Request declined
             </div>
           ) : (
@@ -644,8 +644,8 @@ export function TravellerModal({
               className={cn(
                 "w-full h-12 rounded-xl text-sm font-bold uppercase tracking-widest flex items-center justify-center gap-2 shadow-xl transition-all hover:scale-[1.01] active:scale-[0.98]",
                 connectionSent || effectiveTraveller.connectionStatus === "REQUEST_SENT"
-                  ? "bg-emerald-500 text-white shadow-emerald-500/20"
-                  : "bg-zinc-900 hover:bg-black text-white shadow-zinc-900/10",
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-primary hover:bg-primary/90 text-primary-foreground",
                 (requestConnectionLoading ||
                   connectionSent ||
                   effectiveTraveller.connectionStatus === "REQUEST_SENT") &&

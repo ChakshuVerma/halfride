@@ -126,7 +126,7 @@ const NotificationBellButton = forwardRef<
       <Bell className="h-5 w-5" />
       {unreadCount > 0 && (
         <span className="absolute top-1.5 right-1.5 flex h-2 w-2">
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-600" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-destructive" />
         </span>
       )}
     </Button>

@@ -159,16 +159,16 @@ export default function ProfilePage() {
   const hasNoActiveTrip = !data.currentGroup && !data.activeTrip;
 
   return (
-    <div className="min-h-screen bg-linear-to-b from-zinc-50 via-white to-zinc-100 flex items-start sm:items-center justify-center px-2 sm:px-6 py-6">
-      <Card className="w-full max-w-5xl border-zinc-200/60 shadow-2xl shadow-zinc-200/60 bg-white/70 backdrop-blur-xl rounded-[2.5rem] overflow-hidden">
+    <div className="min-h-screen bg-linear-to-b from-muted via-background to-muted flex items-start sm:items-center justify-center px-2 sm:px-6 py-6">
+      <Card className="w-full max-w-5xl border-border shadow-2xl bg-card/90 backdrop-blur-xl rounded-[2.5rem] overflow-hidden">
         {/* Cover + profile header */}
-        <div className="relative border-b border-zinc-100 bg-linear-to-b from-zinc-50/80 to-white">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-30%,rgba(15,23,42,0.06),transparent)]" />
+        <div className="relative border-b border-border bg-linear-to-b from-muted/80 to-background">
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-30%,color-mix(in_oklch,var(--primary)_6%,transparent),transparent)]" />
           <div className="relative w-full max-w-3xl mx-auto px-4 pt-8 pb-8 md:pt-10 md:pb-10">
             <Button
               variant="ghost"
               size="sm"
-              className="absolute top-4 left-4 md:left-0 text-zinc-500 hover:text-zinc-900 hover:bg-zinc-100/80"
+              className="absolute top-4 left-4 md:left-0 text-muted-foreground hover:text-foreground hover:bg-muted/80"
               onClick={() => navigate(ROUTES.DASHBOARD)}
             >
               <ChevronLeft className="h-4 w-4 mr-1" />
@@ -177,7 +177,7 @@ export default function ProfilePage() {
 
             <div className="flex flex-col sm:flex-row items-center sm:items-end gap-6 pt-10 sm:pt-6">
               <div className="relative group">
-                <div className="flex h-24 w-24 sm:h-28 sm:w-28 shrink-0 items-center justify-center rounded-3xl bg-zinc-900 text-white font-bold text-3xl sm:text-4xl shadow-lg shadow-zinc-300 ring-4 ring-white overflow-hidden">
+                <div className="flex h-24 w-24 sm:h-28 sm:w-28 shrink-0 items-center justify-center rounded-3xl bg-primary text-primary-foreground font-bold text-3xl sm:text-4xl shadow-lg ring-4 ring-primary-foreground overflow-hidden">
                   {profileUser.photoURL ? (
                     <img
                       src={profileUser.photoURL}
@@ -201,33 +201,33 @@ export default function ProfilePage() {
                       type="button"
                       onClick={() => photoInputRef.current?.click()}
                       disabled={uploadingPhoto}
-                      className="absolute inset-0 flex items-center justify-center rounded-3xl bg-black/45 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-70"
+                      className="absolute inset-0 flex items-center justify-center rounded-3xl bg-primary/45 opacity-0 group-hover:opacity-100 transition-opacity disabled:opacity-70"
                     >
                       {uploadingPhoto ? (
-                        <Loader2 className="h-8 w-8 animate-spin text-white" />
+                        <Loader2 className="h-8 w-8 animate-spin text-primary-foreground" />
                       ) : (
-                        <Camera className="h-8 w-8 text-white" />
+                        <Camera className="h-8 w-8 text-primary-foreground" />
                       )}
                     </button>
                   </>
                 )}
               </div>
               <div className="flex-1 text-center sm:text-left min-w-0 pb-0.5">
-                <h1 className="text-2xl md:text-3xl font-bold text-zinc-900 tracking-tight truncate">
+                <h1 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight truncate">
                   {displayName}
                 </h1>
-                <p className="text-zinc-500 mt-1 font-medium">
+                <p className="text-muted-foreground mt-1 font-medium">
                   @{profileUser.username}
                 </p>
                 {profileUser.bio && (
-                  <p className="text-sm text-zinc-700 mt-3 max-w-md leading-relaxed mx-auto sm:mx-0">
+                  <p className="text-sm text-muted-foreground mt-3 max-w-md leading-relaxed mx-auto sm:mx-0">
                     {profileUser.bio}
                   </p>
                 )}
                 {isOwnProfile && (
                   <Badge
                     variant="secondary"
-                    className="mt-3 gap-1 rounded-full px-3 py-1 text-xs font-medium bg-zinc-100 text-zinc-700 border border-zinc-200"
+                    className="mt-3 gap-1 rounded-full px-3 py-1 text-xs font-medium bg-muted text-foreground border border-border"
                   >
                     <Sparkles className="h-3 w-3" />
                     Your profile
@@ -237,25 +237,25 @@ export default function ProfilePage() {
             </div>
 
             {/* Stats strip */}
-            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-6 pt-6 border-t border-zinc-100">
-              <div className="flex items-center gap-2 text-sm text-zinc-500">
-                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-900 text-white shadow-sm shadow-zinc-300/60">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-4 mt-6 pt-6 border-t border-border">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
                   <Plane className="h-4 w-4" />
                 </span>
                 <span>
-                  <span className="font-semibold text-zinc-900">
+                  <span className="font-semibold text-foreground">
                     {tripCount}
                   </span>{" "}
                   trip{tripCount !== 1 ? "s" : ""} completed
                 </span>
               </div>
               {uniqueDestinations.length > 0 && (
-                <div className="flex items-center gap-2 text-sm text-zinc-500">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 text-zinc-900">
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-muted text-foreground">
                     <MapPin className="h-4 w-4" />
                   </span>
                   <span>
-                    <span className="font-semibold text-zinc-900">
+                    <span className="font-semibold text-foreground">
                       {uniqueDestinations.length}
                     </span>{" "}
                     destination{uniqueDestinations.length !== 1 ? "s" : ""}
@@ -270,18 +270,18 @@ export default function ProfilePage() {
         <div className="w-full max-w-3xl mx-auto px-4 sm:px-8 py-8">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             {/* About / intro card — always show */}
-            <Card className="border-zinc-200/70 shadow-sm overflow-hidden transition-shadow hover:shadow-md md:col-span-2 bg-zinc-50/60">
+            <Card className="border-border shadow-sm overflow-hidden transition-shadow hover:shadow-md md:col-span-2 bg-muted/60">
               <CardContent className="flex flex-row items-start gap-4 p-5">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
                   <Compass className="h-5 w-5" />
                 </span>
                 <div>
-                  <h3 className="font-semibold text-zinc-900">
+                  <h3 className="font-semibold text-foreground">
                     {isOwnProfile
                       ? "Your HalfRide profile"
                       : "Traveller on HalfRide"}
                   </h3>
-                  <p className="text-sm text-zinc-600 mt-1 leading-relaxed">
+                  <p className="text-sm text-muted-foreground mt-1 leading-relaxed">
                     {isOwnProfile
                       ? "Share this profile when matching with fellow travellers. Your trips and basic info help others connect with you."
                       : "Connect to split rides to and from the airport. View their current or past trips below."}
@@ -292,11 +292,11 @@ export default function ProfilePage() {
 
             {/* Basic info (own profile only) */}
             {hasBasicInfo && (
-              <Card className="border-zinc-200/70 shadow-sm overflow-hidden transition-shadow hover:shadow-md bg-white/80">
+              <Card className="border-border shadow-sm overflow-hidden transition-shadow hover:shadow-md bg-card">
                 <CardHeader className="pb-2 px-5 pt-5">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2 text-zinc-900">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-100">
-                      <User className="h-4 w-4 text-zinc-500" />
+                  <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                      <User className="h-4 w-4 text-muted-foreground" />
                     </span>
                     Basic info
                   </CardTitle>
@@ -305,20 +305,20 @@ export default function ProfilePage() {
                   <ul className="space-y-2.5">
                     {profileUser.DOB && (
                       <li className="flex items-center gap-3 text-sm">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-100">
-                          <Calendar className="h-4 w-4 text-zinc-500" />
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
                         </span>
-                        <span className="text-zinc-900">
+                        <span className="text-foreground">
                           Born {formatShortDate(profileUser.DOB)}
                         </span>
                       </li>
                     )}
                     {profileUser.Phone && (
                       <li className="flex items-center gap-3 text-sm">
-                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-100">
-                          <Phone className="h-4 w-4 text-zinc-500" />
+                        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
                         </span>
-                        <span className="text-zinc-900">
+                        <span className="text-foreground">
                           {profileUser.Phone}
                         </span>
                       </li>
@@ -330,18 +330,18 @@ export default function ProfilePage() {
 
             {/* Current group */}
             {data.currentGroup && (
-              <Card className="border-zinc-200/70 shadow-sm overflow-hidden transition-shadow hover:shadow-md bg-white/80">
+              <Card className="border-border shadow-sm overflow-hidden transition-shadow hover:shadow-md bg-card">
                 <CardHeader className="pb-2 px-5 pt-5">
                   <div className="flex flex-wrap items-center gap-2">
-                    <CardTitle className="text-base font-semibold flex items-center gap-2 text-zinc-900">
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-900 text-white shadow-sm shadow-zinc-300/60">
+                    <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
                         <Users className="h-4 w-4" />
                       </span>
                       Current group
                     </CardTitle>
                     <Badge
                       variant="secondary"
-                      className="font-normal text-xs rounded-full bg-zinc-100 text-zinc-700 border border-zinc-200"
+                      className="font-normal text-xs rounded-full bg-muted text-foreground border border-border"
                     >
                       {data.currentGroup.memberCount} member
                       {data.currentGroup.memberCount !== 1 ? "s" : ""}
@@ -377,25 +377,25 @@ export default function ProfilePage() {
 
             {/* Active trip (no group) */}
             {!data.currentGroup && data.activeTrip && (
-              <Card className="border-zinc-200/70 shadow-sm overflow-hidden transition-shadow hover:shadow-md bg-white/80">
+              <Card className="border-border shadow-sm overflow-hidden transition-shadow hover:shadow-md bg-card">
                 <CardHeader className="pb-2 px-5 pt-5">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2 text-zinc-900">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-900 text-white shadow-sm shadow-zinc-300/60">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
                       <Plane className="h-4 w-4" />
                     </span>
                     Current trip
                   </CardTitle>
-                  <CardDescription className="mt-1 text-zinc-500">
+                  <CardDescription className="mt-1 text-muted-foreground">
                     {data.activeTrip.flightDeparture} →{" "}
                     {data.activeTrip.flightArrival}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="px-5 pb-5 pt-0 space-y-2.5">
-                  <p className="flex items-center gap-2 text-sm text-zinc-900">
-                    <MapPin className="h-4 w-4 text-zinc-500 shrink-0" />
+                  <p className="flex items-center gap-2 text-sm text-foreground">
+                    <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
                     {data.activeTrip.destination}
                   </p>
-                  <p className="text-sm text-zinc-500">
+                  <p className="text-sm text-muted-foreground">
                     {data.activeTrip.flightNumber} · Terminal{" "}
                     {data.activeTrip.terminal}
                   </p>
@@ -422,15 +422,15 @@ export default function ProfilePage() {
 
             {/* No active trip placeholder */}
             {hasNoActiveTrip && (
-              <Card className="border-zinc-200/70 shadow-sm overflow-hidden transition-shadow hover:shadow-md border-dashed bg-zinc-50/60">
+              <Card className="border-border shadow-sm overflow-hidden transition-shadow hover:shadow-md border-dashed bg-muted/60">
                 <CardContent className="flex flex-col items-center justify-center py-8 px-5 text-center">
-                  <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-zinc-900 text-white mb-3 shadow-sm shadow-zinc-300/60">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary text-primary-foreground mb-3 shadow-sm">
                     <Luggage className="h-6 w-6" />
                   </span>
-                  <h3 className="font-semibold text-zinc-900 text-sm">
+                  <h3 className="font-semibold text-foreground text-sm">
                     No active trip right now
                   </h3>
-                  <p className="text-sm text-zinc-600 mt-1 max-w-xs">
+                  <p className="text-sm text-muted-foreground mt-1 max-w-xs">
                     {isOwnProfile
                       ? "When you add a flight and look for travellers, your current trip will show here."
                       : "This traveller isn't on an active trip at the moment."}
@@ -441,15 +441,15 @@ export default function ProfilePage() {
 
             {/* Destinations visited — when we have past trips */}
             {uniqueDestinations.length > 0 && (
-              <Card className="border-zinc-200/70 shadow-sm overflow-hidden transition-shadow hover:shadow-md md:col-span-2 bg-white/80">
+              <Card className="border-border shadow-sm overflow-hidden transition-shadow hover:shadow-md md:col-span-2 bg-card">
                 <CardHeader className="pb-2 px-5 pt-5">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2 text-zinc-900">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-900 text-white shadow-sm shadow-zinc-300/60">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-sm">
                       <MapPin className="h-4 w-4" />
                     </span>
                     Destinations visited
                   </CardTitle>
-                  <CardDescription className="mt-1 text-zinc-500">
+                  <CardDescription className="mt-1 text-muted-foreground">
                     {isOwnProfile
                       ? "Places you've travelled to with HalfRide."
                       : "Places they've travelled to with HalfRide."}
@@ -460,14 +460,14 @@ export default function ProfilePage() {
                     {uniqueDestinations.slice(0, 12).map((dest) => (
                       <span
                         key={dest}
-                        className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-zinc-50 px-3 py-1.5 text-sm text-zinc-800"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted px-3 py-1.5 text-sm text-foreground"
                       >
-                        <MapPin className="h-3.5 w-3.5 text-zinc-500 shrink-0" />
+                        <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                         {dest}
                       </span>
                     ))}
                     {uniqueDestinations.length > 12 && (
-                      <span className="inline-flex items-center rounded-full bg-zinc-100 px-3 py-1.5 text-xs text-zinc-500">
+                      <span className="inline-flex items-center rounded-full bg-muted px-3 py-1.5 text-xs text-muted-foreground">
                         +{uniqueDestinations.length - 12} more
                       </span>
                     )}
@@ -477,11 +477,11 @@ export default function ProfilePage() {
             )}
 
             {/* Past trips — full width on grid */}
-            <Card className="border-zinc-200/70 shadow-sm overflow-hidden transition-shadow hover:shadow-md md:col-span-2 bg-white/80">
+            <Card className="border-border shadow-sm overflow-hidden transition-shadow hover:shadow-md md:col-span-2 bg-card">
               <CardHeader className="pb-2 px-5 pt-5">
                 <div className="flex flex-wrap items-center gap-2">
-                  <CardTitle className="text-base font-semibold flex items-center gap-2 text-zinc-900">
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-500">
+                  <CardTitle className="text-base font-semibold flex items-center gap-2 text-foreground">
+                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
                       <Plane className="h-4 w-4" />
                     </span>
                     Past trips
@@ -489,14 +489,14 @@ export default function ProfilePage() {
                   {data.pastTrips.length > 0 && (
                     <Badge
                       variant="outline"
-                      className="font-normal text-xs rounded-full border-zinc-200 text-zinc-700"
+                      className="font-normal text-xs rounded-full border-border text-foreground"
                     >
                       {data.pastTrips.length} trip
                       {data.pastTrips.length !== 1 ? "s" : ""}
                     </Badge>
                   )}
                 </div>
-                <CardDescription className="mt-1 text-zinc-500">
+                <CardDescription className="mt-1 text-muted-foreground">
                   {data.pastTrips.length === 0
                     ? "Completed trips will appear here."
                     : "Your recent completed trips."}
@@ -504,17 +504,17 @@ export default function ProfilePage() {
               </CardHeader>
               <CardContent className="px-5 pb-5 pt-0">
                 {data.pastTrips.length === 0 ? (
-                  <div className="rounded-xl border border-dashed border-zinc-200 bg-zinc-50/80 py-8 text-center">
-                    <Plane className="h-9 w-9 text-zinc-400 mx-auto mb-2" />
-                    <p className="text-sm text-zinc-600">
+                  <div className="rounded-xl border border-dashed border-border bg-muted/80 py-8 text-center">
+                    <Plane className="h-9 w-9 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">
                       No completed trips yet.
                     </p>
-                    <p className="text-xs text-zinc-500 mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       Finish a trip to see it here.
                     </p>
                   </div>
                 ) : (
-                  <ul className="divide-y divide-zinc-200 rounded-lg border border-zinc-200 overflow-hidden bg-zinc-50/60">
+                  <ul className="divide-y divide-border rounded-lg border border-border overflow-hidden bg-muted/60">
                     {data.pastTrips.map((trip) => (
                       <li
                         key={trip.travellerDataId}
@@ -524,17 +524,17 @@ export default function ProfilePage() {
                         )}
                       >
                         <div className="min-w-0">
-                          <p className="font-medium text-zinc-900 text-sm">
+                          <p className="font-medium text-foreground text-sm">
                             {trip.flightDeparture} → {trip.flightArrival}
                           </p>
-                          <p className="text-sm text-zinc-600 flex items-center gap-1.5 mt-0.5 truncate">
+                          <p className="text-sm text-muted-foreground flex items-center gap-1.5 mt-0.5 truncate">
                             <MapPin className="h-3.5 w-3.5 shrink-0" />
                             {trip.destination}
                           </p>
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-zinc-500 shrink-0 sm:pl-4">
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground shrink-0 sm:pl-4">
                           <span>{formatShortDate(trip.date)}</span>
-                          <span className="font-medium text-zinc-700">
+                          <span className="font-medium text-foreground">
                             {trip.flightNumber}
                           </span>
                         </div>
@@ -550,14 +550,14 @@ export default function ProfilePage() {
           {isOwnProfile && user && (
             <div className="flex flex-col sm:flex-row gap-3 pt-6 mt-2">
               <Button
-                className="flex-1 sm:flex-none h-11 rounded-full font-semibold shadow-sm shadow-zinc-300/60 bg-zinc-900 hover:bg-black text-white"
+                className="flex-1 sm:flex-none h-11 rounded-full font-semibold shadow-sm bg-primary hover:bg-primary/90 text-primary-foreground"
                 onClick={() => navigate(ROUTES.DASHBOARD)}
               >
                 Dashboard
               </Button>
               <Button
                 variant="outline"
-                className="flex-1 sm:flex-none h-11 rounded-full font-semibold border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+                className="flex-1 sm:flex-none h-11 rounded-full font-semibold border-border text-foreground hover:bg-muted"
                 onClick={() => navigate(ROUTES.AIRPORT)}
               >
                 Find travellers

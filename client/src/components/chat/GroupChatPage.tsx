@@ -93,7 +93,7 @@ function GroupSidebar({
                 <div
                   className={`h-full rounded-full transition-all duration-300 ${
                     group.groupSize >= group.maxUsers
-                      ? "bg-red-500"
+                      ? "bg-destructive"
                       : "bg-linear-to-r from-primary via-primary/90 to-primary/80"
                   }`}
                   style={{
@@ -112,24 +112,24 @@ function GroupSidebar({
               </span>
               <div className="flex items-center gap-0.5 min-w-0 rounded-md overflow-hidden">
                 <div
-                  className="h-7 flex items-center justify-center gap-1 rounded-l-md border border-r-0 border-blue-200/50 bg-blue-100/50 dark:bg-blue-950/40 dark:border-blue-800/50 px-2 min-w-0"
+                  className="h-7 flex items-center justify-center gap-1 rounded-l-md border border-r-0 border-border bg-muted/50 px-2 min-w-0"
                   style={{
                     flex: Math.max(1, group.genderBreakdown.male),
                   }}
                 >
-                  <User className="h-3 w-3 shrink-0 text-blue-700 dark:text-blue-400" />
-                  <span className="text-[11px] font-bold text-blue-700 dark:text-blue-400 truncate">
+                  <User className="h-3 w-3 shrink-0 text-foreground" />
+                  <span className="text-[11px] font-bold text-foreground truncate">
                     {group.genderBreakdown.male}
                   </span>
                 </div>
                 <div
-                  className="h-7 flex items-center justify-center gap-1 rounded-r-md border border-pink-200/50 bg-pink-100/50 dark:bg-pink-950/40 dark:border-pink-800/50 px-2 min-w-0"
+                  className="h-7 flex items-center justify-center gap-1 rounded-r-md border border-border bg-muted/50 px-2 min-w-0"
                   style={{
                     flex: Math.max(1, group.genderBreakdown.female),
                   }}
                 >
-                  <User className="h-3 w-3 shrink-0 text-pink-700 dark:text-pink-400" />
-                  <span className="text-[11px] font-bold text-pink-700 dark:text-pink-400 truncate">
+                  <User className="h-3 w-3 shrink-0 text-foreground" />
+                  <span className="text-[11px] font-bold text-foreground truncate">
                     {group.genderBreakdown.female}
                   </span>
                 </div>
@@ -456,7 +456,7 @@ export function GroupChatPage() {
               >
                 <Info className="h-4 w-4" />
               </button>
-              <span className="inline-flex items-center rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 px-2 py-0.5 text-[10px] font-medium">
+              <span className="inline-flex items-center rounded-full bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-[10px] font-medium">
                 Active
               </span>
             </div>

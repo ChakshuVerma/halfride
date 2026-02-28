@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Card, CardContent } from "../ui/card";
 import {
   Dialog,
@@ -104,6 +104,14 @@ export function AirportTravellersDashboard({
 
   const effectiveTerminals = useMemo(() => terminals, [terminals]);
   const effectiveFilterTerminal = useMemo(() => filterTerminal, [filterTerminal]);
+
+  const hasInitializedTerminalFilter = useRef(false);
+  useEffect(() => {
+    if (terminals.length > 0 && !hasInitializedTerminalFilter.current) {
+      hasInitializedTerminalFilter.current = true;
+      setFilterTerminal(terminals.map((t) => t.id));
+    }
+  }, [terminals]);
 
   const handleFilterToggle = useCallback(
     (
@@ -258,7 +266,7 @@ export function AirportTravellersDashboard({
       <div className="flex items-start sm:items-center justify-center min-h-[85vh] p-2 sm:p-6 w-full max-w-7xl mx-auto">
         <Card
           className={cn(
-            "w-full border-zinc-200/50 shadow-2xl shadow-zinc-200/50 transition-all duration-700 ease-out",
+            "w-full border-border shadow-2xl transition-all duration-700 ease-out",
             "bg-white/70 backdrop-blur-xl",
             "rounded-[2.5rem] max-w-6xl",
           )}
@@ -292,7 +300,7 @@ export function AirportTravellersDashboard({
                 showTerminalFilters={viewMode === VIEW_MODE.INDIVIDUAL}
               />
 
-              <div className="h-px bg-zinc-100" />
+              <div className="h-px bg-border" />
 
               {/* USER STATUS / ACTION */}
               <div className="flex justify-center">
@@ -320,7 +328,7 @@ export function AirportTravellersDashboard({
               }}
             >
               <DialogContent
-                className="w-[95vw] max-w-xl rounded-3xl border-zinc-200 bg-white/95 backdrop-blur-xl p-0 shadow-2xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                className="w-[95vw] max-w-xl rounded-3xl border-border bg-card/95 backdrop-blur-xl p-0 shadow-2xl [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
                 onInteractOutside={(e) => e.preventDefault()}
                 onEscapeKeyDown={(e) => e.preventDefault()}
               >
