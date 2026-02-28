@@ -36,6 +36,7 @@ import { calculatePasswordStrength, validatePassword } from "./utils";
 import { cn } from "@/lib/utils";
 import { useAuthApi } from "../../hooks/useAuthApi";
 import { ROUTES } from "@/constants/routes";
+import { AuthPageShell } from "@/components/common/AuthPageShell";
 
 // Constants
 const CONSTANTS = {
@@ -257,7 +258,7 @@ export function ForgotPassword() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[80vh] p-4 w-full">
+    <AuthPageShell>
       <Card className="w-full max-w-[420px] border-white/20 shadow-2xl shadow-zinc-900/10 rounded-[2rem] bg-white/80 backdrop-blur-xl overflow-hidden ring-1 ring-white/50 transition-all duration-500">
         {/* Progress Line */}
         <div className="h-1 w-full bg-zinc-100">
@@ -523,6 +524,6 @@ export function ForgotPassword() {
           </button>
         </CardFooter>
       </Card>
-    </div>
+    </AuthPageShell>
   );
 }

@@ -42,6 +42,7 @@ import {
 } from "./utils";
 import { useAuthApi } from "../../hooks/useAuthApi";
 import { ROUTES } from "@/constants/routes";
+import { AuthPageShell } from "@/components/common/AuthPageShell";
 
 const CONSTANTS = {
   OTP_LENGTH: 6,
@@ -230,7 +231,7 @@ export function Signup() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[80vh] w-full p-4">
+    <AuthPageShell>
       <Card className="w-full max-w-[460px] border-white/20 shadow-2xl shadow-zinc-900/10 rounded-[2rem] bg-white/80 backdrop-blur-xl overflow-hidden transition-all duration-500">
         {/* Progress Bar */}
         <div className="h-1.5 w-full bg-zinc-100">
@@ -607,6 +608,6 @@ export function Signup() {
           </p>
         </CardFooter>
       </Card>
-    </div>
+    </AuthPageShell>
   );
 }
