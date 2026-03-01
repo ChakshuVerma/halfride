@@ -7,13 +7,12 @@ export function useGetTravellerApi() {
   const { sessionRequest } = useApi();
   const [fetchTravellersLoading, setFetchTravellersLoading] = useState(false);
   const [fetchGroupsLoading, setFetchGroupsLoading] = useState(false);
-  const [fetchUserDestinationLoading, setFetchUserDestinationLoading] =
-    useState(false);
   const [fetchGroupMembersLoading, setFetchGroupMembersLoading] =
     useState(false);
   const [fetchGroupJoinRequestsLoading, setFetchGroupJoinRequestsLoading] =
     useState(false);
   const [leaveGroupLoading, setLeaveGroupLoading] = useState(false);
+  const [verifyAtTerminalLoading, setVerifyAtTerminalLoading] = useState(false);
   const [revokeListingLoading, setRevokeListingLoading] = useState(false);
   const [requestJoinGroupLoading, setRequestJoinGroupLoading] = useState(false);
   const [respondToJoinRequestLoading, setRespondToJoinRequestLoading] =
@@ -27,9 +26,15 @@ export function useGetTravellerApi() {
       travellers: Traveller[];
       isUserInGroup: boolean;
       userGroupId: string | null;
+      userReadyToOnboard: boolean;
     }> => {
       if (!airportCode)
-        return { travellers: [], isUserInGroup: false, userGroupId: null };
+        return {
+          travellers: [],
+          isUserInGroup: false,
+          userGroupId: null,
+          userReadyToOnboard: false,
+        };
       setFetchTravellersLoading(true);
       try {
         const url = `${API_ROUTES.TRAVELLERS_BY_AIRPORT}/${airportCode}`;
@@ -38,14 +43,26 @@ export function useGetTravellerApi() {
           data: Traveller[];
           isUserInGroup?: boolean;
           userGroupId?: string;
+          userReadyToOnboard?: boolean;
         }>(url);
         const data = response.data || [];
         const isUserInGroup = response.isUserInGroup || false;
         const userGroupId = response.userGroupId ?? null;
-        return { travellers: data, isUserInGroup, userGroupId };
+        const userReadyToOnboard = response.userReadyToOnboard ?? false;
+        return {
+          travellers: data,
+          isUserInGroup,
+          userGroupId,
+          userReadyToOnboard,
+        };
       } catch (error) {
         console.error("Failed to fetch travellers:", error);
-        return { travellers: [], isUserInGroup: false, userGroupId: null };
+        return {
+          travellers: [],
+          isUserInGroup: false,
+          userGroupId: null,
+          userReadyToOnboard: false,
+        };
       } finally {
         setFetchTravellersLoading(false);
       }
@@ -199,7 +216,6 @@ export function useGetTravellerApi() {
 
   const fetchUserDestination = useCallback(
     async (airportCode: string): Promise<string | null> => {
-      setFetchUserDestinationLoading(true);
       try {
         const url = `${API_ROUTES.CHECK_LISTING}?airportCode=${airportCode}`;
         const response = await sessionRequest<{
@@ -210,8 +226,22 @@ export function useGetTravellerApi() {
       } catch (error) {
         console.error("Failed to check listing:", error);
         return null;
-      } finally {
-        setFetchUserDestinationLoading(false);
+      }
+    },
+    [sessionRequest],
+  );
+
+  const fetchHasActiveListing = useCallback(
+    async (): Promise<boolean> => {
+      try {
+        const response = await sessionRequest<{
+          ok: boolean;
+          hasActiveListing: boolean;
+        }>(API_ROUTES.HAS_ACTIVE_LISTING);
+        return response.ok && response.hasActiveListing === true;
+      } catch (error) {
+        console.error("Failed to check has active listing:", error);
+        return false;
       }
     },
     [sessionRequest],
@@ -234,6 +264,7 @@ export function useGetTravellerApi() {
             destination: string;
             terminal: string;
             flightNumber: string;
+            readyToOnboard?: boolean;
           }>;
         }>(url);
         const data = response.data ?? [];
@@ -249,6 +280,7 @@ export function useGetTravellerApi() {
           airportName: "",
           flightDateTime: new Date(),
           distanceFromUserKm: 0,
+          readyToOnboard: m.readyToOnboard ?? false,
         })) as Traveller[];
       } catch (error) {
         console.error("Failed to fetch group members:", error);
@@ -288,6 +320,58 @@ export function useGetTravellerApi() {
         };
       } finally {
         setLeaveGroupLoading(false);
+      }
+    },
+    [sessionRequest],
+  );
+
+  const verifyAtTerminal = useCallback(
+    async (
+      groupId: string,
+      latitude: number,
+      longitude: number,
+    ): Promise<{
+      ok: boolean;
+      error?: string;
+      userCoordinates?: { latitude: number; longitude: number };
+      terminalCoordinates?: { airportCode: string; lat: number; lng: number };
+      distanceMeters?: number;
+    }> => {
+      setVerifyAtTerminalLoading(true);
+      try {
+        const response = await sessionRequest<{
+          ok: boolean;
+          error?: string;
+          userCoordinates?: { latitude: number; longitude: number };
+          terminalCoordinates?: { airportCode: string; lat: number; lng: number };
+          distanceMeters?: number;
+        }>(API_ROUTES.VERIFY_AT_TERMINAL, {
+          method: "POST",
+          body: JSON.stringify({ groupId, latitude, longitude }),
+        });
+        if (!response.ok) {
+          return {
+            ok: false,
+            error: response.error ?? "Failed to verify at terminal",
+          };
+        }
+        return {
+          ok: true,
+          userCoordinates: response.userCoordinates,
+          terminalCoordinates: response.terminalCoordinates,
+          distanceMeters: response.distanceMeters,
+        };
+      } catch (error) {
+        console.error("Verify at terminal error:", error);
+        return {
+          ok: false,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Failed to verify at terminal",
+        };
+      } finally {
+        setVerifyAtTerminalLoading(false);
       }
     },
     [sessionRequest],
@@ -470,18 +554,20 @@ export function useGetTravellerApi() {
     fetchTravellerByAirportAndUser,
     fetchGroupMembers,
     fetchUserDestination,
+    fetchHasActiveListing,
     leaveGroup,
     revokeListing,
     requestJoinGroup,
     fetchGroupJoinRequests,
     respondToJoinRequest,
     updateGroupName,
+    verifyAtTerminal,
     fetchTravellersLoading,
     fetchGroupsLoading,
-    fetchUserDestinationLoading,
     fetchGroupMembersLoading,
     fetchGroupJoinRequestsLoading,
     leaveGroupLoading,
+    verifyAtTerminalLoading,
     revokeListingLoading,
     requestJoinGroupLoading,
     respondToJoinRequestLoading,

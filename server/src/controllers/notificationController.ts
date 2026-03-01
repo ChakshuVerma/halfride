@@ -545,6 +545,56 @@ export async function notifyConnectionRequestResponded(
 }
 
 /**
+ * Notify all other group members that a member is at the terminal and ready to onboard.
+ */
+export async function notifyGroupMembersReadyToOnboard(
+  groupId: string,
+  actorUserId: string,
+  actorName: string,
+) {
+  const db = admin.firestore();
+  try {
+    const groupDoc = await db.collection(COLLECTIONS.GROUPS).doc(groupId).get();
+    if (!groupDoc.exists) return;
+
+    const members: admin.firestore.DocumentReference[] =
+      groupDoc.data()?.[GROUP_FIELDS.MEMBERS] || [];
+    const recipientIds = members
+      .map((ref: admin.firestore.DocumentReference) => ref.id)
+      .filter((id: string) => id !== actorUserId);
+
+    const { name: groupName, airportCode } = await getGroupInfo(db, groupId);
+    const title = "Member ready to onboard";
+    const body = `${actorName} is at the terminal and ready to onboard.`;
+
+    await Promise.all(
+      recipientIds.map((recipientId) =>
+        createNotification({
+          recipientUserId: recipientId,
+          type: NotificationType.MEMBER_READY_TO_ONBOARD,
+          title,
+          body,
+          data: {
+            groupId,
+            groupName,
+            actorUserId,
+            ...(airportCode && {
+              airportCode,
+              action: {
+                type: NOTIFICATION_ACTION_TYPES.OPEN_GROUP,
+                payload: { airportCode, groupId },
+              },
+            }),
+          },
+        }),
+      ),
+    );
+  } catch (e) {
+    console.error("Notify group members ready to onboard error:", e);
+  }
+}
+
+/**
  * Mark a notification as read
  */
 export async function markNotificationRead(req: Request, res: Response) {

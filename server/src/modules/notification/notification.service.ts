@@ -562,4 +562,3 @@ export async function notifyConnectionRequestResponded(
     console.error("Notify connection request responded error:", e);
   }
 }
-

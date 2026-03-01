@@ -14,6 +14,8 @@ import {
   parseConnectionResponseAction,
 } from "../types/connection";
 import {
+  geocodeAirport,
+  haversineDistance,
   IATA_CODE_LENGTH,
   isValidIataCode,
   roadDistanceBetweenTwoPoints,
@@ -28,6 +30,7 @@ import {
   notifyUserJoinRejected,
   notifyOtherMembersJoinDecided,
   notifyDeciderJoinRequestDecided,
+  notifyGroupMembersReadyToOnboard,
 } from "./notificationController";
 import {
   badRequest,
@@ -167,6 +170,7 @@ async function buildTravellerListing(
     isVerified: user?.isVerified ?? false,
     connectionStatus,
     isOwnListing: opts.uid ? opts.userId === opts.uid : false,
+    readyToOnboard: trav[TRAVELLER_FIELDS.READY_TO_ONBOARD] === true,
   };
 }
 
@@ -234,12 +238,16 @@ export async function getTravellersByAirport(req: Request, res: Response) {
       .where(TRAVELLER_FIELDS.GROUP_REF, "==", null)
       .get();
 
+    const userReadyToOnboard =
+      currentUserTravellerData?.[TRAVELLER_FIELDS.READY_TO_ONBOARD] === true;
+
     if (snapshot.empty) {
       return res.json({
         ok: true,
         data: [],
         isUserInGroup,
         userGroupId: userGroupId ?? undefined,
+        userReadyToOnboard,
       });
     }
 
@@ -281,6 +289,7 @@ export async function getTravellersByAirport(req: Request, res: Response) {
       data: results,
       isUserInGroup,
       userGroupId: userGroupId ?? undefined,
+      userReadyToOnboard,
     });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";
@@ -404,6 +413,31 @@ export async function checkTravellerHasListing(req: Request, res: Response) {
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";
     console.error("Check Listing Error:", msg);
+    return internalServerError(res);
+  }
+}
+
+/** GET /has-active-listing — whether current user has any active listing (any airport). Used to disable "Post flight" on all airports. */
+export async function hasActiveListingAnywhere(req: Request, res: Response) {
+  const uid = req.auth?.uid;
+  if (!uid) return unauthorized(res, "Unauthorized");
+
+  try {
+    const db = admin.firestore();
+    const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
+    const snapshot = await db
+      .collection(COLLECTIONS.TRAVELLER_DATA)
+      .where(TRAVELLER_FIELDS.USER_REF, "==", userRef)
+      .where(TRAVELLER_FIELDS.IS_COMPLETED, "==", false)
+      .limit(1)
+      .get();
+    return res.json({
+      ok: true,
+      hasActiveListing: !snapshot.empty,
+    });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Internal Server Error";
+    console.error("Has Active Listing Error:", msg);
     return internalServerError(res);
   }
 }
@@ -928,7 +962,13 @@ export async function getGroupMembers(req: Request, res: Response) {
         username: user?.[USER_FIELDS.USERNAME] ?? null,
       };
       if (!trav) {
-        return { ...base, destination: "N/A", terminal: "N/A", flightNumber: "—" };
+        return {
+          ...base,
+          destination: "N/A",
+          terminal: "N/A",
+          flightNumber: "—",
+          readyToOnboard: false,
+        };
       }
       const fRef = trav[TRAVELLER_FIELDS.FLIGHT_REF] as admin.firestore.DocumentReference;
       const flight = fRef?.id ? flightSnapMap.get(fRef.id)?.data() : undefined;
@@ -939,6 +979,7 @@ export async function getGroupMembers(req: Request, res: Response) {
         destination: extractDestinationAddress(trav[TRAVELLER_FIELDS.DESTINATION]),
         terminal: trav[TRAVELLER_FIELDS.TERMINAL] || "N/A",
         flightNumber,
+        readyToOnboard: trav[TRAVELLER_FIELDS.READY_TO_ONBOARD] === true,
       };
     });
 
@@ -1070,6 +1111,122 @@ export async function leaveGroup(req: Request, res: Response) {
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "Internal Server Error";
     console.error("Leave group error:", msg);
+    return internalServerError(res);
+  }
+}
+
+const VERIFY_AT_TERMINAL_MAX_DISTANCE_METERS = 1000;
+
+/** POST /verify-at-terminal — Body: { groupId, latitude, longitude }. Verifies user is at airport via GPS. */
+export async function verifyAtTerminal(req: Request, res: Response) {
+  const uid = req.auth?.uid;
+  if (!uid) {
+    return unauthorized(res, "Unauthorized");
+  }
+
+  const { groupId, latitude, longitude } = req.body as {
+    groupId?: string;
+    latitude?: number;
+    longitude?: number;
+  };
+
+  if (!groupId || typeof groupId !== "string" || !groupId.trim()) {
+    return badRequest(res, "groupId is required");
+  }
+  if (
+    typeof latitude !== "number" ||
+    typeof longitude !== "number" ||
+    !Number.isFinite(latitude) ||
+    !Number.isFinite(longitude)
+  ) {
+    return badRequest(res, "latitude and longitude are required");
+  }
+
+  const db = admin.firestore();
+  const groupRef = db.collection(COLLECTIONS.GROUPS).doc(groupId.trim());
+  const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
+
+  try {
+    const groupSnap = await groupRef.get();
+    if (!groupSnap.exists) {
+      return notFound(res, "Group not found");
+    }
+
+    const data = groupSnap.data();
+    const members: admin.firestore.DocumentReference[] =
+      data?.[GROUP_FIELDS.MEMBERS] || [];
+    const isMember = members.some(
+      (ref: admin.firestore.DocumentReference) => ref.id === uid,
+    );
+    if (!isMember) {
+      return forbidden(res, "You are not a member of this group");
+    }
+
+    const travellerSnap = await db
+      .collection(COLLECTIONS.TRAVELLER_DATA)
+      .where(TRAVELLER_FIELDS.USER_REF, "==", userRef)
+      .where(TRAVELLER_FIELDS.GROUP_REF, "==", groupRef)
+      .limit(1)
+      .get();
+
+    if (travellerSnap.empty) {
+      return badRequest(res, "No listing found for this group");
+    }
+
+    const travellerDoc = travellerSnap.docs[0];
+    const travellerData = travellerDoc.data();
+    const airportCode = (travellerData[TRAVELLER_FIELDS.FLIGHT_ARRIVAL] as
+      | string
+      | undefined)?.trim?.()?.toUpperCase?.();
+
+    if (!airportCode) {
+      return badRequest(res, "Missing airport code");
+    }
+
+    const airportCoords = await geocodeAirport(airportCode);
+    const distanceMeters = haversineDistance(
+      latitude,
+      longitude,
+      airportCoords.lat,
+      airportCoords.lng,
+    );
+
+    if (distanceMeters > VERIFY_AT_TERMINAL_MAX_DISTANCE_METERS) {
+      return badRequest(
+        res,
+        "You must be at the airport to verify. Please ensure you are at the terminal.",
+      );
+    }
+
+    await travellerDoc.ref.update({
+      [TRAVELLER_FIELDS.READY_TO_ONBOARD]: true,
+      [TRAVELLER_FIELDS.READY_TO_ONBOARD_AT]:
+        admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    const userSnap = await userRef.get();
+    const userName =
+      userSnap.data()?.[USER_FIELDS.FIRST_NAME]?.trim() || "Someone";
+
+    await addGroupSystemMessage(
+      groupRef,
+      `${userName} is at the terminal and ready to onboard`,
+    );
+    await notifyGroupMembersReadyToOnboard(groupId.trim(), uid, userName);
+
+    return res.json({
+      ok: true,
+      userCoordinates: { latitude, longitude },
+      terminalCoordinates: {
+        airportCode,
+        lat: airportCoords.lat,
+        lng: airportCoords.lng,
+      },
+      distanceMeters: Math.round(distanceMeters),
+    });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Internal Server Error";
+    console.error("Verify at terminal error:", msg);
     return internalServerError(res);
   }
 }

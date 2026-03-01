@@ -7,9 +7,11 @@ import {
   getGroupById,
   getGroupMembers,
   checkTravellerHasListing,
+  hasActiveListingAnywhere,
   requestConnection,
   respondToConnectionRequest,
   leaveGroup,
+  verifyAtTerminal,
   revokeListing,
   requestJoinGroup,
   getGroupJoinRequests,
@@ -45,6 +47,11 @@ travellerRouter.get(
   requireSession,
   checkTravellerHasListing,
 );
+travellerRouter.get(
+  "/has-active-listing",
+  requireSession,
+  hasActiveListingAnywhere,
+);
 travellerRouter.post(
   "/request-connection",
   requireSession,
@@ -56,6 +63,7 @@ travellerRouter.post(
   respondToConnectionRequest,
 );
 travellerRouter.post("/leave-group", requireSession, leaveGroup);
+travellerRouter.post("/verify-at-terminal", requireSession, verifyAtTerminal);
 travellerRouter.post("/revoke-listing", requireSession, revokeListing);
 travellerRouter.post("/request-join-group", requireSession, requestJoinGroup);
 travellerRouter.get(
