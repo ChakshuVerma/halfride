@@ -31,6 +31,7 @@ export const API_ROUTES = {
   GROUP: `${API_BASE_URL}/group`,
   GROUP_MEMBERS: `${API_BASE_URL}/group-members`,
   CHECK_LISTING: `${API_BASE_URL}/check-listing`,
+  HAS_ACTIVE_LISTING: `${API_BASE_URL}/has-active-listing`,
   REQUEST_CONNECTION: `${API_BASE_URL}/request-connection`,
   RESPOND_TO_CONNECTION: `${API_BASE_URL}/respond-to-connection`,
   LEAVE_GROUP: `${API_BASE_URL}/leave-group`,

@@ -101,6 +101,7 @@ export function AirportTravellersDashboard({
     handleVerifyAtTerminal,
     verifyAtTerminalLoading,
     userReadyToOnboard,
+    hasActiveListingAnywhere,
     refreshAirportData,
     fetchTravellerDetail,
   } = useAirportTravellersDashboard(selectedAirport);
@@ -313,6 +314,7 @@ export function AirportTravellersDashboard({
                   userGroupId={userGroupId}
                   userReadyToOnboard={userReadyToOnboard}
                   initialDataFetchCompleted={initialDataFetchCompleted}
+                  hasActiveListingAnywhere={hasActiveListingAnywhere}
                   joinWaitlistLabel={CONSTANTS.LABELS.JOIN_WAITLIST}
                   onOpenWaitlist={() => setIsWaitlistModalOpen(true)}
                   onVerifyAtTerminal={handleVerifyAtTerminal}

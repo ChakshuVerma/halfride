@@ -7,8 +7,6 @@ export function useGetTravellerApi() {
   const { sessionRequest } = useApi();
   const [fetchTravellersLoading, setFetchTravellersLoading] = useState(false);
   const [fetchGroupsLoading, setFetchGroupsLoading] = useState(false);
-  const [fetchUserDestinationLoading, setFetchUserDestinationLoading] =
-    useState(false);
   const [fetchGroupMembersLoading, setFetchGroupMembersLoading] =
     useState(false);
   const [fetchGroupJoinRequestsLoading, setFetchGroupJoinRequestsLoading] =
@@ -218,7 +216,6 @@ export function useGetTravellerApi() {
 
   const fetchUserDestination = useCallback(
     async (airportCode: string): Promise<string | null> => {
-      setFetchUserDestinationLoading(true);
       try {
         const url = `${API_ROUTES.CHECK_LISTING}?airportCode=${airportCode}`;
         const response = await sessionRequest<{
@@ -229,8 +226,22 @@ export function useGetTravellerApi() {
       } catch (error) {
         console.error("Failed to check listing:", error);
         return null;
-      } finally {
-        setFetchUserDestinationLoading(false);
+      }
+    },
+    [sessionRequest],
+  );
+
+  const fetchHasActiveListing = useCallback(
+    async (): Promise<boolean> => {
+      try {
+        const response = await sessionRequest<{
+          ok: boolean;
+          hasActiveListing: boolean;
+        }>(API_ROUTES.HAS_ACTIVE_LISTING);
+        return response.ok && response.hasActiveListing === true;
+      } catch (error) {
+        console.error("Failed to check has active listing:", error);
+        return false;
       }
     },
     [sessionRequest],
@@ -543,6 +554,7 @@ export function useGetTravellerApi() {
     fetchTravellerByAirportAndUser,
     fetchGroupMembers,
     fetchUserDestination,
+    fetchHasActiveListing,
     leaveGroup,
     revokeListing,
     requestJoinGroup,
@@ -552,7 +564,6 @@ export function useGetTravellerApi() {
     verifyAtTerminal,
     fetchTravellersLoading,
     fetchGroupsLoading,
-    fetchUserDestinationLoading,
     fetchGroupMembersLoading,
     fetchGroupJoinRequestsLoading,
     leaveGroupLoading,

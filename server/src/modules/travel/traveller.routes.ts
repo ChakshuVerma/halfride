@@ -7,6 +7,7 @@ import {
   getGroupById,
   getGroupMembers,
   checkTravellerHasListing,
+  hasActiveListingAnywhere,
   requestConnection,
   respondToConnectionRequest,
   leaveGroup,
@@ -45,6 +46,11 @@ travellerRouter.get(
   "/check-listing",
   requireSession,
   checkTravellerHasListing,
+);
+travellerRouter.get(
+  "/has-active-listing",
+  requireSession,
+  hasActiveListingAnywhere,
 );
 travellerRouter.post(
   "/request-connection",

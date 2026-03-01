@@ -417,6 +417,31 @@ export async function checkTravellerHasListing(req: Request, res: Response) {
   }
 }
 
+/** GET /has-active-listing — whether current user has any active listing (any airport). Used to disable "Post flight" on all airports. */
+export async function hasActiveListingAnywhere(req: Request, res: Response) {
+  const uid = req.auth?.uid;
+  if (!uid) return unauthorized(res, "Unauthorized");
+
+  try {
+    const db = admin.firestore();
+    const userRef = db.collection(COLLECTIONS.USERS).doc(uid);
+    const snapshot = await db
+      .collection(COLLECTIONS.TRAVELLER_DATA)
+      .where(TRAVELLER_FIELDS.USER_REF, "==", userRef)
+      .where(TRAVELLER_FIELDS.IS_COMPLETED, "==", false)
+      .limit(1)
+      .get();
+    return res.json({
+      ok: true,
+      hasActiveListing: !snapshot.empty,
+    });
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : "Internal Server Error";
+    console.error("Has Active Listing Error:", msg);
+    return internalServerError(res);
+  }
+}
+
 /** Current user's destination (object with address/placeId) at airport, or null. */
 async function getCurrentUserDestination(
   uid: string,
