@@ -81,10 +81,37 @@ const NOTIFICATION_CONSTANTS = {
   },
 };
 
-function renderNotificationBody(
-  body: string,
-  groupName: string | undefined,
-): ReactNode {
+function renderNotificationBody(notification: Notification): ReactNode {
+  const body = notification.body;
+  const data = notification.data ?? {};
+  const groupName =
+    typeof data.groupName === "string" ? (data.groupName as string) : undefined;
+
+  // Special formatting for group rename notifications:
+  // "Group X was renamed to Y by user" with X, Y and user bolded.
+  if (
+    notification.type === "GROUP_RENAMED" &&
+    typeof data.oldGroupName === "string" &&
+    typeof data.newGroupName === "string" &&
+    typeof data.actorName === "string"
+  ) {
+    const oldName = data.oldGroupName as string;
+    const newName = data.newGroupName as string;
+    const actorName = data.actorName as string;
+
+    return (
+      <>
+        {"Group "}
+        <strong className="font-semibold text-foreground">{oldName}</strong>
+        {" was renamed to "}
+        <strong className="font-semibold text-foreground">{newName}</strong>
+        {" by "}
+        <strong className="font-semibold text-foreground">{actorName}</strong>
+      </>
+    );
+  }
+
+  // Default behaviour: bold the group name (if present) within the body.
   if (
     !groupName ||
     typeof groupName !== "string" ||
@@ -262,10 +289,7 @@ function NotificationListItem({
             isUnread ? "text-muted-foreground" : "text-muted-foreground/70",
           )}
         >
-          {renderNotificationBody(
-            notification.body,
-            notification.data?.groupName,
-          )}
+          {renderNotificationBody(notification)}
         </p>
         {action && (
           <span

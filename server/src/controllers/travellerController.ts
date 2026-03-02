@@ -32,6 +32,7 @@ import {
   notifyOtherMembersJoinDecided,
   notifyDeciderJoinRequestDecided,
   notifyGroupMembersReadyToOnboard,
+  notifyGroupRenamed,
 } from "./notificationController";
 import {
   badRequest,
@@ -1757,6 +1758,11 @@ export async function updateGroupName(req: Request, res: Response) {
     }
     const data = groupSnap.data();
     const members = data?.[GROUP_FIELDS.MEMBERS] || [];
+    const storedName = data?.[GROUP_FIELDS.NAME];
+    const oldDisplayName =
+      typeof storedName === "string" && storedName.trim().length > 0
+        ? storedName.trim()
+        : `Group of ${members.length}`;
     const isMember = members.some(
       (ref: admin.firestore.DocumentReference) => ref.id === uid,
     );
@@ -1767,6 +1773,12 @@ export async function updateGroupName(req: Request, res: Response) {
       [GROUP_FIELDS.NAME]: name,
       [GROUP_FIELDS.UPDATED_AT]: admin.firestore.FieldValue.serverTimestamp(),
     });
+
+    try {
+      await notifyGroupRenamed(groupId, uid, oldDisplayName, name);
+    } catch (e) {
+      console.error("Failed to send group renamed notification:", e);
+    }
 
     return res.json({ ok: true, message: "Group name updated", name });
   } catch (error: unknown) {

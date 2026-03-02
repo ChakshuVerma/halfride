@@ -595,6 +595,85 @@ export async function notifyGroupMembersReadyToOnboard(
 }
 
 /**
+ * Notify all group members that the group was renamed.
+ * Message format: "Group X was renamed to Y by user".
+ */
+export async function notifyGroupRenamed(
+  groupId: string,
+  actorUserId: string,
+  oldName: string | null,
+  newName: string,
+) {
+  const db = admin.firestore();
+  try {
+    const groupDoc = await db.collection(COLLECTIONS.GROUPS).doc(groupId).get();
+    if (!groupDoc.exists) return;
+
+    const groupData = groupDoc.data();
+    const members: admin.firestore.DocumentReference[] =
+      groupData?.[GROUP_FIELDS.MEMBERS] || [];
+    if (members.length === 0) return;
+
+    const recipientIds = members.map(
+      (ref: admin.firestore.DocumentReference) => ref.id,
+    );
+
+    const { name: currentDisplayName, airportCode } = await getGroupInfo(
+      db,
+      groupId,
+    );
+
+    const actorSnap = await db
+      .collection(COLLECTIONS.USERS)
+      .doc(actorUserId)
+      .get();
+    const actorName =
+      actorSnap.exists && typeof actorSnap.data()?.["FirstName"] === "string"
+        ? String(actorSnap.data()?.["FirstName"]).trim() || "Someone"
+        : "Someone";
+
+    const trimmedNewName = newName.trim();
+    const oldNameDisplay =
+      typeof oldName === "string" && oldName.trim().length > 0
+        ? oldName.trim()
+        : currentDisplayName;
+    const newNameDisplay =
+      trimmedNewName.length > 0 ? trimmedNewName : currentDisplayName;
+
+    const title = "Group renamed";
+    const body = `Group ${oldNameDisplay} was renamed to ${newNameDisplay} by ${actorName}.`;
+
+    await Promise.all(
+      recipientIds.map((recipientId) =>
+        createNotification({
+          recipientUserId: recipientId,
+          type: NotificationType.GROUP_RENAMED,
+          title,
+          body,
+          data: {
+            groupId,
+            groupName: newNameDisplay,
+            oldGroupName: oldNameDisplay,
+            newGroupName: newNameDisplay,
+            actorUserId,
+            actorName,
+            ...(airportCode && {
+              airportCode,
+              action: {
+                type: NOTIFICATION_ACTION_TYPES.OPEN_GROUP,
+                payload: { airportCode, groupId },
+              },
+            }),
+          },
+        }),
+      ),
+    );
+  } catch (e) {
+    console.error("Notify group renamed error:", e);
+  }
+}
+
+/**
  * Mark a notification as read
  */
 export async function markNotificationRead(req: Request, res: Response) {
