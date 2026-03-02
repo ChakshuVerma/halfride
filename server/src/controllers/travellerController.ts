@@ -19,6 +19,7 @@ import {
   IATA_CODE_LENGTH,
   isValidIataCode,
   roadDistanceBetweenTwoPoints,
+  roadDistanceFromOneToMany,
 } from "../utils/controllerUtils";
 import {
   notifyUserOfConnectionRequest,
@@ -31,6 +32,7 @@ import {
   notifyOtherMembersJoinDecided,
   notifyDeciderJoinRequestDecided,
   notifyGroupMembersReadyToOnboard,
+  notifyGroupRenamed,
 } from "./notificationController";
 import {
   badRequest,
@@ -745,6 +747,38 @@ async function fetchMemberDestinations(
   });
 }
 
+/** Fetch destination placeIds for members at airport (order preserved). */
+async function fetchMemberDestinationPlaceIds(
+  db: admin.firestore.Firestore,
+  code: string,
+  members: admin.firestore.DocumentReference[],
+): Promise<(string | null)[]> {
+  if (members.length === 0) return [];
+  const travellerByUserId = new Map<string, admin.firestore.DocumentData>();
+  for (let i = 0; i < members.length; i += IN_QUERY_MAX) {
+    const chunk = members.slice(i, i + IN_QUERY_MAX);
+    const qSnap = await db
+      .collection(COLLECTIONS.TRAVELLER_DATA)
+      .where(TRAVELLER_FIELDS.USER_REF, "in", chunk)
+      .where(TRAVELLER_FIELDS.FLIGHT_ARRIVAL, "==", code)
+      .limit(IN_QUERY_MAX)
+      .get();
+    for (const d of qSnap.docs) {
+      const tData = d.data();
+      const uRef = tData[TRAVELLER_FIELDS.USER_REF] as admin.firestore.DocumentReference;
+      if (uRef?.id) travellerByUserId.set(uRef.id, tData);
+    }
+  }
+  return members.map((ref) => {
+    const tData = travellerByUserId.get(ref.id);
+    if (!tData) return null;
+    const dest = tData[TRAVELLER_FIELDS.DESTINATION];
+    if (typeof dest !== "object" || dest === null || !("placeId" in dest)) return null;
+    const pid = (dest as { placeId?: string }).placeId;
+    return typeof pid === "string" && pid.trim() ? pid.trim() : null;
+  });
+}
+
 /** Count male/female from member user snaps. */
 function countGender(
   members: admin.firestore.DocumentReference[],
@@ -769,6 +803,7 @@ function buildGroupSummary(
   destinations: string[],
   genderBreakdown: { male: number; female: number },
   hasPendingJoinRequest: boolean,
+  averageRoadDistanceKm?: number | null,
 ): Record<string, unknown> {
   const createdAt = data[GROUP_FIELDS.CREATED_AT];
   const createdAtISO = createdAt?.toDate?.()?.toISOString?.() ?? new Date().toISOString();
@@ -777,7 +812,7 @@ function buildGroupSummary(
     typeof storedName === "string" && storedName.trim().length > 0
       ? storedName.trim()
       : `Group of ${groupSize}`;
-  return {
+  const base: Record<string, unknown> = {
     id: docId,
     name,
     airportCode: code,
@@ -788,6 +823,10 @@ function buildGroupSummary(
     createdAt: createdAtISO,
     hasPendingJoinRequest,
   };
+  if (averageRoadDistanceKm != null && Number.isFinite(averageRoadDistanceKm)) {
+    base.averageRoadDistanceKm = averageRoadDistanceKm;
+  }
+  return base;
 }
 
 // ---------------------------------------------------------------------------
@@ -826,6 +865,10 @@ export async function getGroupsByAirport(req: Request, res: Response) {
       BATCH_SIZE,
     );
 
+    const userDest = uid
+      ? await getCurrentUserDestination(uid, code)
+      : null;
+
     // Per group: destinations, gender counts, and summary payload.
     const results = await Promise.all(
       snapshot.docs.map(async (doc) => {
@@ -836,6 +879,26 @@ export async function getGroupsByAirport(req: Request, res: Response) {
           !!uid && pendingRequests.some((ref: { id: string }) => ref.id === uid);
         const destinations = await fetchMemberDestinations(db, code, members);
         const genderBreakdown = countGender(members, userSnapMap);
+
+        let averageRoadDistanceKm: number | null = null;
+        const userInGroup = !!uid && members.some((ref: { id: string }) => ref.id === uid);
+        if (uid && userDest?.placeId && !userInGroup && members.length > 0) {
+          try {
+            const placeIds = await fetchMemberDestinationPlaceIds(db, code, members);
+            const validPlaceIds = placeIds.filter((id): id is string => id != null && id.length > 0);
+            if (validPlaceIds.length > 0) {
+              const distancesMeters = await roadDistanceFromOneToMany(userDest.placeId, validPlaceIds);
+              const validDistances = distancesMeters.filter((d): d is number => d != null && Number.isFinite(d));
+              if (validDistances.length > 0) {
+                const sumMeters = validDistances.reduce((a, b) => a + b, 0);
+                averageRoadDistanceKm = sumMeters / validDistances.length / 1000;
+              }
+            }
+          } catch (err) {
+            console.error("[getGroupsByAirport] Average road distance error for group", doc.id, err);
+          }
+        }
+
         return buildGroupSummary(
           doc.id,
           data,
@@ -844,6 +907,7 @@ export async function getGroupsByAirport(req: Request, res: Response) {
           destinations,
           genderBreakdown,
           hasPendingJoinRequest,
+          averageRoadDistanceKm,
         );
       }),
     );
@@ -884,6 +948,27 @@ export async function getGroupById(req: Request, res: Response) {
     const destinations = await fetchMemberDestinations(db, code, members);
     const genderBreakdown = countGender(members, userSnapMap);
 
+    let averageRoadDistanceKm: number | null = null;
+    if (uid && !isCurrentUserMember && members.length > 0) {
+      const userDest = await getCurrentUserDestination(uid, code);
+      if (userDest?.placeId) {
+        try {
+          const placeIds = await fetchMemberDestinationPlaceIds(db, code, members);
+          const validPlaceIds = placeIds.filter((id): id is string => id != null && id.length > 0);
+          if (validPlaceIds.length > 0) {
+            const distancesMeters = await roadDistanceFromOneToMany(userDest.placeId, validPlaceIds);
+            const validDistances = distancesMeters.filter((d): d is number => d != null && Number.isFinite(d));
+            if (validDistances.length > 0) {
+              const sumMeters = validDistances.reduce((a, b) => a + b, 0);
+              averageRoadDistanceKm = sumMeters / validDistances.length / 1000;
+            }
+          }
+        } catch (err) {
+          console.error("[getGroupById] Average road distance error:", err);
+        }
+      }
+    }
+
     const group = buildGroupSummary(
       groupDoc.id,
       data,
@@ -892,6 +977,7 @@ export async function getGroupById(req: Request, res: Response) {
       destinations,
       genderBreakdown,
       hasPendingJoinRequest,
+      averageRoadDistanceKm,
     );
     return res.json({
       ok: true,
@@ -1672,6 +1758,11 @@ export async function updateGroupName(req: Request, res: Response) {
     }
     const data = groupSnap.data();
     const members = data?.[GROUP_FIELDS.MEMBERS] || [];
+    const storedName = data?.[GROUP_FIELDS.NAME];
+    const oldDisplayName =
+      typeof storedName === "string" && storedName.trim().length > 0
+        ? storedName.trim()
+        : `Group of ${members.length}`;
     const isMember = members.some(
       (ref: admin.firestore.DocumentReference) => ref.id === uid,
     );
@@ -1682,6 +1773,12 @@ export async function updateGroupName(req: Request, res: Response) {
       [GROUP_FIELDS.NAME]: name,
       [GROUP_FIELDS.UPDATED_AT]: admin.firestore.FieldValue.serverTimestamp(),
     });
+
+    try {
+      await notifyGroupRenamed(groupId, uid, oldDisplayName, name);
+    } catch (e) {
+      console.error("Failed to send group renamed notification:", e);
+    }
 
     return res.json({ ok: true, message: "Group name updated", name });
   } catch (error: unknown) {

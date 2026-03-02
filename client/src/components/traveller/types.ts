@@ -41,6 +41,8 @@ export type Group = {
   hasPendingJoinRequest?: boolean;
   /** True when the current user is a member of this group. Returned by GET group/:id. */
   isCurrentUserMember?: boolean;
+  /** When user has listing at airport and is not in group: average road distance (km) from user's destination to members' destinations. */
+  averageRoadDistanceKm?: number | null;
 };
 
 export const ENTITY_TYPE = {
