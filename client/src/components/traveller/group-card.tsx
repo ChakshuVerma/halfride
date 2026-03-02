@@ -9,6 +9,7 @@ const CONSTANTS = {
     CAPACITY: "Capacity",
     DESTINATIONS: "Destinations",
     CREATED: "Created",
+    AVG_DISTANCE: "Avg. distance from your destination",
   },
   UNITS: {
     PERCENT: "%",
@@ -157,6 +158,17 @@ export function GroupCard({ group, onClick, isYourGroup = false, isOpening = fal
             </span>
           </div>
         </div>
+
+        {group.averageRoadDistanceKm != null && (
+          <div className="px-4 pb-1 flex flex-col gap-1">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold flex items-center gap-1">
+              <MapPin className="w-3 h-3" /> {CONSTANTS.LABELS.AVG_DISTANCE}
+            </span>
+            <span className="text-xs font-bold text-foreground">
+              {Number(group.averageRoadDistanceKm).toFixed(1)} km
+            </span>
+          </div>
+        )}
 
         {/* Action Footer */}
         <div className="px-4 py-3 bg-muted/30 border-t border-border flex flex-col sm:flex-row items-center justify-end gap-3 sm:gap-0 transition-colors duration-300">

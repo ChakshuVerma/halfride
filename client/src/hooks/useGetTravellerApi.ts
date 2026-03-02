@@ -88,6 +88,7 @@ export function useGetTravellerApi() {
             genderBreakdown: { male: number; female: number };
             createdAt: string;
             hasPendingJoinRequest?: boolean;
+            averageRoadDistanceKm?: number | null;
           }>;
         }>(url);
         const data = response.data || [];
@@ -100,6 +101,7 @@ export function useGetTravellerApi() {
               ? g.createdAt
               : new Date(g.createdAt).toISOString(),
           hasPendingJoinRequest: g.hasPendingJoinRequest ?? false,
+          averageRoadDistanceKm: g.averageRoadDistanceKm ?? null,
         })) as Group[];
       } catch (error) {
         console.error("Failed to fetch groups:", error);
@@ -129,6 +131,7 @@ export function useGetTravellerApi() {
             createdAt: string;
             hasPendingJoinRequest?: boolean;
             isCurrentUserMember?: boolean;
+            averageRoadDistanceKm?: number | null;
           };
         }>(url);
         if (!response.ok || !response.data) return null;
@@ -142,6 +145,7 @@ export function useGetTravellerApi() {
               : new Date(g.createdAt).toISOString(),
           hasPendingJoinRequest: g.hasPendingJoinRequest ?? false,
           isCurrentUserMember: g.isCurrentUserMember ?? false,
+          averageRoadDistanceKm: g.averageRoadDistanceKm ?? null,
         } as Group;
       } catch (error) {
         console.error("Failed to fetch group by ID:", error);

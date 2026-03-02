@@ -87,6 +87,51 @@ const roadDistanceBetweenTwoPoints = async (
   return data.rows[0].elements[0].distance.value;
 };
 
+const DISTANCE_MATRIX_MAX_DESTINATIONS = 25;
+
+/**
+ * Road distances from one origin to many destinations (Google Distance Matrix).
+ * Returns distances in meters, same order as destPlaceIds; null for failed/unavailable.
+ * Batches in chunks of 25 (API limit).
+ */
+async function roadDistanceFromOneToMany(
+  originPlaceId: string,
+  destPlaceIds: string[],
+): Promise<(number | null)[]> {
+  if (destPlaceIds.length === 0) return [];
+  const apiKey = env.googleMapsApiKey;
+  const origin = `place_id:${originPlaceId}`;
+  const results: (number | null)[] = [];
+  for (let i = 0; i < destPlaceIds.length; i += DISTANCE_MATRIX_MAX_DESTINATIONS) {
+    const chunk = destPlaceIds.slice(i, i + DISTANCE_MATRIX_MAX_DESTINATIONS);
+    const destinations = chunk.map((id) => `place_id:${id}`).join("|");
+    const url = `https://maps.googleapis.com/maps/api/distancematrix/json?origins=${encodeURIComponent(origin)}&destinations=${encodeURIComponent(destinations)}&key=${apiKey}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      chunk.forEach(() => results.push(null));
+      continue;
+    }
+    const data = (await response.json()) as {
+      status: string;
+      rows?: Array<{
+        elements?: Array<{ status: string; distance?: { value: number } }>;
+      }>;
+    };
+    if (data.status !== "OK" || !data.rows?.[0]?.elements) {
+      chunk.forEach(() => results.push(null));
+      continue;
+    }
+    for (const el of data.rows[0].elements) {
+      if (el.status === "OK" && el.distance?.value != null) {
+        results.push(el.distance.value);
+      } else {
+        results.push(null);
+      }
+    }
+  }
+  return results;
+}
+
 const isValidIsoDateString = (value: unknown): value is string => {
   if (typeof value !== "string") return false;
   const trimmed = value.trim();
@@ -302,6 +347,7 @@ export {
   isDateTodayOrTomorrow,
   checkRoadDistance,
   roadDistanceBetweenTwoPoints,
+  roadDistanceFromOneToMany,
   geocodeAirport,
   haversineDistance,
   isValidIsoDateString,

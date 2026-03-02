@@ -64,6 +64,7 @@ const CONSTANTS = {
     NAME_PLACEHOLDER: "Group name",
     NAME_RULES: "Letters and spaces only, max 50 characters",
     CHAR_COUNT: "characters",
+    AVG_DISTANCE: "Avg. distance from your destination",
   },
   UNITS: {
     KM_MIN: "km (min)",
@@ -468,6 +469,17 @@ export function GroupModal({
             {renderGenderBar("Female")}
           </div>
         </div>
+
+        {group.averageRoadDistanceKm != null && (
+          <div className="rounded-xl bg-muted/5 border border-border/10 p-2.5 sm:p-3 space-y-1 min-w-0 overflow-hidden">
+            <span className="text-[10px] font-bold text-muted-foreground/60 uppercase tracking-widest block">
+              {CONSTANTS.LABELS.AVG_DISTANCE}
+            </span>
+            <span className="text-xs font-semibold text-foreground">
+              {Number(group.averageRoadDistanceKm).toFixed(1)} km
+            </span>
+          </div>
+        )}
 
         {/* Group Members List */}
         <div className="space-y-2 sm:space-y-2.5 pt-2 border-t border-border/10 min-w-0">
